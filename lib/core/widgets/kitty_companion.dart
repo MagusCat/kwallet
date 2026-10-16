@@ -1,28 +1,21 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/kwall_theme.dart';
 
-enum KittyMoodState {
-  happy,
-  zen,
-  alert,
-  boss,
-  sleepy,
-}
-
 class KittyCompanionWidget extends StatefulWidget {
-  final KittyMoodState mood;
+  final String coatColor; // 'orange', 'tuxedo', 'white', 'grey', 'calico'
+  final String mood; // 'happy', 'zen', 'sleepy', 'alert'
+  final String name;
   final double size;
   final VoidCallback? onPet;
-  final String? customDialogue;
 
   const KittyCompanionWidget({
     super.key,
-    this.mood = KittyMoodState.happy,
-    this.size = 130,
+    this.coatColor = 'orange',
+    this.mood = 'happy',
+    this.name = 'Mishi',
+    this.size = 110,
     this.onPet,
-    this.customDialogue,
   });
 
   @override
@@ -31,65 +24,56 @@ class KittyCompanionWidget extends StatefulWidget {
 
 class _KittyCompanionWidgetState extends State<KittyCompanionWidget>
     with TickerProviderStateMixin {
-  late AnimationController _idleController;
+  late AnimationController _breatheController;
   late AnimationController _blinkController;
-  late AnimationController _petBounceController;
+  late AnimationController _petController;
 
   bool _isPetting = false;
-  String? _temporarySpeech;
+  String? _dialogue;
 
   @override
   void initState() {
     super.initState();
 
-    // Subtle breathing & tail wagging
-    _idleController = AnimationController(
+    _breatheController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2400),
+      duration: const Duration(milliseconds: 2200),
     )..repeat(reverse: true);
 
-    // Periodic blinking
     _blinkController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3000),
+      duration: const Duration(milliseconds: 3200),
     )..repeat();
 
-    // Bouncing on pet
-    _petBounceController = AnimationController(
+    _petController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 450),
     );
   }
 
   @override
   void dispose() {
-    _idleController.dispose();
+    _breatheController.dispose();
     _blinkController.dispose();
-    _petBounceController.dispose();
+    _petController.dispose();
     super.dispose();
   }
 
   void _handlePet() {
     setState(() {
       _isPetting = true;
-      final speeches = [
-        '*PURR*',
-        'MEOW! +5 EXP',
-        'RONRONEO INTENSO',
-        '¡BUEN GATO!',
-        '¡BÓVEDA PROTEGIDA!'
-      ];
-      _temporarySpeech = speeches[math.Random().nextInt(speeches.length)];
+      final dialogues = ['¡Miau!', 'Prrr~', '♥ Ronroneo', '¡Hola!', 'Purrr...'];
+      _dialogue = dialogues[math.Random().nextInt(dialogues.length)];
     });
 
-    _petBounceController.forward(from: 0.0);
+    _petController.forward(from: 0.0);
     widget.onPet?.call();
 
-    Future.delayed(const Duration(milliseconds: 1400), () {
+    Future.delayed(const Duration(milliseconds: 1500), () {
       if (mounted) {
         setState(() {
           _isPetting = false;
-          _temporarySpeech = null;
+          _dialogue = null;
         });
       }
     });
@@ -97,80 +81,57 @@ class _KittyCompanionWidgetState extends State<KittyCompanionWidget>
 
   @override
   Widget build(BuildContext context) {
-    final speechText = _temporarySpeech ?? widget.customDialogue;
-
     return GestureDetector(
       onTap: _handlePet,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Speech Bubble HUD
-          if (speechText != null)
+          // Speech Bubble (Expressive M3 pill)
+          if (_dialogue != null)
             Container(
               margin: const EdgeInsets.only(bottom: 6),
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: KwallTheme.surfaceCardHighlight,
-                borderRadius: BorderRadius.circular(8),
+                color: KwallTheme.surfaceContainer,
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _isPetting ? KwallTheme.neonGreen : KwallTheme.borderBright,
-                  width: 1.5,
+                  color: KwallTheme.accent.withValues(alpha: 0.4),
+                  width: 1.0,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: (_isPetting ? KwallTheme.neonGreen : Colors.black)
-                        .withValues(alpha: 0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  )
-                ],
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_isPetting)
-                    const Icon(
-                      Icons.favorite_rounded,
-                      size: 13,
-                      color: KwallTheme.plasmaPink,
-                    ),
-                  if (_isPetting) const SizedBox(width: 4),
-                  Text(
-                    speechText,
-                    style: KwallTheme.gameFont.copyWith(
-                      color: _isPetting ? KwallTheme.neonGreen : KwallTheme.textBright,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
+              child: Text(
+                _dialogue!,
+                style: KwallTheme.fontBody.copyWith(
+                  color: KwallTheme.accent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ).animate().scale(duration: 180.ms, curve: Curves.easeOutBack),
+            ),
 
-          // Vector Kitty Companion Canvas
           AnimatedBuilder(
             animation: Listenable.merge([
-              _idleController,
+              _breatheController,
               _blinkController,
-              _petBounceController,
+              _petController,
             ]),
             builder: (context, child) {
-              final idleProgress = _idleController.value;
-              final blinkProgress = _blinkController.value;
-              final bounceProgress = _petBounceController.value;
-
-              // Hop when pet
-              final bounceOffset = math.sin(bounceProgress * math.pi) * -8;
+              final breathe = _breatheController.value;
+              final blink = _blinkController.value;
+              final pet = _petController.value;
+              final hopOffset = math.sin(pet * math.pi) * -8;
 
               return Transform.translate(
-                offset: Offset(0, bounceOffset),
+                offset: Offset(0, hopOffset),
                 child: SizedBox(
                   width: widget.size,
                   height: widget.size,
                   child: CustomPaint(
-                    painter: _KittyPainter(
+                    painter: _NormalKittyPainter(
+                      coatColor: widget.coatColor,
                       mood: widget.mood,
-                      idleProgress: idleProgress,
-                      blinkProgress: blinkProgress,
+                      breatheProgress: breathe,
+                      blinkProgress: blink,
                       isPetting: _isPetting,
                     ),
                   ),
@@ -184,15 +145,17 @@ class _KittyCompanionWidgetState extends State<KittyCompanionWidget>
   }
 }
 
-class _KittyPainter extends CustomPainter {
-  final KittyMoodState mood;
-  final double idleProgress; // 0.0 to 1.0 (breathing)
-  final double blinkProgress; // 0.0 to 1.0 (blinking)
+class _NormalKittyPainter extends CustomPainter {
+  final String coatColor;
+  final String mood;
+  final double breatheProgress;
+  final double blinkProgress;
   final bool isPetting;
 
-  _KittyPainter({
+  _NormalKittyPainter({
+    required this.coatColor,
     required this.mood,
-    required this.idleProgress,
+    required this.breatheProgress,
     required this.blinkProgress,
     required this.isPetting,
   });
@@ -203,323 +166,290 @@ class _KittyPainter extends CustomPainter {
     final h = size.height;
     final center = Offset(w / 2, h / 2);
 
-    final breathe = math.sin(idleProgress * math.pi) * 2.0;
+    final breathe = math.sin(breatheProgress * math.pi) * 1.8;
 
-    // Paints
-    final bodyPaint = Paint()
-      ..color = const Color(0xFF1E2433)
-      ..style = PaintingStyle.fill;
-
-    final bodyHighlight = Paint()
-      ..color = const Color(0xFF2C354B)
-      ..style = PaintingStyle.fill;
-
+    // Palette per coat
+    final colors = _getPalette(coatColor);
+    final basePaint = Paint()..color = colors.base;
+    final highlightPaint = Paint()..color = colors.highlight;
+    final earInnerPaint = Paint()..color = const Color(0xFFFFB1C1);
     final outlinePaint = Paint()
-      ..color = const Color(0xFF0F121C)
-      ..strokeWidth = 2.5
+      ..color = colors.outline
+      ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
 
-    final earInnerPaint = Paint()
-      ..color = isPetting ? const Color(0xFFFF70A6) : const Color(0xFF3E4866)
-      ..style = PaintingStyle.fill;
-
-    final eyeGlowPaint = Paint()
-      ..color = _getEyeColor()
-      ..style = PaintingStyle.fill;
-
-    final darkEyePaint = Paint()
-      ..color = const Color(0xFF0A0C14)
-      ..style = PaintingStyle.fill;
-
-    // 1. Draw Tail (Curved Animated Bezier)
+    // 1. Natural Curved Tail
+    final tailWag = math.sin(breatheProgress * 2 * math.pi) * (isPetting ? 10 : 5);
     final tailPath = Path();
-    final tailWag = math.sin(idleProgress * 2 * math.pi) * (isPetting ? 14 : 7);
-    tailPath.moveTo(w * 0.72, h * 0.78);
+    tailPath.moveTo(w * 0.70, h * 0.78);
     tailPath.cubicTo(
-      w * 0.88 + tailWag,
-      h * 0.75,
-      w * 0.95 + tailWag * 1.3,
-      h * 0.50,
-      w * 0.85 + tailWag,
-      h * 0.40,
+      w * 0.86 + tailWag,
+      h * 0.74,
+      w * 0.94 + tailWag * 1.2,
+      h * 0.52,
+      w * 0.84 + tailWag,
+      h * 0.42,
     );
 
-    final tailOutline = Paint()
-      ..color = const Color(0xFF0F121C)
-      ..strokeWidth = 7.0
+    final tailStroke = Paint()
+      ..color = colors.base
+      ..strokeWidth = 6.0
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
-
-    final tailFill = Paint()
-      ..color = const Color(0xFF1E2433)
-      ..strokeWidth = 4.0
+    final tailOutline = Paint()
+      ..color = colors.outline
+      ..strokeWidth = 9.0
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
     canvas.drawPath(tailPath, tailOutline);
-    canvas.drawPath(tailPath, tailFill);
+    canvas.drawPath(tailPath, tailStroke);
 
-    // 2. Draw Body
+    // 2. Chibi Body (Soft rounded ellipse)
+    final bodyCenter = Offset(center.dx, center.dy + 15 + breathe * 0.4);
     final bodyRect = Rect.fromCenter(
-      center: Offset(center.dx, center.dy + 14 + breathe * 0.5),
-      width: w * 0.62,
-      height: h * 0.44,
+      center: bodyCenter,
+      width: w * 0.64,
+      height: h * 0.46,
     );
-    final bodyRRect = RRect.fromRectAndRadius(bodyRect, Radius.circular(w * 0.22));
-    canvas.drawRRect(bodyRRect, bodyPaint);
-    canvas.drawRRect(bodyRRect, outlinePaint);
+    canvas.drawOval(bodyRect, basePaint);
+    canvas.drawOval(bodyRect, outlinePaint);
 
-    // Belly patch
-    final bellyRect = Rect.fromCenter(
-      center: Offset(center.dx, center.dy + 18 + breathe * 0.5),
-      width: w * 0.38,
-      height: h * 0.28,
+    // Chest patch (white / cream belly)
+    final chestRect = Rect.fromCenter(
+      center: Offset(center.dx, center.dy + 18 + breathe * 0.4),
+      width: w * 0.40,
+      height: h * 0.30,
     );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(bellyRect, Radius.circular(w * 0.14)),
-      bodyHighlight,
-    );
+    canvas.drawOval(chestRect, highlightPaint);
 
-    // 3. Draw Left & Right Ears (Sharp Geometric Cat Ears)
-    final earTwitch = isPetting ? 3.0 : (mood == KittyMoodState.alert ? 2.0 : 0.0);
+    // 3. Ears (Soft triangular cat ears)
+    final earY = center.dy - 6 + breathe;
 
     // Left Ear
     final leftEarPath = Path()
-      ..moveTo(w * 0.24, center.dy - 6 + breathe)
-      ..lineTo(w * 0.20 - earTwitch, h * 0.14 - breathe * 0.5)
-      ..lineTo(w * 0.42, center.dy - 12 + breathe)
+      ..moveTo(w * 0.25, earY)
+      ..lineTo(w * 0.22, h * 0.16)
+      ..lineTo(w * 0.43, earY - 6)
       ..close();
-    canvas.drawPath(leftEarPath, bodyPaint);
+    canvas.drawPath(leftEarPath, basePaint);
     canvas.drawPath(leftEarPath, outlinePaint);
 
     final leftEarInner = Path()
-      ..moveTo(w * 0.26, center.dy - 6 + breathe)
-      ..lineTo(w * 0.23 - earTwitch, h * 0.20 - breathe * 0.5)
-      ..lineTo(w * 0.38, center.dy - 10 + breathe)
+      ..moveTo(w * 0.28, earY - 2)
+      ..lineTo(w * 0.25, h * 0.23)
+      ..lineTo(w * 0.39, earY - 6)
       ..close();
     canvas.drawPath(leftEarInner, earInnerPaint);
 
     // Right Ear
     final rightEarPath = Path()
-      ..moveTo(w * 0.58, center.dy - 12 + breathe)
-      ..lineTo(w * 0.80 + earTwitch, h * 0.14 - breathe * 0.5)
-      ..lineTo(w * 0.76, center.dy - 6 + breathe)
+      ..moveTo(w * 0.57, earY - 6)
+      ..lineTo(w * 0.78, h * 0.16)
+      ..lineTo(w * 0.75, earY)
       ..close();
-    canvas.drawPath(rightEarPath, bodyPaint);
+    canvas.drawPath(rightEarPath, basePaint);
     canvas.drawPath(rightEarPath, outlinePaint);
 
     final rightEarInner = Path()
-      ..moveTo(w * 0.62, center.dy - 10 + breathe)
-      ..lineTo(w * 0.77 + earTwitch, h * 0.20 - breathe * 0.5)
-      ..lineTo(w * 0.74, center.dy - 6 + breathe)
+      ..moveTo(w * 0.61, earY - 6)
+      ..lineTo(w * 0.75, h * 0.23)
+      ..lineTo(w * 0.72, earY - 2)
       ..close();
     canvas.drawPath(rightEarInner, earInnerPaint);
 
-    // 4. Draw Cat Head
+    // 4. Head (Soft round oval)
+    final headCenter = Offset(center.dx, center.dy - 3 + breathe);
     final headRect = Rect.fromCenter(
-      center: Offset(center.dx, center.dy - 4 + breathe),
-      width: w * 0.66,
-      height: h * 0.52,
+      center: headCenter,
+      width: w * 0.70,
+      height: h * 0.54,
     );
-    final headRRect = RRect.fromRectAndRadius(headRect, Radius.circular(w * 0.24));
-    canvas.drawRRect(headRRect, bodyPaint);
-    canvas.drawRRect(headRRect, outlinePaint);
+    canvas.drawOval(headRect, basePaint);
+    canvas.drawOval(headRect, outlinePaint);
 
-    // 5. Draw Eyes & Facial Expressions
-    final headCenterY = center.dy - 4 + breathe;
-    final leftEyeCenter = Offset(w * 0.38, headCenterY - 2);
-    final rightEyeCenter = Offset(w * 0.62, headCenterY - 2);
-
-    // Determine blink: true for short interval (e.g. 0.92 to 1.0)
-    final isBlinking = (blinkProgress > 0.92 && blinkProgress < 0.98) && !isPetting;
-
-    if (mood == KittyMoodState.sleepy && !isPetting) {
-      // Sleeping eyes (- -)
-      _drawSleepingEye(canvas, leftEyeCenter, w * 0.08);
-      _drawSleepingEye(canvas, rightEyeCenter, w * 0.08);
-
-      // Draw floating Zzz
-      _drawZzz(canvas, Offset(w * 0.74, h * 0.22 - idleProgress * 8));
-    } else if (isPetting || mood == KittyMoodState.happy) {
-      // Happy eyes (^ ^)
-      _drawHappyEye(canvas, leftEyeCenter, w * 0.08, _getEyeColor());
-      _drawHappyEye(canvas, rightEyeCenter, w * 0.08, _getEyeColor());
-    } else if (isBlinking) {
-      // Blinking slit
-      _drawSleepingEye(canvas, leftEyeCenter, w * 0.08);
-      _drawSleepingEye(canvas, rightEyeCenter, w * 0.08);
-    } else if (mood == KittyMoodState.boss) {
-      // Boss Cat Cyber Visor / Shades!
-      final visorRect = Rect.fromCenter(
-        center: Offset(center.dx, headCenterY - 2),
-        width: w * 0.44,
-        height: h * 0.14,
-      );
-      final visorPaint = Paint()..color = const Color(0xFF0F121C);
-      final visorBorder = Paint()
-        ..color = KwallTheme.cyberGold
+    // Tabby stripes if orange or grey
+    if (coatColor == 'orange' || coatColor == 'grey') {
+      final stripePaint = Paint()
+        ..color = colors.stripe
         ..strokeWidth = 2.0
-        ..style = PaintingStyle.stroke;
-      final visorShine = Paint()
-        ..color = KwallTheme.neonGreen.withValues(alpha: 0.8)
-        ..strokeWidth = 2.0
-        ..style = PaintingStyle.stroke;
-
-      canvas.drawRRect(RRect.fromRectAndRadius(visorRect, const Radius.circular(4)), visorPaint);
-      canvas.drawRRect(RRect.fromRectAndRadius(visorRect, const Radius.circular(4)), visorBorder);
-      canvas.drawLine(
-        Offset(center.dx - w * 0.16, headCenterY - 4),
-        Offset(center.dx + w * 0.16, headCenterY),
-        visorShine,
-      );
-    } else if (mood == KittyMoodState.alert) {
-      // Alert / Big Dilated Eyes with exclamation mark
-      final eyeRadius = w * 0.09;
-      canvas.drawCircle(leftEyeCenter, eyeRadius, eyeGlowPaint);
-      canvas.drawCircle(leftEyeCenter, eyeRadius * 0.75, darkEyePaint);
-      canvas.drawCircle(leftEyeCenter + const Offset(-2, -2), eyeRadius * 0.3, Paint()..color = Colors.white);
-
-      canvas.drawCircle(rightEyeCenter, eyeRadius, eyeGlowPaint);
-      canvas.drawCircle(rightEyeCenter, eyeRadius * 0.75, darkEyePaint);
-      canvas.drawCircle(rightEyeCenter + const Offset(-2, -2), eyeRadius * 0.3, Paint()..color = Colors.white);
-
-      // Warning alert pip over head
-      _drawAlertPip(canvas, Offset(center.dx, h * 0.12 + breathe));
-    } else {
-      // Normal Zen / Gamer Eyes
-      final eyeRadius = w * 0.075;
-      canvas.drawCircle(leftEyeCenter, eyeRadius, eyeGlowPaint);
-      canvas.drawCircle(leftEyeCenter, eyeRadius * 0.55, darkEyePaint);
-      canvas.drawCircle(leftEyeCenter + const Offset(-1.5, -1.5), eyeRadius * 0.25, Paint()..color = Colors.white);
-
-      canvas.drawCircle(rightEyeCenter, eyeRadius, eyeGlowPaint);
-      canvas.drawCircle(rightEyeCenter, eyeRadius * 0.55, darkEyePaint);
-      canvas.drawCircle(rightEyeCenter + const Offset(-1.5, -1.5), eyeRadius * 0.25, Paint()..color = Colors.white);
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(Offset(center.dx, headCenter.dy - 16), Offset(center.dx, headCenter.dy - 8), stripePaint);
+      canvas.drawLine(Offset(center.dx - 6, headCenter.dy - 14), Offset(center.dx - 4, headCenter.dy - 8), stripePaint);
+      canvas.drawLine(Offset(center.dx + 6, headCenter.dy - 14), Offset(center.dx + 4, headCenter.dy - 8), stripePaint);
     }
 
-    // 6. Draw Nose & Mouth
-    final noseCenter = Offset(center.dx, headCenterY + 7);
-    final nosePath = Path()
-      ..moveTo(noseCenter.dx - 3, noseCenter.dy)
-      ..lineTo(noseCenter.dx + 3, noseCenter.dy)
-      ..lineTo(noseCenter.dx, noseCenter.dy + 3)
-      ..close();
-    canvas.drawPath(
-      nosePath,
-      Paint()..color = isPetting ? const Color(0xFFFF70A6) : KwallTheme.neonGreen,
-    );
+    // 5. Eyes & Expression
+    final leftEye = Offset(headCenter.dx - w * 0.14, headCenter.dy - 1);
+    final rightEye = Offset(headCenter.dx + w * 0.14, headCenter.dy - 1);
 
-    // Cute W-mouth (Cat mouth curve)
+    final isBlinking = blinkProgress > 0.93 && blinkProgress < 0.98 && !isPetting;
+
+    if (mood == 'sleepy' || (isBlinking && !isPetting)) {
+      // Sleeping curved lines (- -)
+      _drawClosedEye(canvas, leftEye, w * 0.07, colors.outline);
+      _drawClosedEye(canvas, rightEye, w * 0.07, colors.outline);
+    } else if (isPetting || mood == 'happy') {
+      // Happy smiling curved eyes (^ ^)
+      _drawHappyEye(canvas, leftEye, w * 0.07, colors.eyeColor);
+      _drawHappyEye(canvas, rightEye, w * 0.07, colors.eyeColor);
+
+      // Blushing cute cheeks
+      final blushPaint = Paint()..color = const Color(0xFFFF94A6).withValues(alpha: 0.55);
+      canvas.drawCircle(Offset(leftEye.dx - 4, leftEye.dy + 9), 5.5, blushPaint);
+      canvas.drawCircle(Offset(rightEye.dx + 4, rightEye.dy + 9), 5.5, blushPaint);
+    } else {
+      // Normal friendly round cute eyes with spark
+      final eyeR = w * 0.07;
+      final eyePaint = Paint()..color = const Color(0xFF1E232E);
+      final glintPaint = Paint()..color = Colors.white;
+
+      canvas.drawCircle(leftEye, eyeR, eyePaint);
+      canvas.drawCircle(rightEye, eyeR, eyePaint);
+
+      // Cute white catchlights
+      canvas.drawCircle(leftEye + const Offset(-1.8, -1.8), eyeR * 0.40, glintPaint);
+      canvas.drawCircle(leftEye + const Offset(1.8, 1.8), eyeR * 0.18, glintPaint);
+
+      canvas.drawCircle(rightEye + const Offset(-1.8, -1.8), eyeR * 0.40, glintPaint);
+      canvas.drawCircle(rightEye + const Offset(1.8, 1.8), eyeR * 0.18, glintPaint);
+    }
+
+    // 6. Nose & Sweet Smile (ω mouth)
+    final noseCenter = Offset(headCenter.dx, headCenter.dy + 6);
+    final nosePaint = Paint()..color = const Color(0xFFFF8FA3);
+    final nosePath = Path()
+      ..moveTo(noseCenter.dx - 2.5, noseCenter.dy - 1)
+      ..lineTo(noseCenter.dx + 2.5, noseCenter.dy - 1)
+      ..lineTo(noseCenter.dx, noseCenter.dy + 2)
+      ..close();
+    canvas.drawPath(nosePath, nosePaint);
+
     final mouthPaint = Paint()
-      ..color = const Color(0xFF0F121C)
-      ..strokeWidth = 2.0
+      ..color = colors.outline
+      ..strokeWidth = 1.6
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
     final mouthPath = Path();
-    mouthPath.moveTo(noseCenter.dx - 6, noseCenter.dy + 6);
-    mouthPath.quadraticBezierTo(noseCenter.dx - 3, noseCenter.dy + 9, noseCenter.dx, noseCenter.dy + 5);
-    mouthPath.quadraticBezierTo(noseCenter.dx + 3, noseCenter.dy + 9, noseCenter.dx + 6, noseCenter.dy + 6);
+    mouthPath.moveTo(noseCenter.dx - 5, noseCenter.dy + 5);
+    mouthPath.quadraticBezierTo(noseCenter.dx - 2.5, noseCenter.dy + 8, noseCenter.dx, noseCenter.dy + 4);
+    mouthPath.quadraticBezierTo(noseCenter.dx + 2.5, noseCenter.dy + 8, noseCenter.dx + 5, noseCenter.dy + 5);
     canvas.drawPath(mouthPath, mouthPaint);
 
-    // 7. Whiskers (3 on each cheek)
+    // 7. Whiskers
     final whiskerPaint = Paint()
-      ..color = const Color(0xFF4C5777)
-      ..strokeWidth = 1.5
+      ..color = colors.outline.withValues(alpha: 0.6)
+      ..strokeWidth = 1.2
       ..strokeCap = StrokeCap.round;
 
     // Left Whiskers
-    canvas.drawLine(Offset(w * 0.22, headCenterY + 4), Offset(w * 0.08, headCenterY + 2), whiskerPaint);
-    canvas.drawLine(Offset(w * 0.22, headCenterY + 8), Offset(w * 0.06, headCenterY + 9), whiskerPaint);
-    canvas.drawLine(Offset(w * 0.22, headCenterY + 12), Offset(w * 0.10, headCenterY + 16), whiskerPaint);
+    canvas.drawLine(Offset(headCenter.dx - w * 0.18, headCenter.dy + 4), Offset(headCenter.dx - w * 0.34, headCenter.dy + 2), whiskerPaint);
+    canvas.drawLine(Offset(headCenter.dx - w * 0.18, headCenter.dy + 7), Offset(headCenter.dx - w * 0.35, headCenter.dy + 8), whiskerPaint);
 
     // Right Whiskers
-    canvas.drawLine(Offset(w * 0.78, headCenterY + 4), Offset(w * 0.92, headCenterY + 2), whiskerPaint);
-    canvas.drawLine(Offset(w * 0.78, headCenterY + 8), Offset(w * 0.94, headCenterY + 9), whiskerPaint);
-    canvas.drawLine(Offset(w * 0.78, headCenterY + 12), Offset(w * 0.90, headCenterY + 16), whiskerPaint);
+    canvas.drawLine(Offset(headCenter.dx + w * 0.18, headCenter.dy + 4), Offset(headCenter.dx + w * 0.34, headCenter.dy + 2), whiskerPaint);
+    canvas.drawLine(Offset(headCenter.dx + w * 0.18, headCenter.dy + 7), Offset(headCenter.dx + w * 0.35, headCenter.dy + 8), whiskerPaint);
 
-    // 8. Paws resting in front
-    final pawPaint = Paint()..color = const Color(0xFF283044);
-    final leftPawRect = Rect.fromCenter(center: Offset(w * 0.38, h * 0.88), width: w * 0.16, height: h * 0.12);
-    final rightPawRect = Rect.fromCenter(center: Offset(w * 0.62, h * 0.88), width: w * 0.16, height: h * 0.12);
-    canvas.drawRRect(RRect.fromRectAndRadius(leftPawRect, const Radius.circular(8)), pawPaint);
-    canvas.drawRRect(RRect.fromRectAndRadius(leftPawRect, const Radius.circular(8)), outlinePaint);
-    canvas.drawRRect(RRect.fromRectAndRadius(rightPawRect, const Radius.circular(8)), pawPaint);
-    canvas.drawRRect(RRect.fromRectAndRadius(rightPawRect, const Radius.circular(8)), outlinePaint);
+    // 8. Paws
+    final pawPaint = Paint()..color = colors.highlight;
+    final leftPaw = Rect.fromCenter(center: Offset(center.dx - w * 0.14, h * 0.88), width: w * 0.15, height: h * 0.11);
+    final rightPaw = Rect.fromCenter(center: Offset(center.dx + w * 0.14, h * 0.88), width: w * 0.15, height: h * 0.11);
+
+    canvas.drawOval(leftPaw, pawPaint);
+    canvas.drawOval(leftPaw, outlinePaint);
+    canvas.drawOval(rightPaw, pawPaint);
+    canvas.drawOval(rightPaw, outlinePaint);
   }
 
   void _drawHappyEye(Canvas canvas, Offset center, double size, Color color) {
-    final eyePaint = Paint()
+    final paint = Paint()
       ..color = color
-      ..strokeWidth = 3.0
+      ..strokeWidth = 2.4
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
-
     final path = Path();
-    path.moveTo(center.dx - size, center.dy + 2);
-    path.quadraticBezierTo(center.dx, center.dy - size * 0.9, center.dx + size, center.dy + 2);
-    canvas.drawPath(path, eyePaint);
+    path.moveTo(center.dx - size, center.dy + 1);
+    path.quadraticBezierTo(center.dx, center.dy - size * 0.8, center.dx + size, center.dy + 1);
+    canvas.drawPath(path, paint);
   }
 
-  void _drawSleepingEye(Canvas canvas, Offset center, double size) {
-    final eyePaint = Paint()
-      ..color = const Color(0xFF4C5777)
-      ..strokeWidth = 2.5
+  void _drawClosedEye(Canvas canvas, Offset center, double size, Color color) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round;
-
-    canvas.drawLine(Offset(center.dx - size, center.dy), Offset(center.dx + size, center.dy), eyePaint);
+    canvas.drawLine(Offset(center.dx - size, center.dy), Offset(center.dx + size, center.dy), paint);
   }
 
-  void _drawAlertPip(Canvas canvas, Offset center) {
-    final pipPaint = Paint()
-      ..color = KwallTheme.plasmaPink
-      ..style = PaintingStyle.fill;
-
-    // Diamond pip
-    final diamond = Path()
-      ..moveTo(center.dx, center.dy - 7)
-      ..lineTo(center.dx + 5, center.dy)
-      ..lineTo(center.dx, center.dy + 7)
-      ..lineTo(center.dx - 5, center.dy)
-      ..close();
-    canvas.drawPath(diamond, pipPaint);
-  }
-
-  void _drawZzz(Canvas canvas, Offset pos) {
-    final textPainter = TextPainter(
-      text: const TextSpan(
-        text: 'Zzz...',
-        style: TextStyle(
-          color: KwallTheme.electricCyan,
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1.0,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    textPainter.paint(canvas, pos);
-  }
-
-  Color _getEyeColor() {
-    switch (mood) {
-      case KittyMoodState.happy:
-        return KwallTheme.neonGreen;
-      case KittyMoodState.alert:
-        return KwallTheme.plasmaPink;
-      case KittyMoodState.boss:
-        return KwallTheme.cyberGold;
-      case KittyMoodState.zen:
-      case KittyMoodState.sleepy:
-        return KwallTheme.electricCyan;
+  _KittyColorPalette _getPalette(String coat) {
+    switch (coat) {
+      case 'tuxedo':
+        return _KittyColorPalette(
+          base: const Color(0xFF232730),
+          highlight: const Color(0xFFF8FAFC),
+          outline: const Color(0xFF14171E),
+          stripe: const Color(0xFF1A1C22),
+          eyeColor: const Color(0xFF10B981),
+        );
+      case 'white':
+        return _KittyColorPalette(
+          base: const Color(0xFFF1F5F9),
+          highlight: const Color(0xFFFFFFFF),
+          outline: const Color(0xFFCBD5E1),
+          stripe: const Color(0xFFE2E8F0),
+          eyeColor: const Color(0xFF38BDF8),
+        );
+      case 'grey':
+        return _KittyColorPalette(
+          base: const Color(0xFF64748B),
+          highlight: const Color(0xFFE2E8F0),
+          outline: const Color(0xFF334155),
+          stripe: const Color(0xFF475569),
+          eyeColor: const Color(0xFFF59E0B),
+        );
+      case 'calico':
+        return _KittyColorPalette(
+          base: const Color(0xFFF8FAFC),
+          highlight: const Color(0xFFF97316),
+          outline: const Color(0xFF334155),
+          stripe: const Color(0xFF1E293B),
+          eyeColor: const Color(0xFF10B981),
+        );
+      case 'orange':
+      default:
+        return _KittyColorPalette(
+          base: const Color(0xFFFB923C), // Warm ginger orange
+          highlight: const Color(0xFFFFF7ED), // Cream chest
+          outline: const Color(0xFFC2410C),
+          stripe: const Color(0xFFEA580C),
+          eyeColor: const Color(0xFF10B981),
+        );
     }
   }
 
   @override
-  bool shouldRepaint(covariant _KittyPainter oldDelegate) {
-    return oldDelegate.idleProgress != idleProgress ||
-        oldDelegate.blinkProgress != blinkProgress ||
-        oldDelegate.mood != mood ||
-        oldDelegate.isPetting != isPetting;
+  bool shouldRepaint(covariant _NormalKittyPainter old) {
+    return old.breatheProgress != breatheProgress ||
+        old.blinkProgress != blinkProgress ||
+        old.coatColor != coatColor ||
+        old.mood != mood ||
+        old.isPetting != isPetting;
   }
+}
+
+class _KittyColorPalette {
+  final Color base;
+  final Color highlight;
+  final Color outline;
+  final Color stripe;
+  final Color eyeColor;
+
+  _KittyColorPalette({
+    required this.base,
+    required this.highlight,
+    required this.outline,
+    required this.stripe,
+    required this.eyeColor,
+  });
 }

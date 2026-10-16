@@ -6,7 +6,9 @@ import '../../../core/widgets/game_hud_widgets.dart';
 import '../models/account.dart';
 
 class AddAccountDialog extends StatefulWidget {
-  const AddAccountDialog({super.key});
+  final String currency;
+
+  const AddAccountDialog({super.key, this.currency = '\$'});
 
   @override
   State<AddAccountDialog> createState() => _AddAccountDialogState();
@@ -17,13 +19,13 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   final TextEditingController _balanceController = TextEditingController(text: '0.00');
 
   String _selectedType = 'cash';
-  int _selectedColor = 0xFF00FF9D;
+  int _selectedColor = 0xFF10B981;
 
   final List<Map<String, dynamic>> _types = [
-    {'type': 'cash', 'label': 'Bolsillo (Efectivo)', 'color': 0xFF00FF9D},
-    {'type': 'bank', 'label': 'Banco / Débito', 'color': 0xFF00D2FF},
-    {'type': 'vault', 'label': 'Hucha Secreta (Ahorro)', 'color': 0xFFFFB800},
-    {'type': 'credit', 'label': 'Tarjeta / Crédito', 'color': 0xFFFF3366},
+    {'type': 'cash', 'label': 'Efectivo / Cartera', 'color': 0xFF10B981},
+    {'type': 'bank', 'label': 'Banco / Débito', 'color': 0xFF3B82F6},
+    {'type': 'vault', 'label': 'Hucha / Ahorro', 'color': 0xFFF59E0B},
+    {'type': 'credit', 'label': 'Tarjeta de Crédito', 'color': 0xFFEF4444},
   ];
 
   @override
@@ -37,18 +39,20 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor escribe un nombre para la bóveda')),
+        const SnackBar(content: Text('Por favor escribe un nombre para la cuenta')),
       );
       return;
     }
 
-    final balance = double.tryParse(_balanceController.text.trim()) ?? 0.0;
+    final balanceText = _balanceController.text.trim().replaceAll(',', '.');
+    final balance = double.tryParse(balanceText) ?? 0.0;
 
     final newAccount = Account(
       id: const Uuid().v4(),
       name: name,
       type: _selectedType,
       balance: balance,
+      currency: widget.currency,
       colorValue: _selectedColor,
       createdAt: DateTime.now(),
     );
@@ -66,8 +70,8 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
       backgroundColor: KwallTheme.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Container(
-        width: 420,
-        padding: const EdgeInsets.all(18),
+        width: 440,
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -76,64 +80,56 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'NUEVA BÓVEDA / CUENTA',
-                  style: KwallTheme.hudHeaderFont.copyWith(
-                    color: KwallTheme.textBright,
-                    fontSize: 15,
-                  ),
+                  'Nueva Cuenta / Bóveda',
+                  style: KwallTheme.fontTitle.copyWith(fontSize: 18),
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close_rounded, color: KwallTheme.textMuted),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
+                  icon: const Icon(Icons.close_rounded, color: KwallTheme.textSecondary),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
             // Name
-            const Text(
-              'NOMBRE DE LA BÓVEDA',
-              style: TextStyle(color: KwallTheme.textMuted, fontSize: 10, fontWeight: FontWeight.bold),
+            Text(
+              'Nombre de la cuenta',
+              style: KwallTheme.fontBody.copyWith(fontSize: 12, color: KwallTheme.textSecondary),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: _nameController,
-              style: const TextStyle(color: KwallTheme.textBright),
-              decoration: InputDecoration(
-                hintText: 'Ej. Billetera Gamer, Tarjeta Luna...',
-                hintStyle: const TextStyle(color: KwallTheme.textMuted, fontSize: 13),
-                filled: true,
-                fillColor: KwallTheme.surfaceCardHighlight,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              style: const TextStyle(color: KwallTheme.textPrimary),
+              decoration: const InputDecoration(
+                hintText: 'Ej. Cuenta sueldo, Ahorro viaje, Efectivo...',
               ),
             ),
             const SizedBox(height: 14),
 
             // Type
-            const Text(
-              'TIPO DE CUENTA',
-              style: TextStyle(color: KwallTheme.textMuted, fontSize: 10, fontWeight: FontWeight.bold),
+            Text(
+              'Tipo de cuenta',
+              style: KwallTheme.fontBody.copyWith(fontSize: 12, color: KwallTheme.textSecondary),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: _types.map((t) {
                 final isSelected = _selectedType == t['type'];
                 return ChoiceChip(
-                  label: Text(
-                    t['label'] as String,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isSelected ? Colors.black : KwallTheme.textBright,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
+                  label: Text(t['label'] as String),
                   selected: isSelected,
-                  selectedColor: Color(t['color'] as int),
-                  backgroundColor: KwallTheme.surfaceCardHighlight,
+                  selectedColor: Color(t['color'] as int).withValues(alpha: 0.2),
+                  backgroundColor: KwallTheme.surfaceContainer,
+                  side: BorderSide(
+                    color: isSelected ? Color(t['color'] as int) : KwallTheme.border,
+                  ),
+                  labelStyle: TextStyle(
+                    fontSize: 12,
+                    color: isSelected ? Color(t['color'] as int) : KwallTheme.textPrimary,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
                   onSelected: (_) {
                     setState(() {
                       _selectedType = t['type'] as String;
@@ -146,32 +142,28 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
             const SizedBox(height: 14),
 
             // Initial Balance
-            const Text(
-              'SALDO INICIAL (\$)',
-              style: TextStyle(color: KwallTheme.textMuted, fontSize: 10, fontWeight: FontWeight.bold),
+            Text(
+              'Saldo inicial (${widget.currency})',
+              style: KwallTheme.fontBody.copyWith(fontSize: 12, color: KwallTheme.textSecondary),
             ),
             const SizedBox(height: 6),
             TextField(
               controller: _balanceController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: KwallTheme.gameFont.copyWith(color: Color(_selectedColor), fontSize: 24),
+              style: KwallTheme.fontDisplay.copyWith(color: Color(_selectedColor), fontSize: 26),
               decoration: InputDecoration(
-                prefixText: '\$ ',
-                prefixStyle: TextStyle(color: Color(_selectedColor)),
-                filled: true,
-                fillColor: KwallTheme.surfaceCardHighlight,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                prefixText: '${widget.currency} ',
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
 
-            HudButton(
+            ExpressiveButton(
               onPressed: _saveAccount,
               color: Color(_selectedColor),
-              child: Center(
+              child: const Center(
                 child: Text(
-                  'ACTIVAR BÓVEDA',
-                  style: KwallTheme.hudHeaderFont.copyWith(
+                  'Crear Cuenta',
+                  style: TextStyle(
                     color: Colors.black,
                     fontWeight: FontWeight.bold,
                   ),

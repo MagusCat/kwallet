@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kwall/core/theme/kwall_theme.dart';
 import 'package:kwall/features/bodega/models/account.dart';
+import 'package:kwall/features/bodega/models/planned_expense.dart';
+import 'package:kwall/features/bodega/models/category_model.dart';
 
 void main() {
   test('Account model serialization and currency format test', () {
@@ -21,5 +23,43 @@ void main() {
     final restored = Account.fromMap(map);
     expect(restored.id, acc.id);
     expect(restored.balance, acc.balance);
+  });
+
+  test('PlannedExpense model serialization test', () {
+    final now = DateTime.now();
+    final expense = PlannedExpense(
+      id: 'plan_1',
+      title: 'Netflix',
+      amount: 12.99,
+      dueDate: now.add(const Duration(days: 10)),
+      recurrence: 'monthly',
+      categoryId: 'cat_bills',
+      createdAt: now,
+    );
+
+    expect(expense.title, 'Netflix');
+    expect(expense.recurrenceLabel, 'Mensual recurrente');
+    expect(expense.daysRemaining, 10);
+
+    final map = expense.toMap();
+    final restored = PlannedExpense.fromMap(map);
+    expect(restored.id, expense.id);
+    expect(restored.amount, 12.99);
+  });
+
+  test('CategoryModel custom creation test', () {
+    final cat = CategoryModel(
+      id: 'custom_1',
+      name: 'Gimnasio',
+      type: 'expense',
+      iconKey: 'potion',
+      colorValue: 0xFF10B981,
+      isDefault: false,
+    );
+
+    expect(cat.isDefault, false);
+    final map = cat.toMap();
+    final restored = CategoryModel.fromMap(map);
+    expect(restored.name, 'Gimnasio');
   });
 }

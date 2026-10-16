@@ -10,6 +10,31 @@ import '../../features/bodega/models/account.dart';
 import '../../features/bodega/models/category_model.dart';
 import '../../features/bodega/models/transaction_record.dart';
 import '../../features/bodega/models/budget_model.dart';
+import '../../features/bodega/models/planned_expense.dart';
+
+class DailySpend {
+  final DateTime date;
+  final String dayLabel;
+  final double amount;
+
+  DailySpend({
+    required this.date,
+    required this.dayLabel,
+    required this.amount,
+  });
+}
+
+class CategoryBreakdown {
+  final CategoryModel category;
+  final double amount;
+  final double percentage;
+
+  CategoryBreakdown({
+    required this.category,
+    required this.amount,
+    required this.percentage,
+  });
+}
 
 class DatabaseService {
   static final DatabaseService instance = DatabaseService._internal();
@@ -43,8 +68,9 @@ class DatabaseService {
 
     return await openDatabase(
       dbPath,
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
   }
 
@@ -107,12 +133,40 @@ class DatabaseService {
         exp INTEGER NOT NULL,
         mood TEXT NOT NULL,
         happiness INTEGER NOT NULL,
+        coat_color TEXT NOT NULL DEFAULT 'orange',
+        personality TEXT NOT NULL DEFAULT 'curious',
         last_interacted TEXT NOT NULL
       )
     ''');
 
-    // Seed default accounts
+    await db.execute('''
+      CREATE TABLE planned_expenses (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        amount REAL NOT NULL,
+        due_date TEXT NOT NULL,
+        recurrence TEXT NOT NULL,
+        category_id TEXT NOT NULL,
+        account_id TEXT,
+        is_completed INTEGER NOT NULL DEFAULT 0,
+        note TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      )
+    ''');
+
     final now = DateTime.now();
+
+    // Default currency
+    await db.insert('app_settings', {'key': 'currency', 'value': '\$'});
+
+    // Seed default accounts
     final defaultAccounts = [
       Account(
         id: const Uuid().v4(),
@@ -121,37 +175,37 @@ class DatabaseService {
         balance: 140.0,
         currency: '\$',
         iconKey: 'wallet',
-        colorValue: 0xFF00FF9D,
+        colorValue: 0xFF10B981,
         createdAt: now,
       ),
       Account(
         id: const Uuid().v4(),
-        name: 'Banco Utama',
+        name: 'Banco Principal',
         type: 'bank',
         balance: 1850.0,
         currency: '\$',
         iconKey: 'bank',
-        colorValue: 0xFF00D2FF,
+        colorValue: 0xFF3B82F6,
         createdAt: now,
       ),
       Account(
         id: const Uuid().v4(),
-        name: 'Hucha Secreta',
+        name: 'Hucha / Ahorro',
         type: 'vault',
         balance: 950.0,
         currency: '\$',
         iconKey: 'vault',
-        colorValue: 0xFFFFB800,
+        colorValue: 0xFFF59E0B,
         createdAt: now,
       ),
       Account(
         id: const Uuid().v4(),
-        name: 'Tarjeta Lunar',
+        name: 'Tarjeta de Crédito',
         type: 'credit',
         balance: -120.0,
         currency: '\$',
         iconKey: 'credit',
-        colorValue: 0xFFFF3366,
+        colorValue: 0xFFEF4444,
         createdAt: now,
       ),
     ];
@@ -160,27 +214,27 @@ class DatabaseService {
       await db.insert('accounts', acc.toMap());
     }
 
-    // Seed default categories (NO EMOJIS, pure game aesthetics)
+    // Seed default clean categories (No emojis, sleek Material Expressive icons)
     final defaultCategories = [
-      CategoryModel(id: 'cat_fish', name: 'Pescado & Víveres', type: 'expense', iconKey: 'fish', colorValue: 0xFF00FF9D),
-      CategoryModel(id: 'cat_home', name: 'Refugio & Cuartel', type: 'expense', iconKey: 'home', colorValue: 0xFF00D2FF),
-      CategoryModel(id: 'cat_arcade', name: 'Arcade & Ocio', type: 'expense', iconKey: 'game', colorValue: 0xFFFF3366),
-      CategoryModel(id: 'cat_potion', name: 'Pociones & Salud', type: 'expense', iconKey: 'potion', colorValue: 0xFF9D4EDD),
-      CategoryModel(id: 'cat_boss', name: 'Boss Fight / Imprevisto', type: 'expense', iconKey: 'boss', colorValue: 0xFFFFB800),
-      CategoryModel(id: 'cat_energy', name: 'Maná & Servicios', type: 'expense', iconKey: 'energy', colorValue: 0xFF00E5FF),
-      CategoryModel(id: 'cat_loot', name: 'Loot & Caprichos', type: 'expense', iconKey: 'loot', colorValue: 0xFFFF70A6),
-      CategoryModel(id: 'cat_transport', name: 'Warp & Movilidad', type: 'expense', iconKey: 'transport', colorValue: 0xFF70D6FF),
+      CategoryModel(id: 'cat_food', name: 'Alimentación & Súper', type: 'expense', iconKey: 'food', colorValue: 0xFF10B981),
+      CategoryModel(id: 'cat_home', name: 'Hogar & Servicios', type: 'expense', iconKey: 'home', colorValue: 0xFF3B82F6),
+      CategoryModel(id: 'cat_transport', name: 'Transporte', type: 'expense', iconKey: 'transport', colorValue: 0xFF06B6D4),
+      CategoryModel(id: 'cat_leisure', name: 'Ocio & Cafés', type: 'expense', iconKey: 'game', colorValue: 0xFF8B5CF6),
+      CategoryModel(id: 'cat_health', name: 'Salud & Cuidado', type: 'expense', iconKey: 'potion', colorValue: 0xFFEC4899),
+      CategoryModel(id: 'cat_shopping', name: 'Compras & Ropa', type: 'expense', iconKey: 'loot', colorValue: 0xFFF97316),
+      CategoryModel(id: 'cat_bills', name: 'Suscripciones', type: 'expense', iconKey: 'energy', colorValue: 0xFF6366F1),
+      CategoryModel(id: 'cat_other', name: 'Imprevistos', type: 'expense', iconKey: 'boss', colorValue: 0xFF64748B),
       // Incomes
-      CategoryModel(id: 'cat_quest', name: 'Quest Principal (Salario)', type: 'income', iconKey: 'quest', colorValue: 0xFF00FF9D),
-      CategoryModel(id: 'cat_gift', name: 'Loot Extra / Recompensa', type: 'income', iconKey: 'gift', colorValue: 0xFFFFD166),
-      CategoryModel(id: 'cat_gem', name: 'Tesoro / Rendimientos', type: 'income', iconKey: 'gem', colorValue: 0xFF06D6A0),
+      CategoryModel(id: 'cat_salary', name: 'Sueldo / Nómina', type: 'income', iconKey: 'quest', colorValue: 0xFF10B981),
+      CategoryModel(id: 'cat_extra', name: 'Ingresos Extra', type: 'income', iconKey: 'gift', colorValue: 0xFFF59E0B),
+      CategoryModel(id: 'cat_invest', name: 'Inversiones', type: 'income', iconKey: 'gem', colorValue: 0xFF14B8A6),
     ];
 
     for (final cat in defaultCategories) {
       await db.insert('categories', cat.toMap());
     }
 
-    // Seed default budget for current month
+    // Seed monthly budget
     await db.insert('budgets', {
       'id': const Uuid().v4(),
       'month': now.month,
@@ -192,25 +246,117 @@ class DatabaseService {
     // Seed Kitty profile
     await db.insert('kitty_profile', {
       'id': 'main_kitty',
-      'name': 'Kwall',
+      'name': 'Mishi',
       'level': 1,
-      'exp': 35,
+      'exp': 45,
       'mood': 'happy',
-      'happiness': 80,
+      'happiness': 85,
+      'coat_color': 'orange',
+      'personality': 'curious',
       'last_interacted': now.toIso8601String(),
     });
 
-    // Seed initial welcome transaction note
+    // Seed sample transactions for last days
     await db.insert('transactions', {
       'id': const Uuid().v4(),
       'account_id': defaultAccounts[0].id,
-      'category_id': 'cat_fish',
-      'amount': 15.50,
+      'category_id': 'cat_food',
+      'amount': 18.50,
       'type': 'expense',
-      'note': 'Lata de atún y provisiones para el cuartel',
+      'note': 'Almuerzo y café',
       'date': now.subtract(const Duration(hours: 3)).toIso8601String(),
       'created_at': now.toIso8601String(),
     });
+    await db.insert('transactions', {
+      'id': const Uuid().v4(),
+      'account_id': defaultAccounts[1].id,
+      'category_id': 'cat_bills',
+      'amount': 9.99,
+      'type': 'expense',
+      'note': 'Suscripción mensual',
+      'date': now.subtract(const Duration(days: 1, hours: 2)).toIso8601String(),
+      'created_at': now.subtract(const Duration(days: 1)).toIso8601String(),
+    });
+    await db.insert('transactions', {
+      'id': const Uuid().v4(),
+      'account_id': defaultAccounts[0].id,
+      'category_id': 'cat_transport',
+      'amount': 12.00,
+      'type': 'expense',
+      'note': 'Recarga transporte',
+      'date': now.subtract(const Duration(days: 2)).toIso8601String(),
+      'created_at': now.subtract(const Duration(days: 2)).toIso8601String(),
+    });
+
+    // Seed sample planned expense
+    await db.insert('planned_expenses', {
+      'id': const Uuid().v4(),
+      'title': 'Alquiler / Hipoteca',
+      'amount': 450.0,
+      'due_date': DateTime(now.year, now.month, 28).toIso8601String(),
+      'recurrence': 'monthly',
+      'category_id': 'cat_home',
+      'account_id': defaultAccounts[1].id,
+      'is_completed': 0,
+      'note': 'Pago fijo fin de mes',
+      'created_at': now.toIso8601String(),
+    });
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS planned_expenses (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          amount REAL NOT NULL,
+          due_date TEXT NOT NULL,
+          recurrence TEXT NOT NULL,
+          category_id TEXT NOT NULL,
+          account_id TEXT,
+          is_completed INTEGER NOT NULL DEFAULT 0,
+          note TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL
+        )
+      ''');
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS app_settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        )
+      ''');
+
+      try {
+        await db.execute("ALTER TABLE kitty_profile ADD COLUMN coat_color TEXT NOT NULL DEFAULT 'orange'");
+      } catch (_) {}
+      try {
+        await db.execute("ALTER TABLE kitty_profile ADD COLUMN personality TEXT NOT NULL DEFAULT 'curious'");
+      } catch (_) {}
+
+      await db.insert('app_settings', {'key': 'currency', 'value': '\$'},
+          conflictAlgorithm: ConflictAlgorithm.ignore);
+    }
+  }
+
+  // ================= APP SETTINGS =================
+  Future<String> getCurrency() async {
+    final db = await database;
+    final res = await db.query('app_settings', where: 'key = ?', whereArgs: ['currency'], limit: 1);
+    if (res.isNotEmpty) {
+      return res.first['value'] as String;
+    }
+    return '\$';
+  }
+
+  Future<void> setCurrency(String newCurrency) async {
+    final db = await database;
+    await db.insert(
+      'app_settings',
+      {'key': 'currency', 'value': newCurrency},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    _notify();
   }
 
   // ================= ACCOUNTS =================
@@ -243,12 +389,24 @@ class DatabaseService {
     final db = await database;
     final where = type != null ? 'type = ?' : null;
     final whereArgs = type != null ? [type] : null;
-    final maps = await db.query('categories', where: where, whereArgs: whereArgs, orderBy: 'id ASC');
+    final maps = await db.query('categories', where: where, whereArgs: whereArgs, orderBy: 'name ASC');
     return maps.map((m) => CategoryModel.fromMap(m)).toList();
   }
 
+  Future<void> createCategory(CategoryModel category) async {
+    final db = await database;
+    await db.insert('categories', category.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    _notify();
+  }
+
+  Future<void> deleteCategory(String categoryId) async {
+    final db = await database;
+    await db.delete('categories', where: 'id = ?', whereArgs: [categoryId]);
+    _notify();
+  }
+
   // ================= TRANSACTIONS =================
-  Future<List<TransactionRecord>> getTransactions({String? accountId, int limit = 50}) async {
+  Future<List<TransactionRecord>> getTransactions({String? accountId, int limit = 100}) async {
     final db = await database;
     String? where;
     List<dynamic>? whereArgs;
@@ -302,7 +460,6 @@ class DatabaseService {
     await db.transaction((txn) async {
       await txn.delete('transactions', where: 'id = ?', whereArgs: [tx.id]);
 
-      // Revert balances
       if (tx.type == 'expense') {
         await txn.rawUpdate(
           'UPDATE accounts SET balance = balance + ? WHERE id = ?',
@@ -327,6 +484,110 @@ class DatabaseService {
     _notify();
   }
 
+  // ================= PLANNED EXPENSES =================
+  Future<List<PlannedExpense>> getPlannedExpenses({bool includeCompleted = true}) async {
+    final db = await database;
+    final where = includeCompleted ? null : 'is_completed = 0';
+    final maps = await db.query('planned_expenses', where: where, orderBy: 'due_date ASC');
+    return maps.map((m) => PlannedExpense.fromMap(m)).toList();
+  }
+
+  Future<void> addPlannedExpense(PlannedExpense expense) async {
+    final db = await database;
+    await db.insert('planned_expenses', expense.toMap());
+    _notify();
+  }
+
+  Future<void> updatePlannedExpense(PlannedExpense expense) async {
+    final db = await database;
+    await db.update('planned_expenses', expense.toMap(), where: 'id = ?', whereArgs: [expense.id]);
+    _notify();
+  }
+
+  Future<void> deletePlannedExpense(String id) async {
+    final db = await database;
+    await db.delete('planned_expenses', where: 'id = ?', whereArgs: [id]);
+    _notify();
+  }
+
+  Future<void> togglePlannedExpenseCompleted(String id, bool completed) async {
+    final db = await database;
+    await db.update(
+      'planned_expenses',
+      {'is_completed': completed ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    _notify();
+  }
+
+  // ================= ANALYTICS & CHARTS =================
+  Future<List<DailySpend>> getDailySpendingLast7Days() async {
+    final db = await database;
+    final now = DateTime.now();
+    final List<DailySpend> result = [];
+
+    const weekdays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+    for (int i = 6; i >= 0; i--) {
+      final targetDate = now.subtract(Duration(days: i));
+      final start = DateTime(targetDate.year, targetDate.month, targetDate.day, 0, 0, 0).toIso8601String();
+      final end = DateTime(targetDate.year, targetDate.month, targetDate.day, 23, 59, 59).toIso8601String();
+
+      final rows = await db.rawQuery(
+        "SELECT SUM(amount) as total FROM transactions WHERE type = 'expense' AND date BETWEEN ? AND ?",
+        [start, end],
+      );
+
+      final total = (rows.first['total'] as num?)?.toDouble() ?? 0.0;
+      final dayLabel = weekdays[targetDate.weekday - 1];
+
+      result.add(DailySpend(
+        date: targetDate,
+        dayLabel: i == 0 ? 'Hoy' : dayLabel,
+        amount: total,
+      ));
+    }
+
+    return result;
+  }
+
+  Future<List<CategoryBreakdown>> getCategorySpendingBreakdown(int month, int year) async {
+    final db = await database;
+    final start = DateTime(year, month, 1).toIso8601String();
+    final end = DateTime(year, month + 1, 0, 23, 59, 59).toIso8601String();
+
+    final totalSpentResult = await db.rawQuery(
+      "SELECT SUM(amount) as grand_total FROM transactions WHERE type = 'expense' AND date BETWEEN ? AND ?",
+      [start, end],
+    );
+    final grandTotal = (totalSpentResult.first['grand_total'] as num?)?.toDouble() ?? 0.0;
+    if (grandTotal <= 0) return [];
+
+    final rows = await db.rawQuery(
+      "SELECT category_id, SUM(amount) as total FROM transactions WHERE type = 'expense' AND date BETWEEN ? AND ? GROUP BY category_id ORDER BY total DESC",
+      [start, end],
+    );
+
+    final categories = await getCategories();
+    final catMap = {for (var c in categories) c.id: c};
+
+    final List<CategoryBreakdown> breakdown = [];
+    for (final r in rows) {
+      final catId = r['category_id'] as String;
+      final total = (r['total'] as num).toDouble();
+      final cat = catMap[catId] ??
+          CategoryModel(id: catId, name: 'Varios', type: 'expense', iconKey: 'tag', colorValue: 0xFF64748B);
+
+      breakdown.add(CategoryBreakdown(
+        category: cat,
+        amount: total,
+        percentage: (total / grandTotal) * 100,
+      ));
+    }
+    return breakdown;
+  }
+
   // ================= BUDGETS =================
   Future<BudgetModel> getCurrentBudget() async {
     final db = await database;
@@ -346,7 +607,7 @@ class DatabaseService {
       id: const Uuid().v4(),
       month: now.month,
       year: now.year,
-      monthlyLimit: 1000.0,
+      monthlyLimit: 1200.0,
       createdAt: now,
     );
     await db.insert('budgets', newBudget.toMap());
@@ -396,7 +657,7 @@ class DatabaseService {
     return (total as num).toDouble();
   }
 
-  // ================= KITTY PROFILE & MOOD =================
+  // ================= KITTY PROFILE =================
   Future<Map<String, dynamic>> getKittyProfile() async {
     final db = await database;
     final maps = await db.query('kitty_profile', where: 'id = ?', whereArgs: ['main_kitty']);
@@ -405,19 +666,34 @@ class DatabaseService {
     }
     return {
       'id': 'main_kitty',
-      'name': 'Kwall',
+      'name': 'Mishi',
       'level': 1,
-      'exp': 35,
+      'exp': 45,
       'mood': 'happy',
-      'happiness': 80,
+      'happiness': 85,
+      'coat_color': 'orange',
+      'personality': 'curious',
     };
+  }
+
+  Future<void> updateKittyConfig({String? name, String? coatColor, String? personality}) async {
+    final db = await database;
+    final updates = <String, dynamic>{};
+    if (name != null) updates['name'] = name;
+    if (coatColor != null) updates['coat_color'] = coatColor;
+    if (personality != null) updates['personality'] = personality;
+
+    if (updates.isNotEmpty) {
+      await db.update('kitty_profile', updates, where: 'id = ?', whereArgs: ['main_kitty']);
+      _notify();
+    }
   }
 
   Future<void> updateKittyMood(String mood, {int? happinessDelta, int? expDelta}) async {
     final db = await database;
     final profile = await getKittyProfile();
-    int currentHappiness = (profile['happiness'] as int?) ?? 80;
-    int currentExp = (profile['exp'] as int?) ?? 0;
+    int currentHappiness = (profile['happiness'] as int?) ?? 85;
+    int currentExp = (profile['exp'] as int?) ?? 45;
     int currentLevel = (profile['level'] as int?) ?? 1;
 
     if (happinessDelta != null) {
@@ -454,9 +730,11 @@ class DatabaseService {
     final transactions = await db.query('transactions');
     final budgets = await db.query('budgets');
     final kitty = await db.query('kitty_profile');
+    final planned = await db.query('planned_expenses');
+    final settings = await db.query('app_settings');
 
     final backup = {
-      'version': 1,
+      'version': 2,
       'exported_at': DateTime.now().toIso8601String(),
       'app': 'kwall',
       'data': {
@@ -465,6 +743,8 @@ class DatabaseService {
         'transactions': transactions,
         'budgets': budgets,
         'kitty_profile': kitty,
+        'planned_expenses': planned,
+        'app_settings': settings,
       }
     };
     return const JsonEncoder.withIndent('  ').convert(backup);
@@ -481,6 +761,8 @@ class DatabaseService {
       await txn.delete('categories');
       await txn.delete('budgets');
       await txn.delete('kitty_profile');
+      await txn.delete('planned_expenses');
+      await txn.delete('app_settings');
 
       if (data['accounts'] != null) {
         for (final row in (data['accounts'] as List)) {
@@ -505,6 +787,16 @@ class DatabaseService {
       if (data['kitty_profile'] != null) {
         for (final row in (data['kitty_profile'] as List)) {
           await txn.insert('kitty_profile', Map<String, dynamic>.from(row as Map));
+        }
+      }
+      if (data['planned_expenses'] != null) {
+        for (final row in (data['planned_expenses'] as List)) {
+          await txn.insert('planned_expenses', Map<String, dynamic>.from(row as Map));
+        }
+      }
+      if (data['app_settings'] != null) {
+        for (final row in (data['app_settings'] as List)) {
+          await txn.insert('app_settings', Map<String, dynamic>.from(row as Map));
         }
       }
     });

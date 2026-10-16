@@ -20,7 +20,7 @@ class KwallApp extends StatelessWidget {
     return MaterialApp(
       title: 'kwall — Kitty Wallet',
       debugShowCheckedModeBanner: false,
-      theme: KwallTheme.darkTheme,
+      theme: KwallTheme.expressiveTheme,
       home: const BodegaScreen(),
     );
   }
