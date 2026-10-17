@@ -28,6 +28,8 @@ class MainActivity : FlutterActivity() {
                         (args["total_habits"] as? Number)?.let { editor.putInt(KwallPetWidgetProvider.KEY_TOTAL_HABITS, it.toInt()) }
                         (args["pending_habits"] as? Number)?.let { editor.putInt(KwallPetWidgetProvider.KEY_PENDING_HABITS, it.toInt()) }
                         (args["status_message"] as? String)?.let { editor.putString(KwallPetWidgetProvider.KEY_STATUS_MESSAGE, it) }
+                        (args["pet_style"] as? String)?.let { editor.putString(KwallPetWidgetProvider.KEY_PET_STYLE, it) }
+                        (args["theme_palette"] as? String)?.let { editor.putString(KwallPetWidgetProvider.KEY_THEME_PALETTE, it) }
 
                         editor.apply()
                         KwallPetWidgetProvider.updateAllWidgets(applicationContext)

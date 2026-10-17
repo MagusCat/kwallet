@@ -4,139 +4,149 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_card_bg"
-    android:orientation="vertical"
+    android:orientation="horizontal"
     android:padding="12dp">
 
-    <!-- Header Row: Icon, Pet Name, Level Chip, Brand -->
+    <!-- Left Column: Pet Stage with Cat Sprite Avatar -->
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:id="@+id/widget_cat_stage"
+        android:layout_width="76dp"
+        android:layout_height="match_parent"
+        android:background="@drawable/widget_cat_stage_bg"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="4dp">
 
         <ImageView
-            android:id="@+id/widget_pet_icon"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
+            android:id="@+id/widget_cat_avatar"
+            android:layout_width="68dp"
+            android:layout_height="58dp"
             android:contentDescription="@string/widget_pet_habits_name"
-            android:src="@drawable/ic_widget_paw" />
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_widget_cat" />
 
-        <TextView
-            android:id="@+id/widget_pet_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:fontFamily="sans-serif-medium"
-            android:text="Mishi"
-            android:textColor="#FFFFFF"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/widget_pet_level"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:background="@drawable/widget_chip_accent"
-            android:fontFamily="sans-serif-medium"
-            android:paddingStart="7dp"
-            android:paddingTop="2dp"
-            android:paddingEnd="7dp"
-            android:paddingBottom="2dp"
-            android:text="Nivel 1"
-            android:textColor="#FFB74D"
-            android:textSize="10sp"
-            android:textStyle="bold" />
-
-        <FrameLayout
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
-
-        <TextView
-            android:id="@+id/widget_brand"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="sans-serif-medium"
-            android:text="kwall"
-            android:textColor="#64748B"
-            android:textSize="11sp"
-            android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- Status message / Mood (NO emojis) -->
-    <TextView
-        android:id="@+id/widget_pet_status"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:ellipsize="end"
-        android:fontFamily="sans-serif"
-        android:maxLines="2"
-        android:text="Hola, cuidemos tus habitos hoy."
-        android:textColor="#E2E8F0"
-        android:textSize="13sp" />
-
-    <!-- XP Progress -->
+    <!-- Right Column: Pet Details, XP and Habits Progress -->
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
         android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:orientation="vertical">
 
-        <ProgressBar
-            android:id="@+id/widget_pet_xp_progress"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="0dp"
-            android:layout_height="6dp"
-            android:layout_weight="1"
-            android:max="100"
-            android:progress="0"
-            android:progressDrawable="@drawable/widget_progress_bar" />
-
-        <TextView
-            android:id="@+id/widget_pet_xp_text"
-            android:layout_width="wrap_content"
+        <!-- Header Row: Pet Name, Level Chip, Brand -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/widget_pet_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-medium"
+                android:maxLines="1"
+                android:text="MISHI"
+                android:textColor="#F1F3E9"
+                android:textSize="13sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/widget_pet_level"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/widget_chip_accent"
+                android:fontFamily="sans-serif-medium"
+                android:paddingStart="6dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="6dp"
+                android:paddingBottom="2dp"
+                android:text="Nv. 1"
+                android:textColor="#B2D39C"
+                android:textSize="9sp"
+                android:textStyle="bold" />
+
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/widget_brand"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-medium"
+                android:text="kwall"
+                android:textColor="#8D9C8F"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Status message / Dialog bubble (NO emojis) -->
+        <TextView
+            android:id="@+id/widget_pet_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
             android:fontFamily="sans-serif"
-            android:text="0 / 100 XP"
-            android:textColor="#94A3B8"
+            android:maxLines="1"
+            android:text="Cuidemos tus habitos hoy."
+            android:textColor="#C4CDBF"
             android:textSize="11sp" />
-    </LinearLayout>
 
-    <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
+        <!-- XP Progress Bar and XP Counter -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-    <!-- Bottom Actions: Habits and Pet Affection -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
+            <ProgressBar
+                android:id="@+id/widget_pet_xp_progress"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="5dp"
+                android:layout_weight="1"
+                android:max="100"
+                android:progress="0"
+                android:progressDrawable="@drawable/widget_progress_bar" />
 
-        <!-- Habits summary -->
+            <TextView
+                android:id="@+id/widget_pet_xp_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:fontFamily="sans-serif"
+                android:text="0 / 100 XP"
+                android:textColor="#8D9C8F"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <!-- Habits Summary Pill -->
         <LinearLayout
             android:id="@+id/widget_habits_container"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:layout_marginTop="6dp"
             android:background="@drawable/widget_chip_bg"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="8dp"
-            android:paddingTop="6dp"
+            android:paddingTop="4dp"
             android:paddingEnd="8dp"
-            android:paddingBottom="6dp">
+            android:paddingBottom="4dp">
 
             <ImageView
                 android:id="@+id/widget_habit_icon"
-                android:layout_width="14dp"
-                android:layout_height="14dp"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
                 android:contentDescription="@string/widget_pet_habits_name"
                 android:src="@drawable/ic_widget_check" />
 
@@ -149,40 +159,9 @@
                 android:ellipsize="end"
                 android:fontFamily="sans-serif-medium"
                 android:maxLines="1"
-                android:text="0 pendientes"
-                android:textColor="#CBD5E1"
-                android:textSize="11sp" />
-        </LinearLayout>
-
-        <!-- Affection Button (Dar carino al gato directamente en el widget) -->
-        <LinearLayout
-            android:id="@+id/widget_pet_affection_btn"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:background="@drawable/widget_chip_accent"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="8dp"
-            android:paddingTop="6dp"
-            android:paddingEnd="8dp"
-            android:paddingBottom="6dp">
-
-            <ImageView
-                android:layout_width="14dp"
-                android:layout_height="14dp"
-                android:contentDescription="@string/widget_pet_habits_name"
-                android:src="@drawable/ic_widget_heart" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:fontFamily="sans-serif-medium"
-                android:text="Mimar"
-                android:textColor="#FFB74D"
-                android:textSize="11sp"
-                android:textStyle="bold" />
+                android:text="0 habitos pendientes"
+                android:textColor="#F1F3E9"
+                android:textSize="10sp" />
         </LinearLayout>
 
     </LinearLayout>

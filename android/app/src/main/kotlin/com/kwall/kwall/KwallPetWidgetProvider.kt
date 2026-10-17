@@ -11,13 +11,6 @@ import android.widget.RemoteViews
 
 class KwallPetWidgetProvider : AppWidgetProvider() {
 
-    override fun onReceive(context: Context, intent: Intent) {
-        super.onReceive(context, intent)
-        if (intent.action == ACTION_PET_AFFECTION) {
-            handlePetAffection(context)
-        }
-    }
-
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
@@ -29,7 +22,6 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
-        const val ACTION_PET_AFFECTION = "com.kwall.kwall.ACTION_PET_AFFECTION"
         const val PREFS_NAME = "kwall_widget_data"
         const val KEY_PET_NAME = "pet_name"
         const val KEY_PET_LEVEL = "pet_level"
@@ -39,34 +31,8 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
         const val KEY_TOTAL_HABITS = "total_habits"
         const val KEY_PENDING_HABITS = "pending_habits"
         const val KEY_STATUS_MESSAGE = "status_message"
-        const val KEY_PENDING_AFFECTION_XP = "pending_affection_xp"
-
-        private fun handlePetAffection(context: Context) {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val currentTotalXp = prefs.getInt(KEY_PET_XP, 0)
-            val petName = prefs.getString(KEY_PET_NAME, "Mishi") ?: "Mishi"
-            val newTotalXp = currentTotalXp + 5
-            val newLevel = (newTotalXp / 100) + 1
-            val newXpInLevel = newTotalXp % 100
-            val pendingAffection = prefs.getInt(KEY_PENDING_AFFECTION_XP, 0) + 5
-
-            val affectionMessages = arrayOf(
-                "$petName ronronea feliz... Le encantan tus caricias (+5 XP)",
-                "$petName frota su cabeza con carino (+5 XP)",
-                "Purrr... $petName se siente muy querido y contento (+5 XP)"
-            )
-            val msg = affectionMessages[(System.currentTimeMillis() % affectionMessages.size).toInt()]
-
-            prefs.edit()
-                .putInt(KEY_PET_XP, newTotalXp)
-                .putInt(KEY_PET_LEVEL, newLevel)
-                .putInt(KEY_PET_XP_IN_LEVEL, newXpInLevel)
-                .putInt(KEY_PENDING_AFFECTION_XP, pendingAffection)
-                .putString(KEY_STATUS_MESSAGE, msg)
-                .apply()
-
-            updateAllWidgets(context)
-        }
+        const val KEY_PET_STYLE = "pet_style"
+        const val KEY_THEME_PALETTE = "theme_palette"
 
         fun updateAppWidget(
             context: Context,
@@ -81,6 +47,8 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
             val totalHabits = prefs.getInt(KEY_TOTAL_HABITS, 0)
             val pendingHabits = prefs.getInt(KEY_PENDING_HABITS, 0)
             val customMessage = prefs.getString(KEY_STATUS_MESSAGE, null)
+            val petStyle = (prefs.getString(KEY_PET_STYLE, "classic") ?: "classic").lowercase()
+            val themePalette = (prefs.getString(KEY_THEME_PALETTE, "forest") ?: "forest").lowercase()
 
             val statusMessage = if (!customMessage.isNullOrBlank()) {
                 customMessage
@@ -93,8 +61,33 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
             }
 
             val views = RemoteViews(context.packageName, R.layout.kwall_pet_widget)
-            views.setTextViewText(R.id.widget_pet_name, petName)
-            views.setTextViewText(R.id.widget_pet_level, "Nivel $petLevel")
+
+            // Cat Avatar Sprite based on pet style
+            val catDrawable = when (petStyle) {
+                "ginger" -> R.drawable.ic_widget_cat_ginger
+                "siamese" -> R.drawable.ic_widget_cat_siamese
+                "calico" -> R.drawable.ic_widget_cat_calico
+                "silver" -> R.drawable.ic_widget_cat_silver
+                "snow" -> R.drawable.ic_widget_cat_snow
+                "cream" -> R.drawable.ic_widget_cat_cream
+                "ink" -> R.drawable.ic_widget_cat_ink
+                else -> R.drawable.ic_widget_cat
+            }
+            views.setImageViewResource(R.id.widget_cat_avatar, catDrawable)
+
+            // Dynamic theme colors and drawables
+            val (accentColor, chipBgRes) = when (themePalette) {
+                "plum" -> Pair(0xFFD9B7ED.toInt(), R.drawable.widget_chip_accent_plum)
+                "rose" -> Pair(0xFFF1B3C7.toInt(), R.drawable.widget_chip_accent_rose)
+                "gold" -> Pair(0xFFE9CB81.toInt(), R.drawable.widget_chip_accent_gold)
+                else -> Pair(0xFFB2D39C.toInt(), R.drawable.widget_chip_accent_forest)
+            }
+
+            views.setTextViewText(R.id.widget_pet_name, petName.uppercase())
+            views.setTextViewText(R.id.widget_pet_level, "Nv. $petLevel")
+            views.setTextColor(R.id.widget_pet_level, accentColor)
+            views.setInt(R.id.widget_pet_level, "setBackgroundResource", chipBgRes)
+
             views.setTextViewText(R.id.widget_pet_status, statusMessage)
             views.setProgressBar(R.id.widget_pet_xp_progress, 100, xpInLevel.coerceIn(0, 100), false)
             views.setTextViewText(R.id.widget_pet_xp_text, "$xpInLevel / 100 XP")
@@ -107,6 +100,7 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
                 "$completedHabits de $totalHabits ($pendingHabits pend.)"
             }
             views.setTextViewText(R.id.widget_habits_summary, habitsSummary)
+            views.setInt(R.id.widget_habit_icon, "setColorFilter", accentColor)
 
             // Flags for PendingIntents
             val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -124,14 +118,8 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
             }
             val pendingLaunch = PendingIntent.getActivity(context, 0, launchIntent, pendingIntentFlags)
             views.setOnClickPendingIntent(R.id.widget_root, pendingLaunch)
+            views.setOnClickPendingIntent(R.id.widget_cat_stage, pendingLaunch)
             views.setOnClickPendingIntent(R.id.widget_habits_container, pendingLaunch)
-
-            // Pet Affection PendingIntent (broadcast directly to this provider)
-            val affectionIntent = Intent(context, KwallPetWidgetProvider::class.java).apply {
-                action = ACTION_PET_AFFECTION
-            }
-            val pendingAffection = PendingIntent.getBroadcast(context, 101, affectionIntent, pendingIntentFlags)
-            views.setOnClickPendingIntent(R.id.widget_pet_affection_btn, pendingAffection)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
         }

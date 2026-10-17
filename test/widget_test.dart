@@ -71,6 +71,8 @@ void main() {
       completedHabits: 2,
       totalHabits: 3,
       pendingHabits: 1,
+      petStyle: 'ginger',
+      themePalette: 'plum',
     );
     // In unit test environment (running on host OS, not Android emulator), returns false gracefully
     expect(synced, isFalse);

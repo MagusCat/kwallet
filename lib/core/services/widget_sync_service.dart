@@ -14,6 +14,8 @@ class WidgetSyncService {
     required int totalHabits,
     required int pendingHabits,
     String? statusMessage,
+    String? petStyle,
+    String? themePalette,
   }) async {
     // Solo se ejecuta en Android real / emulador
     if (kIsWeb || !Platform.isAndroid) {
@@ -33,6 +35,8 @@ class WidgetSyncService {
         'total_habits': totalHabits,
         'pending_habits': pendingHabits,
         'status_message': ?statusMessage,
+        'pet_style': petStyle ?? 'classic',
+        'theme_palette': themePalette ?? 'forest',
       });
       return result ?? true;
     } on MissingPluginException {
