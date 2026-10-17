@@ -429,36 +429,44 @@ class _PetHeroCardState extends State<PetHeroCard>
                                 ),
                               ),
 
-                              // Partícula visual de molestia al soltar (sin emojis, pura animación)
+                              // Partículas pixel art rojas tipo 'X' de molestia al soltar
                               if (_isAnnoyed)
                                 Positioned(
-                                  top: -10,
-                                  right: _movingRight ? -6 : null,
-                                  left: _movingRight ? null : -6,
+                                  top: -16,
+                                  right: _movingRight ? -10 : null,
+                                  left: _movingRight ? null : -10,
                                   child: TweenAnimationBuilder<double>(
                                     tween: Tween(begin: 0.0, end: 1.0),
-                                    duration: const Duration(milliseconds: 250),
+                                    duration: const Duration(milliseconds: 350),
                                     curve: Curves.elasticOut,
                                     builder: (context, val, child) {
                                       return Transform.scale(
                                         scale: val,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(4),
-                                          decoration: BoxDecoration(
-                                            color: KwallTheme.expenseRed.withValues(alpha: 0.9),
-                                            shape: BoxShape.circle,
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: KwallTheme.expenseRed.withValues(alpha: 0.35),
-                                                blurRadius: 6,
-                                                spreadRadius: 1,
+                                        child: const SizedBox(
+                                          width: 36,
+                                          height: 32,
+                                          child: Stack(
+                                            clipBehavior: Clip.none,
+                                            children: [
+                                              // Partícula principal pixel art X
+                                              Positioned(
+                                                left: 8,
+                                                top: 6,
+                                                child: PixelArtAngerX(size: 18),
+                                              ),
+                                              // Partícula secundaria pixel art X (arriba a la derecha)
+                                              Positioned(
+                                                right: 0,
+                                                top: 0,
+                                                child: PixelArtAngerX(size: 11),
+                                              ),
+                                              // Partícula menor pixel art X (abajo a la izquierda)
+                                              Positioned(
+                                                left: 0,
+                                                bottom: 0,
+                                                child: PixelArtAngerX(size: 8),
                                               ),
                                             ],
-                                          ),
-                                          child: const Icon(
-                                            Icons.priority_high_rounded,
-                                            size: 13,
-                                            color: Colors.white,
                                           ),
                                         ),
                                       );
@@ -591,4 +599,63 @@ class _PetHeroCardState extends State<PetHeroCard>
       ),
     );
   }
+}
+
+class PixelArtAngerX extends StatelessWidget {
+  final double size;
+  const PixelArtAngerX({super.key, this.size = 16});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        painter: _PixelArtXPainter(),
+      ),
+    );
+  }
+}
+
+class _PixelArtXPainter extends CustomPainter {
+  static const List<String> _pattern = [
+    'XX....XX',
+    'XXX..XXX',
+    '.XXXXXX.',
+    '..XXXX..',
+    '..XXXX..',
+    '.XXXXXX.',
+    'XXX..XXX',
+    'XX....XX',
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cellSize = size.width / 8.0;
+    final fillPaint = Paint()..color = const Color(0xFFEF4444);
+    final borderPaint = Paint()..color = const Color(0xFF991B1B);
+
+    for (int y = 0; y < 8; y++) {
+      final row = _pattern[y];
+      for (int x = 0; x < 8; x++) {
+        if (row[x] == 'X') {
+          final isEdge = x == 0 ||
+              x == 7 ||
+              y == 0 ||
+              y == 7 ||
+              (x > 0 && row[x - 1] == '.') ||
+              (x < 7 && row[x + 1] == '.') ||
+              (y > 0 && _pattern[y - 1][x] == '.') ||
+              (y < 7 && _pattern[y + 1][x] == '.');
+          canvas.drawRect(
+            Rect.fromLTWH(x * cellSize, y * cellSize, cellSize, cellSize),
+            isEdge ? borderPaint : fillPaint,
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
