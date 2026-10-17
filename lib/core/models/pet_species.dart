@@ -1,10 +1,14 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 enum PetSpecies {
   cat('Gato'),
   rat('Rata'),
-  raccoon('Mapache');
+  raccoon('Mapache'),
+  opossum('Zarigüeya'),
+  rock('Roca'),
+  plant('Planta');
 
   final String label;
   const PetSpecies(this.label);
@@ -198,6 +202,25 @@ class PetSpeciesCatalog {
       ]),
     ),
 
+    'opossum_classic': PetStyleDef(
+      key: 'opossum_classic',
+      name: 'Pepita',
+      species: PetSpecies.opossum,
+      asset: 'opossum.png',
+    ),
+    'rock_classic': PetStyleDef(
+      key: 'rock_classic',
+      name: 'Roco',
+      species: PetSpecies.rock,
+      asset: 'rock.png',
+    ),
+    'plant_classic': PetStyleDef(
+      key: 'plant_classic',
+      name: 'Brotito',
+      species: PetSpecies.plant,
+      asset: 'plant.png',
+    ),
+
     // Raccoons
     'raccoon_classic': PetStyleDef(
       key: 'raccoon_classic',
@@ -235,8 +258,7 @@ class PetSpeciesCatalog {
     for (final e in styles.entries) e.key: e.value.name,
   };
 
-  static PetStyleDef get(String? key) =>
-      styles[key] ?? styles['classic']!;
+  static PetStyleDef get(String? key) => styles[key] ?? styles['classic']!;
 
   static List<PetStyleDef> forSpecies(PetSpecies? species) {
     if (species == null) return styles.values.toList();
@@ -256,6 +278,9 @@ class PetSpeciesCatalog {
         PetSpecies.cat => 'cat_baby.png',
         PetSpecies.rat => 'rat_baby.png',
         PetSpecies.raccoon => 'raccoon_baby.png',
+        PetSpecies.opossum => 'opossum_baby.png',
+        PetSpecies.rock => 'rock_baby.png',
+        PetSpecies.plant => 'plant_baby.png',
       };
     }
     return def.asset;

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Atlas de mascotas · kwall</title>
+<style>
+  *{box-sizing:border-box}body{margin:0;padding:32px;font:16px system-ui;background:#f2efe8;color:#2f2f2e}
+  main{max-width:1100px;margin:auto}h1{font-size:24px;margin:0 0 8px}p{line-height:1.5}
+  .controls{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:24px 0}
+  select,button{font:inherit;padding:8px;border:1px solid #8c8982;border-radius:6px;background:#fff;color:inherit}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px}
+  figure{margin:0;text-align:center}canvas{display:block;width:128px;height:128px;margin:0 auto 12px;image-rendering:pixelated;background:#fff}
+  figcaption{line-height:1.5}small{color:#615e58}body.dark{background:#262622;color:#eee}body.dark canvas{background:#383833}
+  :focus-visible{outline:3px solid #547352;outline-offset:3px}
+</style>
+<main>
+  <h1>Compañeros · seis especies</h1>
+  <p>Comparación con el gato original y los estilos seleccionados. Celdas de 32 × 32, ampliadas sin suavizado; colores planos y transparencia.</p>
+  <div class="controls">
+    <label>Animación <select id="activity">
+      <option value="0,4,320">Reposo</option><option value="4,8,120" selected>Caminar</option>
+      <option value="5,8,90">Correr</option><option value="6,4,420">Dormir</option>
+      <option value="7,6,140">Curiosidad</option><option value="8,7,100">Celebrar</option>
+      <option value="9,8,160">Descansar</option>
+    </select></label>
+    <button id="pause" type="button">Pausar</button>
+    <button id="theme" type="button">Fondo oscuro</button>
+    <label>Escala <select id="scale"><option value="64">2×</option><option value="128" selected>4×</option><option value="192">6×</option></select></label>
+  </div>
+  <div class="grid" id="pets"></div>
+  <p><small>El gato original permanece intacto. Las crías tienen sus propios dibujos; rata y mapache conservan rasgos y movimientos distintos.</small></p>
+</main>
+<script>
+const assets=[['Gato · referencia','cat.png'],['Gato bebé','cat_baby.png'],['Rata','rat.png'],['Rata bebé','rat_baby.png'],['Mapache','raccoon.png'],['Mapache bebé','raccoon_baby.png'],['Zarigüeya','opossum.png'],['Zarigüeya bebé','opossum_baby.png'],['Roca','rock.png'],['Piedrita','rock_baby.png'],['Planta','plant.png'],['Brote','plant_baby.png']];
+let frame=0,elapsed=0,last=0,paused=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const activity=document.querySelector('#activity');
+const pause=document.querySelector('#pause');
+pause.textContent=paused?'Reproducir':'Pausar';
+const pets=assets.map(([name,file])=>{
+  const figure=document.createElement('figure'),canvas=document.createElement('canvas'),caption=document.createElement('figcaption');
+  canvas.width=canvas.height=32;canvas.setAttribute('aria-label',name);caption.textContent=name;
+  figure.append(canvas,caption);document.querySelector('#pets').append(figure);
+  const image=new Image();image.src='../../'+file;image.onload=draw;
+  return {image,context:canvas.getContext('2d'),canvas};
+});
+function draw(){const [row,count]=activity.value.split(',').map(Number);pets.forEach(({image,context})=>{
+  context.clearRect(0,0,32,32);context.imageSmoothingEnabled=false;
+  if(image.complete&&image.naturalWidth)context.drawImage(image,(frame%count)*32,row*32,32,32,0,0,32,32);
+});}
+function tick(now){const delta=last?now-last:0;last=now;if(!paused&&!document.hidden){elapsed+=delta;const ms=Number(activity.value.split(',')[2]);if(elapsed>=ms){frame++;elapsed%=ms;draw();}}requestAnimationFrame(tick);}
+activity.onchange=()=>{frame=0;elapsed=0;draw();};
+pause.onclick=()=>{paused=!paused;pause.textContent=paused?'Reproducir':'Pausar';};
+document.querySelector('#theme').onclick=event=>{const dark=document.body.classList.toggle('dark');event.target.textContent=dark?'Fondo claro':'Fondo oscuro';};
+document.querySelector('#scale').onchange=event=>pets.forEach(({canvas})=>{canvas.style.width=canvas.style.height=event.target.value+'px';});
+requestAnimationFrame(tick);
+</script>
+</html>

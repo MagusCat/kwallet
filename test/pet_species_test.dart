@@ -13,14 +13,29 @@ void main() {
       expect(cats.length, greaterThanOrEqualTo(8));
       expect(rats.length, equals(5));
       expect(raccoons.length, equals(3));
+      for (final species in PetSpecies.values) {
+        expect(PetSpeciesCatalog.forSpecies(species), isNotEmpty);
+      }
 
       // Test rat varieties
       final ratKeys = rats.map((r) => r.key).toSet();
-      expect(ratKeys, containsAll(['rat_snow', 'rat_hooded', 'rat_slate', 'rat_golden', 'rat_ink']));
+      expect(
+        ratKeys,
+        containsAll([
+          'rat_snow',
+          'rat_hooded',
+          'rat_slate',
+          'rat_golden',
+          'rat_ink',
+        ]),
+      );
 
       // Test raccoon varieties
       final raccoonKeys = raccoons.map((r) => r.key).toSet();
-      expect(raccoonKeys, containsAll(['raccoon_classic', 'raccoon_cinnamon', 'raccoon_frost']));
+      expect(
+        raccoonKeys,
+        containsAll(['raccoon_classic', 'raccoon_cinnamon', 'raccoon_frost']),
+      );
     });
 
     test('Growth stage computes scale and title correctly based on XP', () {
@@ -37,12 +52,30 @@ void main() {
     });
 
     test('Asset resolution uses baby atlas for all species under 200 XP', () {
-      expect(PetSpeciesCatalog.resolveAsset('classic', xp: 50), equals('cat_baby.png'));
-      expect(PetSpeciesCatalog.resolveAsset('classic', xp: 250), equals('cat.png'));
-      expect(PetSpeciesCatalog.resolveAsset('rat_snow', xp: 50), equals('rat_baby.png'));
-      expect(PetSpeciesCatalog.resolveAsset('rat_snow', xp: 250), equals('rat.png'));
-      expect(PetSpeciesCatalog.resolveAsset('raccoon_classic', xp: 50), equals('raccoon_baby.png'));
-      expect(PetSpeciesCatalog.resolveAsset('raccoon_classic', xp: 250), equals('raccoon.png'));
+      expect(
+        PetSpeciesCatalog.resolveAsset('classic', xp: 50),
+        equals('cat_baby.png'),
+      );
+      expect(
+        PetSpeciesCatalog.resolveAsset('classic', xp: 250),
+        equals('cat.png'),
+      );
+      expect(
+        PetSpeciesCatalog.resolveAsset('rat_snow', xp: 50),
+        equals('rat_baby.png'),
+      );
+      expect(
+        PetSpeciesCatalog.resolveAsset('rat_snow', xp: 250),
+        equals('rat.png'),
+      );
+      expect(
+        PetSpeciesCatalog.resolveAsset('raccoon_classic', xp: 50),
+        equals('raccoon_baby.png'),
+      );
+      expect(
+        PetSpeciesCatalog.resolveAsset('raccoon_classic', xp: 250),
+        equals('raccoon.png'),
+      );
     });
 
     test('Random pet selection returns valid style', () {
@@ -52,13 +85,33 @@ void main() {
       final randomRat = PetSpeciesCatalog.pickRandom(species: PetSpecies.rat);
       expect(randomRat.species, equals(PetSpecies.rat));
 
-      final randomRaccoon = PetSpeciesCatalog.pickRandom(species: PetSpecies.raccoon);
+      final randomRaccoon = PetSpeciesCatalog.pickRandom(
+        species: PetSpecies.raccoon,
+      );
       expect(randomRaccoon.species, equals(PetSpecies.raccoon));
+      for (final species in PetSpecies.values) {
+        expect(PetSpeciesCatalog.pickRandom(species: species).species, species);
+      }
+    });
+
+    test('New companions grow into their own adult assets', () {
+      for (final species in ['opossum', 'rock', 'plant']) {
+        final key = '${species}_classic';
+        expect(PetSpeciesCatalog.get(key).key, key);
+        expect(
+          PetSpeciesCatalog.resolveAsset(key, xp: 199),
+          '${species}_baby.png',
+        );
+        expect(PetSpeciesCatalog.resolveAsset(key, xp: 200), '$species.png');
+        expect(PetSpeciesCatalog.resolveAsset(key, xp: 600), '$species.png');
+      }
     });
   });
 
   group('PetSelectionPanel Widget Tests', () {
-    testWidgets('Renders species filter chips and triggers random selection', (tester) async {
+    testWidgets('Renders species filter chips and triggers random selection', (
+      tester,
+    ) async {
       String selected = 'classic';
       String? suggestedName;
 
@@ -78,6 +131,9 @@ void main() {
       expect(find.text('Gato'), findsOneWidget);
       expect(find.text('Rata'), findsOneWidget);
       expect(find.text('Mapache'), findsOneWidget);
+      expect(find.text('Zarigüeya'), findsOneWidget);
+      expect(find.text('Roca'), findsOneWidget);
+      expect(find.text('Planta'), findsOneWidget);
       expect(find.text('Al azar'), findsOneWidget);
 
       // Tap Rat filter
@@ -88,10 +144,26 @@ void main() {
       expect(find.text('Quesito'), findsOneWidget);
 
       // Tap random button
+      await tester.ensureVisible(find.text('Al azar'));
       await tester.tap(find.text('Al azar'));
       await tester.pump();
 
       expect(suggestedName, isNotNull);
+
+      // Scrollable species filters work for the new companions too.
+      for (final entry in {
+        'Zarigüeya': 'Pepita',
+        'Roca': 'Roco',
+        'Planta': 'Brotito',
+      }.entries) {
+        await tester.ensureVisible(find.text(entry.key));
+        await tester.tap(find.text(entry.key));
+        await tester.pump();
+        await tester.tap(find.text(entry.value));
+        await tester.pump();
+        expect(suggestedName, entry.value);
+        expect(PetSpeciesCatalog.get(selected).species.label, entry.key);
+      }
     });
   });
 }

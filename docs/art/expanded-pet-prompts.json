@@ -1,0 +1,139 @@
+{
+  "tool": "Built-in image_gen",
+  "references": [
+    "cat.png",
+    "cat_baby.png"
+  ],
+  "atlases": [
+    {
+      "name": "rat",
+      "prompt": "Use case: stylized-concept. Asset: production pixel-art pet animation sprite sheet for the attached cat's game. Reference 1 is original cat, reference 2 baby cat: match their angular chunky silhouette and extremely economical flat pixels. Create ONE character atlas. Actual transparent background. EXACT layout: 8 columns and 10 rows = 80 individually separated sprites, regular grid, no text, no borders, no extra rows. Portrait 4:5 aspect. Each cell represents 32x32 logical pixels enlarged equally; subject fits roughly 18x18 logical pixels centered with generous clear margins. Pixel art is made of big square blocks on a consistent coarse grid. A continuous one-logical-pixel charcoal outline, solid light gray body, medium gray detail, tiny black square eyes; no tiny speckles, no gradients, no anti-aliasing, no shadow, no texture or decorative particles. Keep identity and size constant, each row is a sequence with 8 genuinely different frames. Rows TOP TO BOTTOM: 1 idle breathing/blinking; 2 looking; 3 grooming; 4 stretching; 5 walk cycle; 6 distinct faster run cycle; 7 asleep closed eyes; 8 curious sniff/tilt; 9 happy bouncing; 10 relaxed sit and settle. Fill ALL 80 cells. Keep paws/tail attached and entirely within each cell.\nSUBJECT: ADULT RAT: clear long slim pink naked tail, rounded ears, pointed short snout, compact gray body, black eyes. Clean charcoal outline matching cat. Walk low to ground, quick scurry run, sniff and rise on hindlegs. Restrained pink only nose/ear/tail.",
+      "sourceFilename": "exec-599adc36-f2df-4723-8768-1a27c7346f43.png",
+      "output": "rat.png",
+      "importParameters": [
+        22,
+        20,
+        "rows",
+        "pet"
+      ],
+      "holdLastRow": null
+    },
+    {
+      "name": "rat_baby",
+      "prompt": "Use case: stylized-concept. Asset: production pixel-art pet animation sprite sheet for the attached cat's game. Reference 1 is original cat, reference 2 baby cat: match their angular chunky silhouette and extremely economical flat pixels. Create ONE character atlas. Actual transparent background. EXACT layout: 8 columns and 10 rows = 80 individually separated sprites, regular grid, no text, no borders, no extra rows. Portrait 4:5 aspect. Each cell represents 32x32 logical pixels enlarged equally; subject fits roughly 18x18 logical pixels centered with generous clear margins. Pixel art is made of big square blocks on a consistent coarse grid. A continuous one-logical-pixel charcoal outline, solid light gray body, medium gray detail, tiny black square eyes; no tiny speckles, no gradients, no anti-aliasing, no shadow, no texture or decorative particles. Keep identity and size constant, each row is a sequence with 8 genuinely different frames. Rows TOP TO BOTTOM: 1 idle breathing/blinking; 2 looking; 3 grooming; 4 stretching; 5 walk cycle; 6 distinct faster run cycle; 7 asleep closed eyes; 8 curious sniff/tilt; 9 happy bouncing; 10 relaxed sit and settle. Fill ALL 80 cells. Keep paws/tail attached and entirely within each cell.\nSUBJECT: BABY RAT: tiny compact pear shaped pale gray body, larger round ears relative to head, short pointed snout, pink slender curling naked tail. Same cat outline, black eyes. Small tentative steps, playful tiny hops, nose twitch, curled sleep. Visibly young but NOT a rabbit.",
+      "sourceFilename": "exec-8ea8241a-e592-4382-b354-5a1b71c8addd.png",
+      "output": "rat_baby.png",
+      "importParameters": [
+        18,
+        17,
+        "nine",
+        "pet"
+      ],
+      "holdLastRow": null
+    },
+    {
+      "name": "raccoon",
+      "prompt": "Use case: stylized-concept. Asset: production pixel-art pet animation sprite sheet for the attached cat's game. Reference 1 is original cat, reference 2 baby cat: match their angular chunky silhouette and extremely economical flat pixels. Create ONE character atlas. Actual transparent background. EXACT layout: 8 columns and 10 rows = 80 individually separated sprites, regular grid, no text, no borders, no extra rows. Portrait 4:5 aspect. Each cell represents 32x32 logical pixels enlarged equally; subject fits roughly 18x18 logical pixels centered with generous clear margins. Pixel art is made of big square blocks on a consistent coarse grid. A continuous one-logical-pixel charcoal outline, solid light gray body, medium gray detail, tiny black square eyes; no tiny speckles, no gradients, no anti-aliasing, no shadow, no texture or decorative particles. Keep identity and size constant, each row is a sequence with 8 genuinely different frames. Rows TOP TO BOTTOM: 1 idle breathing/blinking; 2 looking; 3 grooming; 4 stretching; 5 walk cycle; 6 distinct faster run cycle; 7 asleep closed eyes; 8 curious sniff/tilt; 9 happy bouncing; 10 relaxed sit and settle. Fill ALL 80 cells. Keep paws/tail attached and entirely within each cell.\nSUBJECT: ADULT RACCOON: charcoal bandit eye mask with distinct light muzzle, round ears, gray body, wide fluffy tail with exactly TWO bold dark bands. Tail must be connected. Clean cat-like angular pixel silhouette, no fur texture. Broad short body. Padded walk, bouncy run, inquisitive paw rubbing, sleep with striped tail wrapped.",
+      "sourceFilename": "exec-c855693e-1f5a-4691-a27e-0d1804c17451.png",
+      "output": "raccoon.png",
+      "importParameters": [
+        22,
+        20,
+        "nine",
+        "pet"
+      ],
+      "holdLastRow": 3
+    },
+    {
+      "name": "raccoon_baby",
+      "prompt": "Use case: stylized-concept. Asset: production pixel-art pet animation sprite sheet for the attached cat's game. Reference 1 is original cat, reference 2 baby cat: match their angular chunky silhouette and extremely economical flat pixels. Create ONE character atlas. Actual transparent background. EXACT layout: 8 columns and 10 rows = 80 individually separated sprites, regular grid, no text, no borders, no extra rows. Portrait 4:5 aspect. Each cell represents 32x32 logical pixels enlarged equally; subject fits roughly 18x18 logical pixels centered with generous clear margins. Pixel art is made of big square blocks on a consistent coarse grid. A continuous one-logical-pixel charcoal outline, solid light gray body, medium gray detail, tiny black square eyes; no tiny speckles, no gradients, no anti-aliasing, no shadow, no texture or decorative particles. Keep identity and size constant, each row is a sequence with 8 genuinely different frames. Rows TOP TO BOTTOM: 1 idle breathing/blinking; 2 looking; 3 grooming; 4 stretching; 5 walk cycle; 6 distinct faster run cycle; 7 asleep closed eyes; 8 curious sniff/tilt; 9 happy bouncing; 10 relaxed sit and settle. Fill ALL 80 cells. Keep paws/tail attached and entirely within each cell.\nSUBJECT: BABY RACCOON CUB: compact round gray body, big round ears, distinct dark eye mask and tiny light muzzle, short bushy tail with TWO bold dark bands. Minimal cat-like outline. Wobbly short steps, playful bounce, paw-to-mouth curiosity, cuddle tail asleep. NOT a kitten.",
+      "sourceFilename": "exec-6f1c7cf0-977e-4cbe-bc46-9bd0414b3a0f.png",
+      "output": "raccoon_baby.png",
+      "importParameters": [
+        18,
+        17,
+        "nine",
+        "pet"
+      ],
+      "holdLastRow": null
+    },
+    {
+      "name": "opossum",
+      "prompt": "Use case: stylized-concept. Asset: production pixel-art pet animation sprite sheet for the attached cat's game. Reference 1 is original cat, reference 2 baby cat: match their angular chunky silhouette and extremely economical flat pixels. Create ONE character atlas. Actual transparent background. EXACT layout: 8 columns and 10 rows = 80 individually separated sprites, regular grid, no text, no borders, no extra rows. Portrait 4:5 aspect. Each cell represents 32x32 logical pixels enlarged equally; subject fits roughly 18x18 logical pixels centered with generous clear margins. Pixel art is made of big square blocks on a consistent coarse grid. A continuous one-logical-pixel charcoal outline, solid light gray body, medium gray detail, tiny black square eyes; no tiny speckles, no gradients, no anti-aliasing, no shadow, no texture or decorative particles. Keep identity and size constant, each row is a sequence with 8 genuinely different frames. Rows TOP TO BOTTOM: 1 idle breathing/blinking; 2 looking; 3 grooming; 4 stretching; 5 walk cycle; 6 distinct faster run cycle; 7 asleep closed eyes; 8 curious sniff/tilt; 9 happy bouncing; 10 relaxed sit and settle. Fill ALL 80 cells. Keep paws/tail attached and entirely within each cell.\nSUBJECT: ADULT OPOSSUM / ZARIGUEYA: gray body, very distinctive white pointed triangular long face with pink nose, round charcoal ears, black eyes, long thin pink curling prehensile naked tail. Tail connected. Cat-like simple blocky pixels. Slow low walk, scampering run, sniffing long snout, curls up asleep, raises tail when happy.",
+      "sourceFilename": "exec-cf1d090f-50e3-468d-aae6-759c4f6052de.png",
+      "output": "opossum.png",
+      "importParameters": [
+        24,
+        21,
+        "rows",
+        "pet"
+      ],
+      "holdLastRow": null
+    },
+    {
+      "name": "opossum_baby",
+      "prompt": "Use case: stylized-concept. Asset: production pixel-art pet animation sprite sheet for the attached cat's game. Reference 1 is original cat, reference 2 baby cat: match their angular chunky silhouette and extremely economical flat pixels. Create ONE character atlas. Actual transparent background. EXACT layout: 8 columns and 10 rows = 80 individually separated sprites, regular grid, no text, no borders, no extra rows. Portrait 4:5 aspect. Each cell represents 32x32 logical pixels enlarged equally; subject fits roughly 18x18 logical pixels centered with generous clear margins. Pixel art is made of big square blocks on a consistent coarse grid. A continuous one-logical-pixel charcoal outline, solid light gray body, medium gray detail, tiny black square eyes; no tiny speckles, no gradients, no anti-aliasing, no shadow, no texture or decorative particles. Keep identity and size constant, each row is a sequence with 8 genuinely different frames. Rows TOP TO BOTTOM: 1 idle breathing/blinking; 2 looking; 3 grooming; 4 stretching; 5 walk cycle; 6 distinct faster run cycle; 7 asleep closed eyes; 8 curious sniff/tilt; 9 happy bouncing; 10 relaxed sit and settle. Fill ALL 80 cells. Keep paws/tail attached and entirely within each cell.\nSUBJECT: BABY OPOSSUM / ZARIGUEYA: tiny compact gray body, large round dark ears, distinctive WHITE pointed long face and pink nose, black eyes, thin pink tail curled like a hook, attached. Economical cat pixel outline. Timid steps, little hops, nose tilt and tail curl, asleep tucked into tiny ball.",
+      "sourceFilename": "exec-2800ec21-a843-46e6-88ba-767741c3e5a8.png",
+      "output": "opossum_baby.png",
+      "importParameters": [
+        19,
+        17,
+        "nine",
+        "pet"
+      ],
+      "holdLastRow": null
+    },
+    {
+      "name": "rock",
+      "prompt": "Use case: stylized-concept. Asset: production pixel-art pet animation sprite sheet for the attached cat's game. Reference 1 is original cat, reference 2 baby cat: match their angular chunky silhouette and extremely economical flat pixels. Create ONE character atlas. Actual transparent background. EXACT layout: 8 columns and 10 rows = 80 individually separated sprites, regular grid, no text, no borders, no extra rows. Portrait 4:5 aspect. Each cell represents 32x32 logical pixels enlarged equally; subject fits roughly 18x18 logical pixels centered with generous clear margins. Pixel art is made of big square blocks on a consistent coarse grid. A continuous one-logical-pixel charcoal outline, solid light gray body, medium gray detail, tiny black square eyes; no tiny speckles, no gradients, no anti-aliasing, no shadow, no texture or decorative particles. Keep identity and size constant, each row is a sequence with 8 genuinely different frames. Rows TOP TO BOTTOM: 1 idle breathing/blinking; 2 looking; 3 grooming; 4 stretching; 5 walk cycle; 6 distinct faster run cycle; 7 asleep closed eyes; 8 curious sniff/tilt; 9 happy bouncing; 10 relaxed sit and settle. Fill ALL 80 cells. Keep paws/tail attached and entirely within each cell.\nSUBJECT: PET ROCK adult: adorable squat asymmetrical light-gray angular stone with charcoal pixel outline, two small square black eyes and tiny subtle mouth. ONE large flat medium gray facet only, very simple textureless rock, NO arms or legs. Same minimalist coarse pixel aesthetic as cat. Idle blink, look left/right, grooming becomes small wobble, stretching becomes tilt. Walk by rocking left/right, run by rolling with visible different orientations, sleep eyes closed, curious lean, celebrate small bounce, relax settles flat. Must read as friendly stone.",
+      "sourceFilename": "exec-6687434c-7a38-4573-b6d4-f429553ce5f3.png",
+      "output": "rock.png",
+      "importParameters": [
+        21,
+        19,
+        "rows",
+        "rock"
+      ],
+      "holdLastRow": null
+    },
+    {
+      "name": "rock_baby",
+      "prompt": "Use case: stylized-concept. Asset: production pixel-art pet animation sprite sheet for the attached cat's game. Reference 1 is original cat, reference 2 baby cat: match their angular chunky silhouette and extremely economical flat pixels. Create ONE character atlas. Actual transparent background. EXACT layout: 8 columns and 10 rows = 80 individually separated sprites, regular grid, no text, no borders, no extra rows. Portrait 4:5 aspect. Each cell represents 32x32 logical pixels enlarged equally; subject fits roughly 18x18 logical pixels centered with generous clear margins. Pixel art is made of big square blocks on a consistent coarse grid. A continuous one-logical-pixel charcoal outline, solid light gray body, medium gray detail, tiny black square eyes; no tiny speckles, no gradients, no anti-aliasing, no shadow, no texture or decorative particles. Keep identity and size constant, each row is a sequence with 8 genuinely different frames. Rows TOP TO BOTTOM: 1 idle breathing/blinking; 2 looking; 3 grooming; 4 stretching; 5 walk cycle; 6 distinct faster run cycle; 7 asleep closed eyes; 8 curious sniff/tilt; 9 happy bouncing; 10 relaxed sit and settle. Fill ALL 80 cells. Keep paws/tail attached and entirely within each cell.\nSUBJECT: BABY PET ROCK: small adorable smooth pebble, rounded but stepped square pixel silhouette, pale gray fill, charcoal outline, two black dot eyes, NO arms or legs, ONE medium gray facet. Miniature simple pebble like cat's pixel economy. Gentle blink idle, look, tiny wiggle, tilt, walk by alternating rocking, run by rolling different orientations, sleep closed eyes, curious lean, little hop celebration, settle.",
+      "sourceFilename": "exec-33c3b676-0d48-4861-bfbd-4bf02645a11a.png",
+      "output": "rock_baby.png",
+      "importParameters": [
+        16,
+        14,
+        "rows",
+        "rock"
+      ],
+      "holdLastRow": null
+    },
+    {
+      "name": "plant",
+      "prompt": "Use case: stylized-concept. Asset: production pixel-art pet animation sprite sheet for the attached cat's game. Reference 1 is original cat, reference 2 baby cat: match their angular chunky silhouette and extremely economical flat pixels. Create ONE character atlas. Actual transparent background. EXACT layout: 8 columns and 10 rows = 80 individually separated sprites, regular grid, no text, no borders, no extra rows. Portrait 4:5 aspect. Each cell represents 32x32 logical pixels enlarged equally; subject fits roughly 18x18 logical pixels centered with generous clear margins. Pixel art is made of big square blocks on a consistent coarse grid. A continuous one-logical-pixel charcoal outline, solid light gray body, medium gray detail, tiny black square eyes; no tiny speckles, no gradients, no anti-aliasing, no shadow, no texture or decorative particles. Keep identity and size constant, each row is a sequence with 8 genuinely different frames. Rows TOP TO BOTTOM: 1 idle breathing/blinking; 2 looking; 3 grooming; 4 stretching; 5 walk cycle; 6 distinct faster run cycle; 7 asleep closed eyes; 8 curious sniff/tilt; 9 happy bouncing; 10 relaxed sit and settle. Fill ALL 80 cells. Keep paws/tail attached and entirely within each cell.\nSUBJECT: PET PLANT adult: tiny terracotta flowerpot with two square black eyes ON POT and short green stem with exactly THREE broad simple green leaves. Bold charcoal pixel outline and flat colors, cat's simple coarse pixel style, no veins, no flowers, no texture. Pot remains consistent. Idle leaves sway, looks tilts pot, grooming shakes leaves, stretches leaves upward, walk by pot waddling, run by little alternating pot hops, sleep leaves droop eyes close, curious leans, happy springy leaf wave, relax gentle sway. Palette charcoal, muted terracotta, terracotta highlight, dark green, light green.",
+      "sourceFilename": "exec-ee077ce8-c5be-4bb8-afc2-d753f1551f4f.png",
+      "output": "plant.png",
+      "importParameters": [
+        22,
+        23,
+        "rows",
+        "plant"
+      ],
+      "holdLastRow": null
+    },
+    {
+      "name": "plant_baby",
+      "prompt": "Use case: stylized-concept. Asset: production pixel-art pet animation sprite sheet for the attached cat's game. Reference 1 is original cat, reference 2 baby cat: match their angular chunky silhouette and extremely economical flat pixels. Create ONE character atlas. Actual transparent background. EXACT layout: 8 columns and 10 rows = 80 individually separated sprites, regular grid, no text, no borders, no extra rows. Portrait 4:5 aspect. Each cell represents 32x32 logical pixels enlarged equally; subject fits roughly 18x18 logical pixels centered with generous clear margins. Pixel art is made of big square blocks on a consistent coarse grid. A continuous one-logical-pixel charcoal outline, solid light gray body, medium gray detail, tiny black square eyes; no tiny speckles, no gradients, no anti-aliasing, no shadow, no texture or decorative particles. Keep identity and size constant, each row is a sequence with 8 genuinely different frames. Rows TOP TO BOTTOM: 1 idle breathing/blinking; 2 looking; 3 grooming; 4 stretching; 5 walk cycle; 6 distinct faster run cycle; 7 asleep closed eyes; 8 curious sniff/tilt; 9 happy bouncing; 10 relaxed sit and settle. Fill ALL 80 cells. Keep paws/tail attached and entirely within each cell.\nSUBJECT: BABY PET PLANT: tiny terracotta pot with two square black eyes ON POT, short seedling with exactly TWO simple green leaves. Bold charcoal outline, very coarse economical square pixels matching cat. Smallest plant, no veins/no flowers/no texture. Idle leaf sway, looks tilt, groom shakes dew WITHOUT particles, stretch sprout, walk tiny pot waddles, run small pot hops, sleep leaves droop eyes close, curious lean, celebrate two leaves up, relax gentle sway. Palette charcoal, muted terracotta, terracotta highlight, dark green, light green.",
+      "sourceFilename": "exec-f96910ec-f65a-4612-9d08-f4854a76d5bb.png",
+      "output": "plant_baby.png",
+      "importParameters": [
+        17,
+        18,
+        "rows",
+        "plant"
+      ],
+      "holdLastRow": null
+    }
+  ]
+}
