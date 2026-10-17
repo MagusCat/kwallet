@@ -11,10 +11,12 @@ import '../../../core/widgets/pet_picker.dart';
 class SettingsScreen extends StatefulWidget {
   final String currentCurrency;
   final ValueChanged<String> onCurrencyChanged;
+  final VoidCallback? onBack;
   const SettingsScreen({
     super.key,
     required this.currentCurrency,
     required this.onCurrencyChanged,
+    this.onBack,
   });
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -153,7 +155,16 @@ class _SettingsScreenState
   Widget build(BuildContext context) {
     Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Ajustes')),
+      appBar: AppBar(
+        title: const Text('Ajustes'),
+        leading: widget.onBack != null
+            ? IconButton(
+                tooltip: 'Volver',
+                icon: const Icon(Icons.arrow_back),
+                onPressed: widget.onBack,
+              )
+            : null,
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ContentWidth(

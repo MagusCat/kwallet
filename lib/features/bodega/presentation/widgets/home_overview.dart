@@ -8,11 +8,13 @@ import 'pet_hero_card.dart';
 class HomeOverview extends StatelessWidget {
   final HomeViewModel controller;
   final VoidCallback? onOpenFinances;
+  final VoidCallback? onSettings;
 
   const HomeOverview({
     super.key,
     required this.controller,
     this.onOpenFinances,
+    this.onSettings,
   });
 
   @override
@@ -23,12 +25,23 @@ class HomeOverview extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Saludo de bienvenida
+        // Saludo de bienvenida con acceso a ajustes
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: Text(
-            'Bienvenido',
-            style: KwallTheme.fontTitle.copyWith(fontSize: 26),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Bienvenido',
+                style: KwallTheme.fontTitle.copyWith(fontSize: 26),
+              ),
+              if (onSettings != null)
+                IconButton.filledTonal(
+                  tooltip: 'Ajustes',
+                  onPressed: onSettings,
+                  icon: const Icon(Icons.tune_rounded, size: 20),
+                ),
+            ],
           ),
         ),
 

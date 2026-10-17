@@ -236,6 +236,7 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
         onAgenda: () => _navigate(2),
         onJournal: _openJournal,
         onOpenFinances: () => _navigate(1),
+        onSettings: () => _navigate(4),
       ),
       FinancesScreen(
         controller: _home,
@@ -246,10 +247,15 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
         onAgenda: () => _navigate(2),
       ),
       PlannedExpensesScreen(currency: _home.currency),
-      JournalScreen(key: ValueKey(_journalTab), initialTab: _journalTab),
+      JournalScreen(
+        key: ValueKey(_journalTab),
+        initialTab: _journalTab,
+        onSettings: () => _navigate(4),
+      ),
       SettingsScreen(
         currentCurrency: _home.currency,
         onCurrencyChanged: (_) {},
+        onBack: () => _navigate(0),
       ),
     ];
     return Scaffold(
@@ -282,7 +288,6 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
             const SizedBox(width: 72),
             _destination(2, Icons.calendar_month_outlined, 'Agenda'),
             _destination(3, Icons.spa_outlined, 'Mi espacio'),
-            _destination(4, Icons.tune_rounded, 'Ajustes'),
           ],
         ),
       ),
@@ -306,7 +311,7 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
               AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
+                  horizontal: 10,
                   vertical: 5,
                 ),
                 decoration: BoxDecoration(

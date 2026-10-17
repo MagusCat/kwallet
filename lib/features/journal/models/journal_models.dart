@@ -79,7 +79,7 @@ class HabitPalette {
 
 const habitPalettes = [
   HabitPalette(
-    category: 'Salud y Bienestar',
+    category: 'Salud y Naturaleza (Bosque)',
     icons: [
       ('spa_rounded', 'Salud'),
       ('directions_run_rounded', 'Ejercicio'),
@@ -89,14 +89,14 @@ const habitPalettes = [
       ('bedtime_rounded', 'Descanso'),
     ],
     colors: [
-      (0xFF4CAF50, 'Verde Hoja'),
-      (0xFF10B981, 'Esmeralda'),
-      (0xFF059669, 'Menta'),
-      (0xFF84CC16, 'Lima'),
+      (0xFF466539, 'Bosque profundo'),
+      (0xFF5F854F, 'Verde oliva'),
+      (0xFF7EA86C, 'Salvia viva'),
+      (0xFFB2D39C, 'Brote claro'),
     ],
   ),
   HabitPalette(
-    category: 'Productividad y Estudio',
+    category: 'Productividad y Mente (Ciruela)',
     icons: [
       ('book_rounded', 'Lectura'),
       ('laptop_chromebook_rounded', 'Trabajo'),
@@ -106,14 +106,14 @@ const habitPalettes = [
       ('school_rounded', 'Aprendizaje'),
     ],
     colors: [
-      (0xFF3B82F6, 'Azul Eléctrico'),
-      (0xFF06B6D4, 'Cian Océano'),
-      (0xFF6366F1, 'Índigo'),
-      (0xFF0284C7, 'Celeste Cielo'),
+      (0xFF735085, 'Ciruela intenso'),
+      (0xFF8E66A3, 'Mora silvestre'),
+      (0xFFA980BE, 'Amatista suave'),
+      (0xFFD9B7ED, 'Lila empolvado'),
     ],
   ),
   HabitPalette(
-    category: 'Creatividad y Pasión',
+    category: 'Creatividad y Pasión (Rosa)',
     icons: [
       ('palette_rounded', 'Arte'),
       ('music_note_rounded', 'Música'),
@@ -123,14 +123,14 @@ const habitPalettes = [
       ('mic_rounded', 'Canto / Voz'),
     ],
     colors: [
-      (0xFF8B5CF6, 'Violeta'),
-      (0xFFEC4899, 'Rosa Vivo'),
-      (0xFFD946EF, 'Fucsia'),
-      (0xFFA855F7, 'Lavanda'),
+      (0xFFA14665, 'Palo de rosa'),
+      (0xFFBD5E7F, 'Terracota cálido'),
+      (0xFFD77B9B, 'Rosa arcilla'),
+      (0xFFF1B3C7, 'Rosa amanecer'),
     ],
   ),
   HabitPalette(
-    category: 'Energía y Finanzas',
+    category: 'Energía y Finanzas (Miel)',
     icons: [
       ('local_fire_department_rounded', 'Racha / Energía'),
       ('savings_rounded', 'Ahorro'),
@@ -140,10 +140,27 @@ const habitPalettes = [
       ('eco_rounded', 'Naturaleza'),
     ],
     colors: [
-      (0xFFF59E0B, 'Ámbar'),
-      (0xFFF97316, 'Naranja Cálido'),
-      (0xFFEF4444, 'Rojo Pasión'),
-      (0xFFEAB308, 'Oro Solar'),
+      (0xFF806015, 'Miel profunda'),
+      (0xFF9E771E, 'Ámbar tostado'),
+      (0xFFBE932D, 'Oro cálido'),
+      (0xFFE9CB81, 'Mostaza dorada'),
+    ],
+  ),
+  HabitPalette(
+    category: 'Equilibrio y Calma (Tierra)',
+    icons: [
+      ('spa_rounded', 'Armonía'),
+      ('check_circle_rounded', 'Constancia'),
+      ('favorite_rounded', 'Cuidado'),
+      ('psychology_rounded', 'Reflexión'),
+      ('wb_sunny_rounded', 'Despertar'),
+      ('nights_stay_rounded', 'Rutina noche'),
+    ],
+    colors: [
+      (0xFF3D4B3F, 'Pizarra bosque'),
+      (0xFF555E50, 'Musgo neutro'),
+      (0xFF758572, 'Salvia terrosa'),
+      (0xFF8D9C8F, 'Verde ceniza'),
     ],
   ),
 ];

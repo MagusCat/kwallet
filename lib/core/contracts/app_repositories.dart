@@ -88,6 +88,7 @@ abstract interface class JournalRepository implements Repository {
     String reason = '',
   });
   Future<int> getExperience();
+  Future<void> awardAffection(int points);
 }
 
 abstract interface class SettingsRepository implements Repository {

@@ -162,6 +162,10 @@ class HomeViewModel extends ViewModel {
     ),
   );
 
+  Future<bool> petCompanion([int points = 2]) => perform(
+    () => journal.awardAffection(points),
+  );
+
   void _syncWidget() {
     WidgetSyncService.syncWidget(
       petName: _settings['pet_name'] ?? 'Mishi',
@@ -170,16 +174,20 @@ class HomeViewModel extends ViewModel {
       totalHabits: totalHabitsToday,
       pendingHabits: pendingHabitsCount,
       statusMessage: pendingHabitsCount > 0
-          ? 'Tienes $pendingHabitsCount ${pendingHabitsCount == 1 ? "hábito pendiente" : "hábitos pendientes"} hoy 🐾'
+          ? 'Tienes $pendingHabitsCount ${pendingHabitsCount == 1 ? "hábito pendiente" : "hábitos pendientes"} hoy.'
           : (totalHabitsToday > 0
-              ? '¡Todos los hábitos completados! ✨'
-              : '¡Todo al día y organizado! 🐾'),
+              ? 'Todos tus hábitos completados hoy.'
+              : 'Todo al día y organizado.'),
     );
   }
 
   Future<void> load() async {
     final version = beginRequest();
     try {
+      final pendingAffection = await WidgetSyncService.consumePendingAffection();
+      if (pendingAffection > 0) {
+        await journal.awardAffection(pendingAffection);
+      }
       final now = DateTime.now();
       final accounts = await finance.getAccounts();
       final filter = accounts.any((a) => a.id == _filter) ? _filter : null;

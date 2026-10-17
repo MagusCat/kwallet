@@ -15,6 +15,15 @@ mixin JournalRepository on DatabaseContext {
         0;
   }
 
+  Future<void> awardAffection(int points) async {
+    if (points <= 0) return;
+    final db = await database;
+    final now = DateTime.now();
+    final key = 'affection:${now.millisecondsSinceEpoch}';
+    await RewardEvents.award(db, key, points);
+    notifyChanged();
+  }
+
   Future<List<PersonalNote>> getNotes() async {
     final db = await database;
     return (await db.query(

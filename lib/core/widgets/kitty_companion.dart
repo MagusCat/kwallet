@@ -7,7 +7,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-enum PetActivity { idle, walk, run, sleep, curious, celebrate, relax }
+enum PetActivity { idle, walk, run, sleep, curious, celebrate, relax, grabbed }
 
 const petStyles = {
   'classic': 'Mishi',
@@ -68,6 +68,7 @@ class _KittyCompanionWidgetState extends State<KittyCompanionWidget>
     PetActivity.curious => (7, 6, 140),
     PetActivity.celebrate => (8, 7, 100),
     PetActivity.relax => (9, 8, 160),
+    PetActivity.grabbed => (8, 4, 180),
   };
 
   @override

@@ -58,4 +58,17 @@ class WidgetSyncService {
       return null;
     }
   }
+
+  /// Consulta y consume los puntos de carino acumulados en el widget de Android.
+  static Future<int> consumePendingAffection() async {
+    if (kIsWeb || !Platform.isAndroid) {
+      return 0;
+    }
+    try {
+      final points = await _channel.invokeMethod<int>('consumePendingAffection');
+      return points ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
 }

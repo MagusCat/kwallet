@@ -24,6 +24,7 @@ class HomeDashboard extends StatelessWidget {
   final VoidCallback onAgenda;
   final ValueChanged<int> onJournal;
   final VoidCallback? onOpenFinances;
+  final VoidCallback? onSettings;
 
   const HomeDashboard({
     super.key,
@@ -35,6 +36,7 @@ class HomeDashboard extends StatelessWidget {
     required this.onAgenda,
     required this.onJournal,
     this.onOpenFinances,
+    this.onSettings,
   });
 
   @override
@@ -50,6 +52,7 @@ class HomeDashboard extends StatelessWidget {
             HomeOverview(
               controller: controller,
               onOpenFinances: onOpenFinances,
+              onSettings: onSettings,
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

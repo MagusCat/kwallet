@@ -16,7 +16,12 @@ export 'journal_sheets.dart' show NoteSheet;
 
 class JournalScreen extends StatefulWidget {
   final int initialTab;
-  const JournalScreen({super.key, this.initialTab = 0});
+  final VoidCallback? onSettings;
+  const JournalScreen({
+    super.key,
+    this.initialTab = 0,
+    this.onSettings,
+  });
   @override
   State<JournalScreen> createState() => _JournalScreenState();
 }
@@ -59,7 +64,17 @@ class _JournalScreenState
   Widget build(BuildContext _) {
     Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Mi espacio')),
+      appBar: AppBar(
+        title: const Text('Mi espacio'),
+        actions: [
+          if (widget.onSettings != null)
+            IconButton(
+              tooltip: 'Ajustes',
+              icon: const Icon(Icons.tune_rounded),
+              onPressed: widget.onSettings,
+            ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ContentWidth(
