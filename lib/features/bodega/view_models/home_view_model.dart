@@ -162,9 +162,16 @@ class HomeViewModel extends ViewModel {
     ),
   );
 
-  Future<bool> petCompanion([int points = 2]) => perform(
-    () => journal.awardAffection(points),
-  );
+  Future<bool> petCompanion([int points = 2]) async {
+    bool awarded = false;
+    await perform(() async {
+      awarded = await journal.awardAffection(points);
+    });
+    if (awarded) {
+      _syncWidget();
+    }
+    return awarded;
+  }
 
   void _syncWidget() {
     WidgetSyncService.syncWidget(
@@ -178,6 +185,8 @@ class HomeViewModel extends ViewModel {
           : (totalHabitsToday > 0
               ? 'Todos tus hábitos completados hoy.'
               : 'Todo al día y organizado.'),
+      petStyle: _settings['pet_style'] ?? 'classic',
+      themePalette: _settings['palette'] ?? 'forest',
     );
   }
 

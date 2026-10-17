@@ -15,13 +15,26 @@ mixin JournalRepository on DatabaseContext {
         0;
   }
 
-  Future<void> awardAffection(int points) async {
-    if (points <= 0) return;
+  Future<bool> awardAffection(int points) async {
+    if (points <= 0) return false;
     final db = await database;
     final now = DateTime.now();
-    final key = 'affection:${now.millisecondsSinceEpoch}';
+    final dayStr =
+        '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final key = 'affection_daily:$dayStr';
+    final existing = await db.query(
+      'reward_events',
+      columns: ['id'],
+      where: 'id = ?',
+      whereArgs: [key],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      return false;
+    }
     await RewardEvents.award(db, key, points);
     notifyChanged();
+    return true;
   }
 
   Future<List<PersonalNote>> getNotes() async {
