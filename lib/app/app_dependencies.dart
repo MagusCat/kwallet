@@ -45,7 +45,7 @@ class AppDependencies {
   SettingsViewModel settingsScreen() =>
       SettingsViewModel(settings, files)..load();
   PlanningViewModel planning() =>
-      PlanningViewModel(finance, settings)..load(restoreRange: true);
+      PlanningViewModel(finance, settings, journal)..load(restoreRange: true);
   MovementsViewModel movements() => MovementsViewModel(finance)..load();
   CategoriesViewModel categories(String type) =>
       CategoriesViewModel(finance, type)..load();

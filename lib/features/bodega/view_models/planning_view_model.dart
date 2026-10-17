@@ -1,6 +1,7 @@
 import '../../../core/contracts/app_repositories.dart';
 import '../../../core/models/date_span.dart';
 import '../../../core/mvvm/view_model.dart';
+import '../../journal/models/journal_models.dart';
 import '../models/account.dart';
 import '../models/category_model.dart';
 import '../models/finance_overview.dart';
@@ -9,19 +10,27 @@ import '../models/planned_expense.dart';
 class PlanningViewModel extends ViewModel {
   final FinanceRepository repository;
   final SettingsRepository preferences;
+  final JournalRepository? journal;
   List<PlannedExpense> plans = const [];
   List<Account> accounts = const [];
   List<CategoryModel> categories = const [];
+  List<PersonalNote> notes = const [];
   DateTime month = DateTime(DateTime.now().year, DateTime.now().month);
   DateSpan range = DateSpan(dateOnly(DateTime.now()), dateOnly(DateTime.now()));
   bool loading = true;
   bool rangeMode = false;
   DateTime? rangeAnchor;
-  PlanningViewModel(this.repository, this.preferences) {
-    for (final source in {repository.changes, preferences.changes}) {
+
+  PlanningViewModel(this.repository, this.preferences, [this.journal]) {
+    for (final source in {
+      repository.changes,
+      preferences.changes,
+      if (journal != null) journal!.changes,
+    }) {
       observe(source, load);
     }
   }
+
   double get balance => accounts.fold(0, (sum, a) => sum + a.balance);
   double get committed => plannedTotal(
     plans,
@@ -41,12 +50,62 @@ class PlanningViewModel extends ViewModel {
       for (final date in plan.datesBetween(range.start, range.end))
         (plan: plan, date: date),
   ]..sort((a, b) => a.date.compareTo(b.date));
+
+  List<({PersonalNote note, int itemIndex, NoteItem item})> get dueNoteItems => [
+    for (final note in notes)
+      for (var i = 0; i < note.items.length; i++)
+        if (note.items[i].dueDate != null &&
+            !dateOnly(note.items[i].dueDate!).isBefore(range.start) &&
+            !dateOnly(note.items[i].dueDate!).isAfter(range.end))
+          (note: note, itemIndex: i, item: note.items[i]),
+  ];
+
+  Map<String, ({double balance, double scheduled, List<Account> shortAccounts})> get cashflowForecast {
+    final currencyMap = <String, ({double balance, double scheduled, List<Account> shortAccounts})>{};
+    final accountScheduled = <String, double>{};
+    for (final entry in entries) {
+      if (entry.plan.accountId != null) {
+        accountScheduled[entry.plan.accountId!] =
+            (accountScheduled[entry.plan.accountId!] ?? 0) + entry.plan.amount;
+      }
+    }
+
+    final fallbackCurrency = accounts.isNotEmpty ? accounts.first.currency : '\$';
+    for (final account in accounts) {
+      final cur = account.currency.trim().isEmpty ? fallbackCurrency : account.currency.trim();
+      final sched = accountScheduled[account.id] ?? 0.0;
+      final current = currencyMap[cur];
+      final isShort = sched > account.balance;
+      final shortList = current?.shortAccounts != null ? List<Account>.from(current!.shortAccounts) : <Account>[];
+      if (isShort && !shortList.any((a) => a.id == account.id)) {
+        shortList.add(account);
+      }
+      currencyMap[cur] = (
+        balance: (current?.balance ?? 0.0) + account.balance,
+        scheduled: (current?.scheduled ?? 0.0) + sched,
+        shortAccounts: shortList,
+      );
+    }
+    return currencyMap;
+  }
+
+  Future<void> toggleNoteItem(PersonalNote note, int index, bool done) async {
+    if (journal == null) return;
+    await journal!.setNoteItem(
+      note.id,
+      index,
+      done,
+      expectedText: note.items[index].text,
+    );
+  }
+
   Future<void> load({bool restoreRange = false}) async {
     final request = beginRequest();
     try {
       final nextPlans = await repository.getPlannedExpenses();
       final nextAccounts = await repository.getAccounts();
       final nextCategories = await repository.getCategories(type: 'expense');
+      final nextNotes = journal != null ? await journal!.getNotes() : const <PersonalNote>[];
       final settings = restoreRange
           ? await preferences.getSettings()
           : <String, String>{};
@@ -54,6 +113,7 @@ class PlanningViewModel extends ViewModel {
       plans = List.unmodifiable(nextPlans);
       accounts = List.unmodifiable(nextAccounts);
       categories = List.unmodifiable(nextCategories);
+      notes = List.unmodifiable(nextNotes);
       loading = false;
       error = null;
       final start = DateTime.tryParse(settings['plan_range_start'] ?? '');

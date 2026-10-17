@@ -7,8 +7,13 @@ String dayKey(DateTime date) =>
 class NoteItem {
   final String text;
   final bool done;
-  const NoteItem(this.text, {this.done = false});
-  Map<String, Object> toMap() => {'text': text, 'done': done};
+  final DateTime? dueDate;
+  const NoteItem(this.text, {this.done = false, this.dueDate});
+  Map<String, Object?> toMap() => {
+    'text': text,
+    'done': done,
+    if (dueDate != null) 'due_date': dayKey(dueDate!),
+  };
 }
 
 class PersonalNote {
@@ -40,9 +45,15 @@ class PersonalNote {
     body: map['body'] as String,
     kind: map['kind'] as String,
     updatedAt: DateTime.parse(map['updated_at'] as String),
-    items: (jsonDecode(map['items'] as String) as List)
-        .map((e) => NoteItem(e['text'] as String, done: e['done'] as bool))
-        .toList(),
+    items: (jsonDecode(map['items'] as String) as List).map((e) {
+      final item = e as Map<String, dynamic>;
+      final due = item['due_date'] as String?;
+      return NoteItem(
+        item['text'] as String,
+        done: item['done'] as bool,
+        dueDate: due != null && due.isNotEmpty ? DateTime.tryParse(due) : null,
+      );
+    }).toList(),
   );
 }
 

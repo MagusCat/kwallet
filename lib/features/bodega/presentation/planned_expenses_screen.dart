@@ -11,6 +11,8 @@ import '../models/category_model.dart';
 import '../models/finance_overview.dart';
 import '../models/planned_expense.dart';
 import 'planned_expense_sheet.dart';
+import 'widgets/agenda_cashflow_card.dart';
+import 'widgets/agenda_due_notes_panel.dart';
 import 'widgets/plan_calendar.dart';
 
 class PlannedExpensesScreen extends StatefulWidget {
@@ -128,6 +130,7 @@ class _PlannedExpensesScreenState
                   committed: committed,
                   currency: widget.currency,
                 ),
+                AgendaCashflowCard(model: model),
                 PlanCalendar(
                   month: _month,
                   range: _range,
@@ -135,7 +138,8 @@ class _PlannedExpensesScreenState
                   onMonth: model.setMonth,
                   onSelect: _tapDate,
                 ),
-                SizedBox(height: 16),
+                const SizedBox(height: 16),
+                AgendaDueNotesPanel(model: model),
                 SegmentedButton<bool>(
                   segments: const [
                     ButtonSegment(

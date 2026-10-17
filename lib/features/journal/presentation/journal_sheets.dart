@@ -20,7 +20,8 @@ class NoteSheet extends StatefulWidget {
 class _EditableItem {
   final TextEditingController text;
   bool done;
-  _EditableItem(String value, this.done)
+  DateTime? dueDate;
+  _EditableItem(String value, this.done, {this.dueDate})
     : text = TextEditingController(text: value);
 }
 
@@ -34,7 +35,7 @@ class _NoteSheetState
   late String _kind = widget.note?.kind ?? widget.initialKind ?? 'note';
   late final _items = [
     for (final item in widget.note?.items ?? <NoteItem>[])
-      _EditableItem(item.text, item.done),
+      _EditableItem(item.text, item.done, dueDate: item.dueDate),
   ];
   final _removed = <_EditableItem>[];
   bool get _saving => model.busy;
@@ -55,7 +56,13 @@ class _NoteSheetState
       title: _title.text,
       body: _body.text,
       kind: _kind,
-      items: _items.map((item) => NoteItem(item.text.text, done: item.done)),
+      items: _items.map(
+        (item) => NoteItem(
+          item.text.text,
+          done: item.done,
+          dueDate: item.dueDate,
+        ),
+      ),
     );
     if (saved && mounted) Navigator.pop(context);
   }
@@ -124,6 +131,29 @@ class _NoteSheetState
                         hintText: 'Un pendiente…',
                       ),
                     ),
+                  ),
+                  IconButton(
+                    tooltip: item.dueDate == null
+                        ? 'Fecha límite'
+                        : DateFormat('d MMM', 'es').format(item.dueDate!),
+                    icon: Icon(
+                      Icons.event_outlined,
+                      size: 20,
+                      color: item.dueDate == null
+                          ? KwallTheme.textSecondary
+                          : KwallTheme.accent,
+                    ),
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: item.dueDate ?? DateTime.now(),
+                        firstDate: DateTime(2020),
+                        lastDate: DateTime(2100),
+                      );
+                      if (picked != null) {
+                        setState(() => item.dueDate = picked);
+                      }
+                    },
                   ),
                   IconButton(
                     tooltip: 'Quitar pendiente',
