@@ -59,6 +59,12 @@ class _KwallAppState extends State<KwallApp> with WidgetsBindingObserver {
         locale: const Locale('es'),
         supportedLocales: const [Locale('es'), Locale('en')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        builder: (context, child) => AnimatedTheme(
+          data: KwallTheme.expressiveTheme,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeInOut,
+          child: child ?? const SizedBox.shrink(),
+        ),
         home: const LaunchScreen(),
       ),
     ),

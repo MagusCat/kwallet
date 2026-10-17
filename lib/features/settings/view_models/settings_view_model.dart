@@ -37,8 +37,21 @@ class SettingsViewModel extends ViewModel {
     if (!disposed) settings = Map.unmodifiable({...settings, ...values});
   }
 
-  Future<bool> appearance(String key, String value) =>
-      perform(() => _write({key: value}));
+  Future<bool> appearance(String key, String value) async {
+    if (disposed) return false;
+    settings = Map.unmodifiable({...settings, key: value});
+    changed();
+    try {
+      await repository.saveSettings({key: value});
+      return true;
+    } catch (_) {
+      if (!disposed) {
+        error = 'No se pudo guardar la preferencia.';
+        changed();
+      }
+      return false;
+    }
+  }
   Future<bool> save({
     required String currency,
     required bool mirrorEnabled,
@@ -126,8 +139,22 @@ class SettingsViewModel extends ViewModel {
     final data = await repository.getRecoveryCopies();
     if (!disposed) recoveries = List.unmodifiable(data);
   }, failure: 'No se pudieron abrir las copias de recuperación.');
-  Future<bool> choosePet(String style) =>
-      perform(() => _write({'pet_style': style, 'pet_image': ''}));
+  Future<bool> choosePet(String style) async {
+    if (disposed) return false;
+    settings =
+        Map.unmodifiable({...settings, 'pet_style': style, 'pet_image': ''});
+    changed();
+    try {
+      await repository.saveSettings({'pet_style': style, 'pet_image': ''});
+      return true;
+    } catch (_) {
+      if (!disposed) {
+        error = 'No se pudo guardar la mascota.';
+        changed();
+      }
+      return false;
+    }
+  }
   Future<bool> uploadPet() async {
     var selected = false;
     final ok = await perform(

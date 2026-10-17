@@ -37,6 +37,7 @@ class _SettingsScreenState
   bool get _backupBusy => model.backupBusy;
   bool _mirrorEnabled = false;
   bool _fieldsReady = false;
+  bool _justSaved = false;
   String? get _error => model.error;
   @override
   void onViewModelChanged() {
@@ -74,8 +75,25 @@ class _SettingsScreenState
     );
     if (saved && mounted) {
       widget.onCurrencyChanged(_currency.text.trim());
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Ajustes guardados')));
+      setState(() => _justSaved = true);
+      ScaffoldMessenger.of(context).removeCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: const Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Text('Ajustes guardados correctamente'),
+            ],
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _justSaved = false);
+      });
     }
   }
 
@@ -298,9 +316,113 @@ class _SettingsScreenState
                     ),
                   FilledButton.icon(
                     onPressed: _saving ? null : _save,
-                    icon: const Icon(Icons.check),
-                    label: Text(_saving ? 'Guardando…' : 'Guardar ajustes'),
+                    style: _justSaved
+                        ? FilledButton.styleFrom(
+                            backgroundColor: KwallTheme.incomeGreen,
+                            foregroundColor: Colors.white,
+                          )
+                        : null,
+                    icon: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      child: _saving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Icon(
+                              _justSaved
+                                  ? Icons.check_circle_rounded
+                                  : Icons.check,
+                              key: ValueKey(_justSaved),
+                            ),
+                    ),
+                    label: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      child: Text(
+                        _saving
+                            ? 'Guardando…'
+                            : _justSaved
+                                ? '¡Ajustes guardados!'
+                                : 'Guardar ajustes',
+                        key: ValueKey('$_saving-$_justSaved'),
+                      ),
+                    ),
                   ),
+                  const Divider(height: 40),
+                  Text(
+                    'Widget de pantalla de inicio',
+                    style: KwallTheme.fontTitle.copyWith(fontSize: 21),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Personaliza el fondo del widget de Android para que combine con tu pantalla de inicio.',
+                    style: TextStyle(color: KwallTheme.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(
+                        value: 'default',
+                        icon: Icon(Icons.crop_portrait_rounded),
+                        label: Text('Tarjeta'),
+                      ),
+                      ButtonSegment(
+                        value: 'transparent',
+                        icon: Icon(Icons.blur_on_rounded),
+                        label: Text('Sin fondo'),
+                      ),
+                      ButtonSegment(
+                        value: 'color',
+                        icon: Icon(Icons.color_lens_outlined),
+                        label: Text('Color'),
+                      ),
+                    ],
+                    selected: {model.settings['widget_bg_mode'] ?? 'default'},
+                    onSelectionChanged: (value) =>
+                        _appearance('widget_bg_mode', value.first),
+                  ),
+                  if ((model.settings['widget_bg_mode'] ?? 'default') == 'color') ...[
+                    const SizedBox(height: 14),
+                    Text(
+                      'Color de fondo del widget',
+                      style: KwallTheme.fontTitle.copyWith(fontSize: 14),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final preset in const [
+                          ('Bosque', 0xFF212722),
+                          ('Ciruela', 0xFF281F2C),
+                          ('Rosa', 0xFF2C1E23),
+                          ('Miel', 0xFF2C261A),
+                          ('OLED', 0xFF101211),
+                          ('Pizarra', 0xFF1E252B),
+                        ])
+                          ChoiceChip(
+                            avatar: Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                color: Color(preset.$2),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white24),
+                              ),
+                            ),
+                            label: Text(preset.$1),
+                            selected: (model.settings['widget_bg_color'] ?? '0xFF212722') == preset.$2.toString() ||
+                                (model.settings['widget_bg_color'] == null && preset.$2 == 0xFF212722),
+                            onSelected: (_) =>
+                                _appearance('widget_bg_color', preset.$2.toString()),
+                          ),
+                      ],
+                    ),
+                  ],
                   const Divider(height: 40),
                   Text(
                     'Tus datos, a salvo',
