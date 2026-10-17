@@ -1,0 +1,64 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:kwall/core/contracts/app_repositories.dart';
+import 'package:kwall/core/models/recovery_copy.dart';
+import 'package:kwall/features/welcome/view_models/launch_view_model.dart';
+
+class FakeSettingsRepository implements SettingsRepository {
+  final Map<String, String> data = {};
+  final ValueNotifier<int> _changes = ValueNotifier<int>(0);
+  @override
+  Listenable get changes => _changes;
+
+  @override
+  Future<Map<String, String>> getSettings() async => Map.from(data);
+
+  @override
+  Future<void> saveSettings(Map<String, String> values) async {
+    data.addAll(values);
+    _changes.value++;
+  }
+
+  @override
+  Future<String> exportFullDataAsJson() async => '{}';
+
+  @override
+  Future<Map<String, int>> inspectBackup(String content) async => {};
+
+  @override
+  Future<void> importFullDataFromJson(String content) async {}
+
+  @override
+  Future<List<RecoveryCopy>> getRecoveryCopies() async => [];
+
+  @override
+  Future<String> readRecoveryCopy(String id) async => '{}';
+}
+
+void main() {
+  group('LaunchViewModel Start Flow Tests', () {
+    test('enter saves selected petStyle, petName, and welcome_seen', () async {
+      final repo = FakeSettingsRepository();
+      final vm = LaunchViewModel(repo);
+
+      await vm.load();
+      expect(vm.returning, false);
+
+      final entered = await vm.enter(petStyle: 'calico', petName: 'Manchitas');
+      expect(entered, true);
+      expect(repo.data['welcome_seen'], '1');
+      expect(repo.data['pet_style'], 'calico');
+      expect(repo.data['pet_name'], 'Manchitas');
+    });
+
+    test('enter defaults gracefully when pet parameters are omitted', () async {
+      final repo = FakeSettingsRepository();
+      final vm = LaunchViewModel(repo);
+
+      await vm.load();
+      final entered = await vm.enter();
+      expect(entered, true);
+      expect(repo.data['welcome_seen'], '1');
+    });
+  });
+}
