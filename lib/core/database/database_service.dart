@@ -125,6 +125,9 @@ class DatabaseService extends DatabaseContext
         },
         onCreate: DatabaseSchema.create,
         onUpgrade: DatabaseSchema.upgrade,
+        onOpen: (db) async {
+          await DatabaseSchema.ensureHabitColumns(db);
+        },
       ),
     );
   }

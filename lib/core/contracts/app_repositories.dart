@@ -73,7 +73,12 @@ abstract interface class JournalRepository implements Repository {
   });
   Future<void> deleteNote(String id);
   Future<List<Habit>> getHabits();
-  Future<void> saveHabit(String id, String title);
+  Future<void> saveHabit(
+    String id,
+    String title, {
+    String iconKey,
+    int colorValue,
+  });
   Future<void> deleteHabit(String id);
   Future<void> logHabitDays(
     Iterable<String> habitIds,

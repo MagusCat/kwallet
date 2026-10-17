@@ -7,7 +7,7 @@ import '../../../../core/widgets/finance_widgets.dart';
 import '../../../journal/models/journal_models.dart';
 import '../../view_models/home_view_model.dart';
 
-class HabitDotTracker extends StatelessWidget {
+class HabitDotTracker extends StatefulWidget {
   final HomeViewModel controller;
   final VoidCallback onAddHabit;
   final VoidCallback onOpenHabits;
@@ -20,11 +20,18 @@ class HabitDotTracker extends StatelessWidget {
   });
 
   @override
+  State<HabitDotTracker> createState() => _HabitDotTrackerState();
+}
+
+class _HabitDotTrackerState extends State<HabitDotTracker> {
+  bool _isMonthly = false;
+
+  @override
   Widget build(BuildContext context) {
-    final habits = controller.habits;
+    final habits = widget.controller.habits;
     final today = DateTime.now();
-    final completedCount = controller.completedHabitsToday;
-    final totalCount = controller.totalHabitsToday;
+    final completedCount = widget.controller.completedHabitsToday;
+    final totalCount = widget.controller.totalHabitsToday;
 
     return LedgerPanel(
       child: Column(
@@ -66,12 +73,33 @@ class HabitDotTracker extends StatelessWidget {
                   ],
                 ),
               ),
-              if (habits.isNotEmpty)
+              if (habits.isNotEmpty) ...[
+                // Switcher Semanal / Mensual
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: KwallTheme.surfaceContainer.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildModeButton('Semana', !_isMonthly, () {
+                        if (_isMonthly) setState(() => _isMonthly = false);
+                      }),
+                      _buildModeButton('Mes', _isMonthly, () {
+                        if (!_isMonthly) setState(() => _isMonthly = true);
+                      }),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
                 IconButton.filledTonal(
                   tooltip: 'Nuevo hábito',
-                  onPressed: onAddHabit,
+                  onPressed: widget.onAddHabit,
                   icon: const Icon(Icons.add_rounded, size: 20),
                 ),
+              ],
             ],
           ),
           const SizedBox(height: 16),
@@ -79,7 +107,7 @@ class HabitDotTracker extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: OutlinedButton.icon(
-                onPressed: onAddHabit,
+                onPressed: widget.onAddHabit,
                 icon: const Icon(Icons.add_task_rounded),
                 label: const Text('Comenzar un hábito (+10 XP)'),
               ),
@@ -91,7 +119,7 @@ class HabitDotTracker extends StatelessWidget {
             ],
             if (habits.length > 3)
               TextButton.icon(
-                onPressed: onOpenHabits,
+                onPressed: widget.onOpenHabits,
                 icon: const Icon(Icons.arrow_forward_rounded, size: 16),
                 label: Text('Ver todos (${habits.length} hábitos)'),
               ),
@@ -101,12 +129,35 @@ class HabitDotTracker extends StatelessWidget {
     );
   }
 
+  Widget _buildModeButton(String label, bool active, VoidCallback onTap) =>
+      InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: active ? KwallTheme.accent : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: active ? FontWeight.bold : FontWeight.w500,
+              color: active ? Colors.white : KwallTheme.textSecondary,
+            ),
+          ),
+        ),
+      );
+
   Widget _buildHabitRow(BuildContext context, Habit habit, DateTime today) {
     final streak = habit.streak(today);
     final isDoneToday = habit.logFor(today)?.completed == true;
-
-    // Last 7 days ending today
-    final days = List.generate(7, (i) => today.subtract(Duration(days: 6 - i)));
+    final habitColor = habit.color;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -115,7 +166,7 @@ class HabitDotTracker extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDoneToday
-              ? KwallTheme.accent.withValues(alpha: 0.3)
+              ? habitColor.withValues(alpha: 0.45)
               : KwallTheme.border.withValues(alpha: 0.5),
         ),
       ),
@@ -124,6 +175,16 @@ class HabitDotTracker extends StatelessWidget {
         children: [
           Row(
             children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: habitColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(habit.icon, size: 16, color: habitColor),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   habit.title,
@@ -140,7 +201,7 @@ class HabitDotTracker extends StatelessWidget {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: KwallTheme.accentLight,
+                    color: habitColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
@@ -148,7 +209,7 @@ class HabitDotTracker extends StatelessWidget {
                     children: [
                       Icon(
                         Icons.local_fire_department_rounded,
-                        color: KwallTheme.accent,
+                        color: habitColor,
                         size: 14,
                       ),
                       const SizedBox(width: 4),
@@ -157,7 +218,7 @@ class HabitDotTracker extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: KwallTheme.accent,
+                          color: habitColor,
                         ),
                       ),
                     ],
@@ -166,15 +227,34 @@ class HabitDotTracker extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          // Gráfico de puntos de los últimos 7 días
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              for (final day in days) _buildDayDot(context, habit, day, today),
-            ],
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 220),
+            crossFadeState: _isMonthly
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            firstChild: _buildWeeklyDots(context, habit, today, habitColor),
+            secondChild: _buildMonthlyDots(context, habit, today, habitColor),
           ),
         ],
       ),
+    );
+  }
+
+  // Vista Semanal: 7 días con círculos grandes interactivos
+  Widget _buildWeeklyDots(
+    BuildContext context,
+    Habit habit,
+    DateTime today,
+    Color habitColor,
+  ) {
+    final days = List.generate(7, (i) => today.subtract(Duration(days: 6 - i)));
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        for (final day in days)
+          _buildDayDot(context, habit, day, today, habitColor),
+      ],
     );
   }
 
@@ -183,6 +263,7 @@ class HabitDotTracker extends StatelessWidget {
     Habit habit,
     DateTime day,
     DateTime today,
+    Color habitColor,
   ) {
     final isToday = DateUtils.isSameDay(day, today);
     final log = habit.logFor(day);
@@ -197,7 +278,7 @@ class HabitDotTracker extends StatelessWidget {
           style: TextStyle(
             fontSize: 11,
             fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
-            color: isToday ? KwallTheme.accent : KwallTheme.textSecondary,
+            color: isToday ? habitColor : KwallTheme.textSecondary,
           ),
         ),
         const SizedBox(height: 6),
@@ -206,7 +287,7 @@ class HabitDotTracker extends StatelessWidget {
           onTap: isToday && !isDone
               ? () {
                   HapticFeedback.lightImpact();
-                  controller.completeHabit(habit);
+                  widget.controller.completeHabit(habit);
                 }
               : null,
           child: Tooltip(
@@ -220,14 +301,14 @@ class HabitDotTracker extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isDone
-                    ? KwallTheme.accent
+                    ? habitColor
                     : (isToday
-                        ? KwallTheme.accentLight
+                        ? habitColor.withValues(alpha: 0.15)
                         : KwallTheme.border.withValues(alpha: 0.2)),
                 border: Border.all(
                   color: isToday
-                      ? KwallTheme.accent
-                      : (isDone ? KwallTheme.accent : Colors.transparent),
+                      ? habitColor
+                      : (isDone ? habitColor : Colors.transparent),
                   width: isToday ? 2 : 1,
                 ),
               ),
@@ -238,12 +319,111 @@ class HabitDotTracker extends StatelessWidget {
                         ? Icon(
                             Icons.touch_app_rounded,
                             size: 14,
-                            color: KwallTheme.accent,
+                            color: habitColor,
                           )
                         : const SizedBox.shrink()),
               ),
             ),
           ),
+        ),
+      ],
+    );
+  }
+
+  // Vista Mensual: cuadrícula compacta de los últimos 28 días (4 semanas exactas)
+  Widget _buildMonthlyDots(
+    BuildContext context,
+    Habit habit,
+    DateTime today,
+    Color habitColor,
+  ) {
+    const totalDays = 28;
+    final days = List.generate(
+      totalDays,
+      (i) => today.subtract(Duration(days: totalDays - 1 - i)),
+    );
+    final completedCount = days.where((d) => habit.logFor(d)?.completed == true).length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Cuadrícula 7 columnas x 4 filas
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+            mainAxisSpacing: 6,
+            crossAxisSpacing: 6,
+            childAspectRatio: 1.2,
+          ),
+          itemCount: days.length,
+          itemBuilder: (context, index) {
+            final day = days[index];
+            final isToday = DateUtils.isSameDay(day, today);
+            final log = habit.logFor(day);
+            final isDone = log?.completed == true;
+
+            return Tooltip(
+              message: '${DateFormat('d MMM', 'es').format(day)}: ${isDone ? "Completado" : "Sin registro"}',
+              child: InkWell(
+                borderRadius: BorderRadius.circular(6),
+                onTap: isToday && !isDone
+                    ? () {
+                        HapticFeedback.lightImpact();
+                        widget.controller.completeHabit(habit);
+                      }
+                    : null,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  decoration: BoxDecoration(
+                    color: isDone
+                        ? habitColor
+                        : (isToday
+                            ? habitColor.withValues(alpha: 0.2)
+                            : KwallTheme.border.withValues(alpha: 0.2)),
+                    borderRadius: BorderRadius.circular(6),
+                    border: isToday
+                        ? Border.all(color: habitColor, width: 1.5)
+                        : null,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${day.day}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: isToday ? FontWeight.bold : FontWeight.w500,
+                        color: isDone
+                            ? Colors.white
+                            : (isToday ? habitColor : KwallTheme.textSecondary),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '$completedCount de $totalDays días activos',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: habitColor,
+              ),
+            ),
+            Text(
+              '${(completedCount / totalDays * 100).round()}% constancia',
+              style: TextStyle(
+                fontSize: 11,
+                color: KwallTheme.textSecondary,
+              ),
+            ),
+          ],
         ),
       ],
     );

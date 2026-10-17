@@ -8,10 +8,20 @@ class JournalActionsViewModel extends ViewModel {
   final JournalRepository repository;
   JournalActionsViewModel(this.repository);
 
-  Future<bool> saveHabit(String title, {Habit? habit}) {
+  Future<bool> saveHabit(
+    String title, {
+    Habit? habit,
+    String iconKey = 'spa_rounded',
+    int colorValue = 0xFF4CAF50,
+  }) {
     if (title.trim().isEmpty) return Future.value(fail('Escribe un hábito.'));
     return perform(
-      () => repository.saveHabit(habit?.id ?? const Uuid().v4(), title.trim()),
+      () => repository.saveHabit(
+        habit?.id ?? const Uuid().v4(),
+        title.trim(),
+        iconKey: iconKey,
+        colorValue: colorValue,
+      ),
     );
   }
 

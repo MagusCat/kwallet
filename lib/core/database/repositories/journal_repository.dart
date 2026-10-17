@@ -103,18 +103,29 @@ mixin JournalRepository on DatabaseContext {
           (habit) => Habit(
             id: habit['id'] as String,
             title: habit['title'] as String,
+            iconKey: (habit['icon_key'] as String?) ?? 'spa_rounded',
+            colorValue: (habit['color_value'] as int?) ?? 0xFF4CAF50,
             logs: byHabit[habit['id']] ?? const [],
           ),
         )
         .toList();
   }
 
-  Future<void> saveHabit(String id, String title) async {
+  Future<void> saveHabit(
+    String id,
+    String title, {
+    String iconKey = 'spa_rounded',
+    int colorValue = 0xFF4CAF50,
+  }) async {
     if (title.trim().isEmpty) throw ArgumentError('Escribe un hábito');
     final db = await database;
     final changed = await db.update(
       'habits',
-      {'title': title.trim()},
+      {
+        'title': title.trim(),
+        'icon_key': iconKey,
+        'color_value': colorValue,
+      },
       where: 'id = ?',
       whereArgs: [id],
     );
@@ -122,6 +133,8 @@ mixin JournalRepository on DatabaseContext {
       await db.insert('habits', {
         'id': id,
         'title': title.trim(),
+        'icon_key': iconKey,
+        'color_value': colorValue,
         'created_at': DateTime.now().toIso8601String(),
       });
     }

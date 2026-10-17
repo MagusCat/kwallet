@@ -23,6 +23,7 @@ class HomeDashboard extends StatelessWidget {
   final VoidCallback onBudget;
   final VoidCallback onAgenda;
   final ValueChanged<int> onJournal;
+  final VoidCallback? onOpenFinances;
 
   const HomeDashboard({
     super.key,
@@ -33,6 +34,7 @@ class HomeDashboard extends StatelessWidget {
     required this.onBudget,
     required this.onAgenda,
     required this.onJournal,
+    this.onOpenFinances,
   });
 
   @override
@@ -47,7 +49,7 @@ class HomeDashboard extends StatelessWidget {
             // 1. Hero Pet Companion & Resumen de Saldos y Acciones
             HomeOverview(
               controller: controller,
-              onTransaction: onTransaction,
+              onOpenFinances: onOpenFinances,
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,

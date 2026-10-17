@@ -169,6 +169,23 @@ class _HabitSheetState
   JournalActionsViewModel createViewModel(AppDependencies dependencies) =>
       dependencies.journalActions();
   late final _title = TextEditingController(text: widget.initial);
+  late String _iconKey = widget.habit?.iconKey ?? 'spa_rounded';
+  late int _colorValue = widget.habit?.colorValue ?? 0xFF4CAF50;
+  int _selectedCategoryIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Match initial category if editing
+    for (var i = 0; i < habitPalettes.length; i++) {
+      if (habitPalettes[i].icons.any((ic) => ic.$1 == _iconKey) ||
+          habitPalettes[i].colors.any((c) => c.$1 == _colorValue)) {
+        _selectedCategoryIndex = i;
+        break;
+      }
+    }
+  }
+
   @override
   void dispose() {
     _title.dispose();
@@ -176,41 +193,188 @@ class _HabitSheetState
   }
 
   @override
-  Widget build(BuildContext context) => SheetBody(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'Un pequeño hábito',
-          style: KwallTheme.fontTitle.copyWith(fontSize: 22),
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _title,
-          decoration: const InputDecoration(
-            labelText: '¿Qué quieres hacer cada día?',
-            hintText: 'Caminar 15 minutos',
+  Widget build(BuildContext context) {
+    final currentPalette = habitPalettes[_selectedCategoryIndex];
+    return SheetBody(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Color(_colorValue).withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Color(_colorValue), width: 2),
+                ),
+                child: Icon(
+                  getHabitIcon(_iconKey),
+                  color: Color(_colorValue),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  widget.habit == null ? 'Nuevo hábito' : 'Editar hábito',
+                  style: KwallTheme.fontTitle.copyWith(fontSize: 22),
+                ),
+              ),
+            ],
           ),
-        ),
-        if (model.error != null)
-          Text(model.error!, style: TextStyle(color: KwallTheme.expenseRed)),
-        const SizedBox(height: 18),
-        FilledButton(
-          onPressed: model.busy
-              ? null
-              : () async {
-                  final saved = await model.saveHabit(
-                    _title.text,
-                    habit: widget.habit,
-                  );
-                  if (saved && context.mounted) Navigator.pop(context, true);
-                },
-          child: const Text('Guardar hábito'),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: 16),
+          TextField(
+            controller: _title,
+            decoration: const InputDecoration(
+              labelText: '¿Qué quieres hacer cada día?',
+              hintText: 'Caminar 15 minutos',
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Temática y estilo',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: KwallTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (var i = 0; i < habitPalettes.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(habitPalettes[i].category),
+                      selected: _selectedCategoryIndex == i,
+                      onSelected: (selected) {
+                        if (selected) {
+                          setState(() {
+                            _selectedCategoryIndex = i;
+                            _iconKey = habitPalettes[i].icons.first.$1;
+                            _colorValue = habitPalettes[i].colors.first.$1;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final (iconKey, label) in currentPalette.icons)
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => setState(() => _iconKey = iconKey),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _iconKey == iconKey
+                          ? Color(_colorValue).withValues(alpha: 0.2)
+                          : KwallTheme.surfaceContainer.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _iconKey == iconKey
+                            ? Color(_colorValue)
+                            : Colors.transparent,
+                        width: 2,
+                      ),
+                    ),
+                    child: Tooltip(
+                      message: label,
+                      child: Icon(
+                        getHabitIcon(iconKey),
+                        color: _iconKey == iconKey
+                            ? Color(_colorValue)
+                            : KwallTheme.textSecondary,
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (final (colorVal, name) in currentPalette.colors)
+                Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => setState(() => _colorValue = colorVal),
+                    child: Tooltip(
+                      message: name,
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Color(colorVal),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: _colorValue == colorVal
+                                ? Colors.white
+                                : Colors.transparent,
+                            width: 2.5,
+                          ),
+                          boxShadow: _colorValue == colorVal
+                              ? [
+                                  BoxShadow(
+                                    color:
+                                        Color(colorVal).withValues(alpha: 0.5),
+                                    blurRadius: 6,
+                                    spreadRadius: 1,
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: _colorValue == colorVal
+                            ? const Icon(
+                                Icons.check,
+                                size: 18,
+                                color: Colors.white,
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          if (model.error != null) ...[
+            const SizedBox(height: 8),
+            Text(model.error!, style: TextStyle(color: KwallTheme.expenseRed)),
+          ],
+          const SizedBox(height: 18),
+          FilledButton(
+            onPressed: model.busy
+                ? null
+                : () async {
+                    final saved = await model.saveHabit(
+                      _title.text,
+                      habit: widget.habit,
+                      iconKey: _iconKey,
+                      colorValue: _colorValue,
+                    );
+                    if (saved && context.mounted) Navigator.pop(context, true);
+                  },
+            child: const Text('Guardar hábito'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 const moodLabels = {

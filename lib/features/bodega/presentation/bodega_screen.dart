@@ -16,6 +16,7 @@ import 'add_account_dialog.dart';
 import 'add_transaction_sheet.dart';
 import 'budget_sheet.dart';
 import 'categories_sheet.dart';
+import 'finances_screen.dart';
 import 'planned_expenses_screen.dart';
 import 'widgets/home_dashboard.dart';
 
@@ -141,7 +142,7 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
           builder: (_) => const NoteSheet(),
         ),
       ),
-      (Icons.event_outlined, 'Fecha', () => _navigate(1)),
+      (Icons.event_outlined, 'Fecha', () => _navigate(2)),
       (
         Icons.category_outlined,
         'Categorías',
@@ -152,7 +153,7 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
         ),
       ),
       (Icons.local_fire_department_outlined, 'Hábitos', () => _openJournal(1)),
-      (Icons.palette_outlined, 'Apariencia', () => _navigate(3)),
+      (Icons.palette_outlined, 'Apariencia', () => _navigate(4)),
     ];
     showModalBottomSheet(
       context: context,
@@ -217,8 +218,17 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
         onAddAccount: _account,
         onEditAccount: (account) => _account(account: account),
         onBudget: _budgetEditor,
-        onAgenda: () => _navigate(1),
+        onAgenda: () => _navigate(2),
         onJournal: _openJournal,
+        onOpenFinances: () => _navigate(1),
+      ),
+      FinancesScreen(
+        controller: _home,
+        onTransaction: _transaction,
+        onAddAccount: _account,
+        onEditAccount: (account) => _account(account: account),
+        onBudget: _budgetEditor,
+        onAgenda: () => _navigate(2),
       ),
       PlannedExpensesScreen(currency: _home.currency),
       JournalScreen(key: ValueKey(_journalTab), initialTab: _journalTab),
@@ -252,11 +262,12 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Row(
           children: [
-            _destination(0, Icons.account_balance_wallet_outlined, 'Inicio'),
-            _destination(1, Icons.calendar_month_outlined, 'Agenda'),
+            _destination(0, Icons.pets_rounded, 'Inicio'),
+            _destination(1, Icons.account_balance_wallet_outlined, 'Finanzas'),
             const SizedBox(width: 72),
-            _destination(2, Icons.spa_outlined, 'Mi espacio'),
-            _destination(3, Icons.tune_rounded, 'Ajustes'),
+            _destination(2, Icons.calendar_month_outlined, 'Agenda'),
+            _destination(3, Icons.spa_outlined, 'Mi espacio'),
+            _destination(4, Icons.tune_rounded, 'Ajustes'),
           ],
         ),
       ),
@@ -324,6 +335,6 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
 
   void _openJournal(int tab) {
     setState(() => _journalTab = tab);
-    _navigate(2);
+    _navigate(3);
   }
 }

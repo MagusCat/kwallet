@@ -633,6 +633,8 @@ void main() {
       await tester.drag(find.byType(ListView).first, const Offset(0, 1000));
       await tester.pumpAndSettle();
       await tester.runAsync(() async {
+        await tester.tap(find.byTooltip('Finanzas'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Ingreso'));
         await tester.pumpAndSettle();
         await Future<void>.delayed(const Duration(milliseconds: 100));

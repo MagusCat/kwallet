@@ -221,7 +221,7 @@ class DatabaseSchema {
       "CREATE TABLE IF NOT EXISTS personal_notes (id TEXT PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL DEFAULT 'note', items TEXT NOT NULL DEFAULT '[]', updated_at TEXT NOT NULL)",
     );
     await db.execute(
-      'CREATE TABLE IF NOT EXISTS habits (id TEXT PRIMARY KEY, title TEXT NOT NULL, created_at TEXT NOT NULL)',
+      "CREATE TABLE IF NOT EXISTS habits (id TEXT PRIMARY KEY, title TEXT NOT NULL, icon_key TEXT NOT NULL DEFAULT 'spa_rounded', color_value INTEGER NOT NULL DEFAULT 4283226960, created_at TEXT NOT NULL)",
     );
     await db.execute(
       "CREATE TABLE IF NOT EXISTS habit_logs (id TEXT PRIMARY KEY, habit_id TEXT NOT NULL REFERENCES habits(id) ON DELETE CASCADE, day TEXT NOT NULL, completed INTEGER NOT NULL CHECK(completed IN (0,1)), mood TEXT NOT NULL DEFAULT 'neutral', reason TEXT NOT NULL DEFAULT '', UNIQUE(habit_id,day))",
@@ -346,6 +346,26 @@ class DatabaseSchema {
           ).toMap(),
         );
       }
+    }
+  }
+
+  static Future<void> ensureHabitColumns(DatabaseExecutor db) async {
+    final tables = await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'habits'",
+    );
+    if (tables.isEmpty) return;
+    final columns = (await db.rawQuery('PRAGMA table_info(habits)'))
+        .map((r) => r['name'])
+        .toSet();
+    if (!columns.contains('icon_key')) {
+      await db.execute(
+        "ALTER TABLE habits ADD COLUMN icon_key TEXT NOT NULL DEFAULT 'spa_rounded'",
+      );
+    }
+    if (!columns.contains('color_value')) {
+      await db.execute(
+        'ALTER TABLE habits ADD COLUMN color_value INTEGER NOT NULL DEFAULT 4283226960',
+      );
     }
   }
 }

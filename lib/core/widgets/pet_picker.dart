@@ -21,49 +21,70 @@ class PetPicker extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Row(
-        children: [
-          for (final style in petStyles.entries)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Semantics(
-                  selected: (settings['pet_style'] ?? 'classic') == style.key,
-                  child: Material(
-                    color: (settings['pet_style'] ?? 'classic') == style.key
-                        ? KwallTheme.accentLight
-                        : KwallTheme.surfaceContainer,
-                    borderRadius: BorderRadius.circular(16),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: busy ? null : () => onChoose(style.key),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Column(
-                          children: [
-                            IgnorePointer(
-                              child: TickerMode(
-                                enabled: false,
-                                child: KittyCompanionWidget(
-                                  size: 56,
-                                  settings: {'pet_style': style.key},
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final columns = constraints.maxWidth < 360 ? 3 : 4;
+          final itemWidth =
+              (constraints.maxWidth - (columns - 1) * 8) / columns;
+          return Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final style in petStyles.entries)
+                SizedBox(
+                  width: itemWidth,
+                  child: Semantics(
+                    selected: (settings['pet_style'] ?? 'classic') == style.key,
+                    child: Material(
+                      color: (settings['pet_style'] ?? 'classic') == style.key
+                          ? KwallTheme.accentLight
+                          : KwallTheme.surfaceContainer,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color:
+                              (settings['pet_style'] ?? 'classic') == style.key
+                              ? KwallTheme.accent
+                              : Colors.transparent,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: busy ? null : () => onChoose(style.key),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Column(
+                            children: [
+                              IgnorePointer(
+                                child: TickerMode(
+                                  enabled: false,
+                                  child: KittyCompanionWidget(
+                                    size: 48,
+                                    settings: {'pet_style': style.key},
+                                  ),
                                 ),
                               ),
-                            ),
-                            Text(
-                              style.value,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                              const SizedBox(height: 4),
+                              Text(
+                                style.value,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
-        ],
+            ],
+          );
+        },
       ),
       const SizedBox(height: 10),
       if (settings['pet_image_data']?.isNotEmpty == true &&
