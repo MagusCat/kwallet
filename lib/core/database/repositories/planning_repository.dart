@@ -1,0 +1,94 @@
+import 'package:uuid/uuid.dart';
+
+import '../../../features/bodega/models/planned_expense.dart';
+import '../../../features/bodega/models/transaction_record.dart';
+import '../transaction_writer.dart';
+import '../database_context.dart';
+
+mixin PlanningRepository on DatabaseContext {
+  Future<void> payPlannedExpense(
+    String id,
+    String accountId, {
+    required DateTime expectedDueDate,
+  }) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      final rows = await txn.query(
+        'planned_expenses',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      if (rows.isEmpty) throw StateError('El compromiso ya no existe');
+      final plan = PlannedExpense.fromMap(rows.first);
+      if (plan.isCompleted) return;
+      if (plan.dueDate != expectedDueDate) {
+        throw StateError('Este vencimiento ya fue registrado');
+      }
+      final now = DateTime.now();
+      if (plan.amount > 0) {
+        await TransactionWriter.insert(
+          txn,
+          TransactionRecord(
+            id: const Uuid().v4(),
+            accountId: accountId,
+            categoryId: plan.categoryId,
+            amount: plan.amount,
+            type: 'expense',
+            note: plan.title,
+            date: now,
+            createdAt: now,
+          ),
+        );
+      }
+      final next = plan.nextDate(plan.dueDate);
+      final updated = plan.copyWith(
+        accountId: accountId,
+        dueDate: next,
+        isCompleted: next == null,
+      );
+      await txn.update(
+        'planned_expenses',
+        updated.toMap(),
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    });
+    notifyChanged();
+  }
+
+  Future<List<PlannedExpense>> getPlannedExpenses({
+    bool includeCompleted = true,
+  }) async {
+    final db = await database;
+    final where = includeCompleted ? null : 'is_completed = 0';
+    final maps = await db.query(
+      'planned_expenses',
+      where: where,
+      orderBy: 'due_date ASC',
+    );
+    return maps.map((m) => PlannedExpense.fromMap(m)).toList();
+  }
+
+  Future<void> addPlannedExpense(PlannedExpense expense) async {
+    final db = await database;
+    await db.insert('planned_expenses', expense.toMap());
+    notifyChanged();
+  }
+
+  Future<void> updatePlannedExpense(PlannedExpense expense) async {
+    final db = await database;
+    await db.update(
+      'planned_expenses',
+      expense.toMap(),
+      where: 'id = ?',
+      whereArgs: [expense.id],
+    );
+    notifyChanged();
+  }
+
+  Future<void> deletePlannedExpense(String id) async {
+    final db = await database;
+    await db.delete('planned_expenses', where: 'id = ?', whereArgs: [id]);
+    notifyChanged();
+  }
+}

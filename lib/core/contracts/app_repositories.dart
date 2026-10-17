@@ -1,0 +1,96 @@
+import 'package:flutter/foundation.dart';
+
+import '../../features/bodega/models/account.dart';
+import '../../features/bodega/models/budget_model.dart';
+import '../../features/bodega/models/category_model.dart';
+import '../../features/bodega/models/finance_overview.dart';
+import '../../features/bodega/models/planned_expense.dart';
+import '../../features/bodega/models/transaction_filter.dart';
+import '../../features/bodega/models/monthly_movement_summary.dart';
+import '../../features/bodega/models/transaction_record.dart';
+import '../../features/journal/models/journal_models.dart';
+import '../models/recovery_copy.dart';
+
+abstract interface class Repository {
+  Listenable get changes;
+}
+
+abstract interface class FinanceRepository implements Repository {
+  Future<List<Account>> getAccounts({bool includeArchived = false});
+  Future<void> createAccount(Account account);
+  Future<void> updateAccount(Account account);
+  Future<List<CategoryModel>> getCategories({String? type});
+  Future<void> createCategory(CategoryModel category);
+  Future<void> deleteCategory(String id);
+  Future<List<TransactionRecord>> getTransactions({
+    String? accountId,
+    int limit = 100,
+  });
+  Future<List<TransactionRecord>> getTransactionPage(
+    TransactionFilter filter, {
+    TransactionRecord? before,
+    int limit = 40,
+  });
+  Future<({int count, double income, double expense})> getTransactionTotals(
+    TransactionFilter filter,
+  );
+  Future<List<MonthlyMovementSummary>> getMonthlyHistory(
+    TransactionFilter filter,
+  );
+  Future<void> addTransactions(List<TransactionRecord> transactions);
+  Future<void> deleteTransaction(TransactionRecord record);
+  Future<BudgetModel> getCurrentBudget();
+  Future<Map<BudgetPeriod, double>> getBudgetAllocations(DateTime date);
+  Future<Map<BudgetPeriod, double>> getPeriodSpending(DateTime date);
+  Future<void> allocateBudget(
+    BudgetPeriod period,
+    DateTime date,
+    double? amount, {
+    String? mode,
+    double? share,
+  });
+  Future<List<PlannedExpense>> getPlannedExpenses({
+    bool includeCompleted = true,
+  });
+  Future<void> addPlannedExpense(PlannedExpense expense);
+  Future<void> updatePlannedExpense(PlannedExpense expense);
+  Future<void> deletePlannedExpense(String id);
+  Future<void> payPlannedExpense(
+    String id,
+    String accountId, {
+    required DateTime expectedDueDate,
+  });
+}
+
+abstract interface class JournalRepository implements Repository {
+  Future<List<PersonalNote>> getNotes();
+  Future<void> saveNote(PersonalNote note);
+  Future<void> setNoteItem(
+    String id,
+    int index,
+    bool done, {
+    required String expectedText,
+  });
+  Future<void> deleteNote(String id);
+  Future<List<Habit>> getHabits();
+  Future<void> saveHabit(String id, String title);
+  Future<void> deleteHabit(String id);
+  Future<void> logHabitDays(
+    Iterable<String> habitIds,
+    Iterable<DateTime> days, {
+    required bool completed,
+    String mood = 'neutral',
+    String reason = '',
+  });
+  Future<int> getExperience();
+}
+
+abstract interface class SettingsRepository implements Repository {
+  Future<Map<String, String>> getSettings();
+  Future<void> saveSettings(Map<String, String> values);
+  Future<String> exportFullDataAsJson();
+  Future<Map<String, int>> inspectBackup(String content);
+  Future<void> importFullDataFromJson(String content);
+  Future<List<RecoveryCopy>> getRecoveryCopies();
+  Future<String> readRecoveryCopy(String id);
+}

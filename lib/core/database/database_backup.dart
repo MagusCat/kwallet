@@ -1,0 +1,330 @@
+import 'dart:collection';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:crypto/crypto.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+class DatabaseBackup {
+  static const version = 4;
+  static const tables = [
+    'accounts',
+    'categories',
+    'transactions',
+    'transaction_archive',
+    'budgets',
+    'kitty_profile',
+    'planned_expenses',
+    'app_settings',
+    'budget_allocations',
+    'personal_notes',
+    'habits',
+    'habit_logs',
+    'reward_events',
+  ];
+  static const deleteOrder = [
+    'habit_logs',
+    'reward_events',
+    'transactions',
+    'transaction_archive',
+    'planned_expenses',
+    'budget_allocations',
+    'personal_notes',
+    'habits',
+    'accounts',
+    'categories',
+    'budgets',
+    'kitty_profile',
+    'app_settings',
+  ];
+
+  static Object? _canonical(Object? value) {
+    if (value is Map) {
+      return SplayTreeMap<String, Object?>.from(
+        value.map((key, item) => MapEntry(key as String, _canonical(item))),
+      );
+    }
+    if (value is List) return value.map(_canonical).toList();
+    return value;
+  }
+
+  static String _digest(Object? value) =>
+      sha256.convert(utf8.encode(jsonEncode(_canonical(value)))).toString();
+
+  static Future<String> encode(DatabaseExecutor db, int schemaVersion) async {
+    final existing = (await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table'",
+    )).map((r) => r['name']).toSet();
+    final data = <String, Object?>{};
+    for (final table in tables.where(existing.contains)) {
+      data[table] = await db.query(table);
+    }
+    return const JsonEncoder.withIndent('  ').convert({
+      'app': 'kwall',
+      'version': schemaVersion,
+      'exported_at': DateTime.now().toUtc().toIso8601String(),
+      'checksum': _digest(data),
+      'data': data,
+    });
+  }
+
+  static Map<String, List<Map<String, Object?>>> decode(String source) {
+    final raw = jsonDecode(source);
+    if (raw is! Map ||
+        raw['app'] != 'kwall' ||
+        raw['version'] is! int ||
+        raw['data'] is! Map) {
+      throw const FormatException('El archivo no es un respaldo de kwall.');
+    }
+    final schemaVersion = raw['version'] as int;
+    if (schemaVersion < 1 || schemaVersion > version) {
+      throw const FormatException(
+        'Este respaldo requiere otra versión de kwall. Actualiza la app antes de restaurarlo.',
+      );
+    }
+    final data = raw['data'] as Map;
+    if ((schemaVersion >= 4 || raw.containsKey('checksum')) &&
+        raw['checksum'] != _digest(data)) {
+      throw const FormatException(
+        'El respaldo está incompleto o fue modificado. No se restauró ningún dato.',
+      );
+    }
+    for (final required in [
+      'accounts',
+      'categories',
+      'transactions',
+      'budgets',
+    ]) {
+      if (data[required] is! List) {
+        throw FormatException('Falta la tabla $required.');
+      }
+    }
+    final result = <String, List<Map<String, Object?>>>{};
+    for (final table in tables) {
+      final rows = data[table] ?? [];
+      if (rows is! List || rows.any((r) => r is! Map)) {
+        throw FormatException('Tabla inválida: $table.');
+      }
+      result[table] = rows
+          .map((r) => Map<String, Object?>.from(r as Map))
+          .toList();
+      final ids = <Object?>{};
+      for (final row in result[table]!) {
+        final key =
+            row[table == 'app_settings'
+                ? 'key'
+                : table == 'budget_allocations'
+                ? 'period_key'
+                : 'id'];
+        if (key is! String || key.isEmpty || !ids.add(key)) {
+          throw FormatException(
+            'Identificador inválido o duplicado en $table.',
+          );
+        }
+        for (final field in row.entries) {
+          if (field.value is num && !(field.value as num).isFinite) {
+            throw FormatException('Monto inválido en $table.');
+          }
+        }
+      }
+    }
+    final activeIds = result['transactions']!.map((row) => row['id']).toSet();
+    if (result['transaction_archive']!.any(
+      (row) => activeIds.contains(row['id']),
+    )) {
+      throw const FormatException(
+        'Un movimiento no puede estar activo y anulado a la vez.',
+      );
+    }
+    final accounts = result['accounts']!.map((r) => r['id']).toSet();
+    final habits = result['habits']!.map((r) => r['id']).toSet();
+    for (final row in result['accounts']!) {
+      if (row['balance'] is! num || (row['minimum_balance'] as num? ?? 0) < 0) {
+        throw const FormatException('Saldo de cuenta inválido.');
+      }
+    }
+    for (final row in [
+      ...result['transactions']!,
+      ...result['transaction_archive']!,
+    ]) {
+      if (!accounts.contains(row['account_id']) ||
+          row['amount'] is! num ||
+          (row['amount'] as num) <= 0 ||
+          !['expense', 'income', 'transfer'].contains(row['type']) ||
+          (row['type'] == 'transfer' &&
+              (!accounts.contains(row['to_account_id']) ||
+                  row['account_id'] == row['to_account_id']))) {
+        throw const FormatException(
+          'El respaldo contiene movimientos o cuentas de destino inválidos.',
+        );
+      }
+    }
+    for (final row in result['planned_expenses']!) {
+      if (row['amount'] is! num ||
+          (row['amount'] as num) < 0 ||
+          ![
+            'one_time',
+            'weekly',
+            'monthly',
+            'yearly',
+          ].contains(row['recurrence']) ||
+          (row['account_id'] != null &&
+              !accounts.contains(row['account_id']))) {
+        throw const FormatException('Compromiso inválido.');
+      }
+    }
+    final days = <String>{};
+    for (final row in result['habit_logs']!) {
+      if (!habits.contains(row['habit_id']) ||
+          ![0, 1].contains(row['completed']) ||
+          !days.add('${row['habit_id']}:${row['day']}')) {
+        throw const FormatException('Registro de hábito inválido.');
+      }
+    }
+    for (final row in result['personal_notes']!) {
+      final items = jsonDecode(row['items'] as String);
+      if (!['note', 'list'].contains(row['kind']) ||
+          items is! List ||
+          items.any(
+            (item) =>
+                item is! Map ||
+                item['text'] is! String ||
+                item['done'] is! bool,
+          )) {
+        throw const FormatException('Lista personal inválida.');
+      }
+    }
+    for (final table in result.entries) {
+      for (final row in table.value) {
+        for (final field in [
+          'date',
+          'due_date',
+          'created_at',
+          'updated_at',
+          'day',
+          'period_start',
+          'voided_at',
+        ]) {
+          if (row[field] != null &&
+              (row[field] is! String ||
+                  DateTime.tryParse(row[field] as String) == null)) {
+            throw FormatException('Fecha inválida en ${table.key}.');
+          }
+        }
+      }
+    }
+    for (final row in result['budgets']!) {
+      if (row['month'] is! int ||
+          (row['month'] as int) < 1 ||
+          (row['month'] as int) > 12 ||
+          row['year'] is! int ||
+          row['monthly_limit'] is! num ||
+          (row['monthly_limit'] as num) < 0) {
+        throw const FormatException('Presupuesto inválido.');
+      }
+    }
+    for (final row in result['budget_allocations']!) {
+      if (!['daily', 'weekly', 'monthly'].contains(row['period']) ||
+          row['amount'] is! num ||
+          (row['amount'] as num) < 0) {
+        throw const FormatException('Asignación de presupuesto inválida.');
+      }
+    }
+    if (!data.containsKey('personal_notes')) {
+      final legacy = result['app_settings']!
+          .where((row) => row['key'] == 'quick_notes')
+          .firstOrNull;
+      if (legacy != null && (legacy['value'] as String).trim().isNotEmpty) {
+        result['personal_notes']!.add({
+          'id': 'legacy-quick-notes',
+          'title': 'Mis notas',
+          'body': legacy['value'],
+          'kind': 'note',
+          'items': '[]',
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
+    }
+    for (final row in result['reward_events']!) {
+      if (row['points'] is! int || (row['points'] as int) < 0) {
+        throw const FormatException('Recompensa inválida.');
+      }
+    }
+    final deltas = <Object?, double>{};
+    for (final tx in result['transactions']!) {
+      final amount = (tx['amount'] as num).toDouble();
+      deltas.update(
+        tx['account_id'],
+        (value) => value + (tx['type'] == 'income' ? amount : -amount),
+        ifAbsent: () => tx['type'] == 'income' ? amount : -amount,
+      );
+      if (tx['type'] == 'transfer') {
+        deltas.update(
+          tx['to_account_id'],
+          (value) => value + amount,
+          ifAbsent: () => amount,
+        );
+      }
+    }
+    for (final account in result['accounts']!) {
+      if (account['opening_balance'] == null) continue;
+      if (account['opening_balance'] is! num) {
+        throw const FormatException('Saldo inicial inválido.');
+      }
+      final expected =
+          (account['opening_balance'] as num).toDouble() +
+          (deltas[account['id']] ?? 0);
+      if ((expected - (account['balance'] as num).toDouble()).abs() > .00001) {
+        throw const FormatException(
+          'El saldo y los movimientos del respaldo no coinciden. No se modificaron datos.',
+        );
+      }
+    }
+    return result;
+  }
+
+  static Future<void> validateColumns(
+    DatabaseExecutor db,
+    Map<String, List<Map<String, Object?>>> data,
+  ) async {
+    for (final entry in data.entries) {
+      final columns = await db.rawQuery('PRAGMA table_info(${entry.key})');
+      final names = columns.map((c) => c['name']).toSet();
+      for (final row in entry.value) {
+        if (row.keys.any((key) => !names.contains(key))) {
+          throw FormatException('Campos no compatibles en ${entry.key}.');
+        }
+        for (final column in columns) {
+          final name = column['name'] as String;
+          final value = row[name];
+          if (value == null) {
+            if ((column['notnull'] == 1 || column['pk'] == 1) &&
+                column['dflt_value'] == null) {
+              throw FormatException('Falta $name en ${entry.key}.');
+            }
+          } else {
+            final type = column['type'];
+            if ((type == 'TEXT' && value is! String) ||
+                (type == 'INTEGER' && value is! int) ||
+                (type == 'REAL' && value is! num)) {
+              throw FormatException('Tipo inválido en ${entry.key}.$name.');
+            }
+          }
+        }
+      }
+    }
+  }
+
+  static Future<String> writeRecovery(
+    String databasePath,
+    String content,
+    String reason,
+  ) async {
+    final path =
+        '$databasePath.$reason-${DateTime.now().microsecondsSinceEpoch}.json';
+    final temporary = File('$path.tmp');
+    await temporary.writeAsString(content, flush: true);
+    await temporary.rename(path);
+    return path;
+  }
+}
