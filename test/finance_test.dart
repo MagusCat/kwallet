@@ -81,6 +81,7 @@ void main() {
       factory: databaseFactoryFfiNoIsolate,
     );
     final db = await service.database;
+    await service.setCurrencyRate(currency: 'NIO', rate: 1);
     addTearDown(db.close);
     await db.insert('accounts', {
       'id': 'cash',
@@ -140,7 +141,7 @@ void main() {
     expect((await service.getSettings())['mirror_currency'], 'USD');
   });
 
-  test('Versions 2 and 3 survive the version 4 migration', () async {
+  test('Versions 2 and 3 survive the version 5 migration', () async {
     final directory = await Directory.systemTemp.createTemp('kwall-migration-');
     addTearDown(() => directory.delete(recursive: true));
     for (final legacyVersion in [2, 3]) {
@@ -196,6 +197,7 @@ void main() {
       await legacy.close();
       final service = DatabaseService.atPath(path);
       final db = await service.database;
+    await service.setCurrencyRate(currency: 'NIO', rate: 1);
       addTearDown(db.close);
       expect(
         (await db.query(
@@ -226,6 +228,7 @@ void main() {
       factory: databaseFactoryFfiNoIsolate,
     );
     final db = await service.database;
+    await service.setCurrencyRate(currency: 'NIO', rate: 1);
     addTearDown(db.close);
     await service.createAccount(
       Account(
@@ -376,6 +379,7 @@ void main() {
         factory: databaseFactoryFfiNoIsolate,
       );
       final db = await service.database;
+    await service.setCurrencyRate(currency: 'NIO', rate: 1);
       addTearDown(db.close);
       await service.createAccount(
         Account(
@@ -486,6 +490,7 @@ void main() {
     DatabaseService.instance = service;
     await tester.runAsync(() async {
       final db = await service.database;
+    await service.setCurrencyRate(currency: 'NIO', rate: 1);
       final now = DateTime.now();
       await db.insert('accounts', {
         'id': 'cash',

@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../services/credential_store.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
@@ -37,8 +38,10 @@ class DatabaseService extends DatabaseContext
         contracts.JournalRepository,
         contracts.SettingsRepository {
   static DatabaseService instance = DatabaseService._internal();
-  DatabaseService._internal() : _path = null, factory = null;
-  DatabaseService.atPath(this._path, {this.factory});
+  DatabaseService._internal() : _path = null, factory = null, credentials = const SecureCredentialStore();
+  DatabaseService.atPath(this._path, {this.factory, CredentialStore? credentials}) : credentials = credentials ?? const SecureCredentialStore();
+  @override
+  final CredentialStore credentials;
   final String? _path;
   final DatabaseFactory? factory;
   Future<Database>? _opening;
@@ -119,15 +122,15 @@ class DatabaseService extends DatabaseContext
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
           await db.execute('PRAGMA synchronous = FULL');
+          await db.execute('PRAGMA secure_delete = ON');
+          await db.execute('PRAGMA busy_timeout = 5000');
           if (dbPath != inMemoryDatabasePath) {
             await db.rawQuery('PRAGMA journal_mode = WAL');
           }
         },
         onCreate: DatabaseSchema.create,
         onUpgrade: DatabaseSchema.upgrade,
-        onOpen: (db) async {
-          await DatabaseSchema.ensureHabitColumns(db);
-        },
+
       ),
     );
   }

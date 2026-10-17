@@ -64,7 +64,9 @@ class GitHubCloudService {
     final client = _createClient();
     try {
       final uri = path.startsWith('http') ? Uri.parse(path) : Uri.parse('$baseUrl$path');
+      if (uri.scheme != 'https' || uri.host != Uri.parse(baseUrl).host) throw const FormatException('Destino no permitido');
       final request = await client.openUrl(method, uri);
+      request.followRedirects = false;
       request.headers.set('User-Agent', 'kwall-app');
       request.headers.set('Authorization', 'Bearer $token');
       request.headers.set('Accept', 'application/vnd.github+json');
@@ -207,10 +209,13 @@ class GitHubCloudService {
       final client = _createClient();
       try {
         final rawUri = Uri.parse(file['raw_url'] as String);
+        if (rawUri.scheme != 'https' || rawUri.host != 'gist.githubusercontent.com') throw const FormatException('Destino no permitido');
         final request = await client.getUrl(rawUri);
+        request.followRedirects = false;
         request.headers.set('User-Agent', 'kwall-app');
         request.headers.set('Authorization', 'Bearer ${token.trim()}');
         final rawResponse = await request.close();
+        if (rawResponse.statusCode != 200) throw const HttpException('No se pudo descargar el respaldo');
         return await rawResponse.transform(utf8.decoder).join();
       } finally {
         client.close();

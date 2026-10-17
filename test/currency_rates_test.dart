@@ -73,7 +73,6 @@ void main() {
     setUp(() async {
       db = await databaseFactoryFfi.openDatabase(inMemoryDatabasePath);
       await DatabaseSchema.create(db, DatabaseBackup.version);
-      await DatabaseSchema.ensureHabitColumns(db);
       repo = CurrencyRatesRepository(db);
     });
 

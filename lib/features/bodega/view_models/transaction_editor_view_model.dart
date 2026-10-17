@@ -84,6 +84,7 @@ class TransactionEditorViewModel extends ViewModel {
       TransactionRecord(
         id: const Uuid().v4(),
         accountId: input.account,
+        currency: accounts.firstWhere((a) => a.id == input.account).currency,
         toAccountId: type == 'transfer' ? input.destination : null,
         categoryId: input.category ?? 'transfer',
         amount: parseAmount(input.amount)!,

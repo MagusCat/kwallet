@@ -99,6 +99,7 @@ class DatabaseSchema {
     ''');
 
     await _createV4Tables(db);
+    await migrateV5(db);
 
     final now = DateTime.now();
 
@@ -305,11 +306,13 @@ class DatabaseSchema {
     DatabaseExecutor db, {
     String? accountId,
   }) async {
+    final columns = (await db.rawQuery('PRAGMA table_info(transactions)')).map((row) => row['name']).toSet();
+    final received = columns.contains('to_amount') ? 'COALESCE(t.to_amount,t.amount)' : 't.amount';
     await db.rawUpdate(
       """UPDATE accounts SET opening_balance = balance - COALESCE((
       SELECT SUM(CASE WHEN t.account_id = accounts.id AND t.type = 'income' THEN t.amount
         WHEN t.account_id = accounts.id AND t.type IN ('expense','transfer') THEN -t.amount ELSE 0 END
-        + CASE WHEN t.to_account_id = accounts.id AND t.type = 'transfer' THEN t.amount ELSE 0 END)
+        + CASE WHEN t.to_account_id = accounts.id AND t.type = 'transfer' THEN $received ELSE 0 END)
       FROM transactions t WHERE t.account_id = accounts.id OR t.to_account_id = accounts.id),0)
       ${accountId == null ? '' : 'WHERE id = ?'}""",
       accountId == null ? [] : [accountId],
@@ -399,9 +402,35 @@ class DatabaseSchema {
         );
       }
     }
+    if (oldVersion < 5) await migrateV5(db);
   }
 
-  static Future<void> ensureHabitColumns(DatabaseExecutor db) async {
+  // Versioned migration shared by fresh databases and upgrades. Never run DDL in onOpen.
+  static Future<void> migrateV5(DatabaseExecutor db) async {
+    await _migrateLegacyColumns(db);
+    for (final table in ['transactions', 'transaction_archive']) {
+      final columns = (await db.rawQuery('PRAGMA table_info($table)')).map((r) => r['name']).toSet();
+      for (final entry in {'currency': 'TEXT', 'to_currency': 'TEXT', 'to_amount': 'REAL', 'exchange_rate': 'REAL'}.entries) {
+        if (!columns.contains(entry.key)) await db.execute('ALTER TABLE $table ADD COLUMN ${entry.key} ${entry.value}');
+      }
+      await db.execute("UPDATE $table SET currency = (SELECT currency FROM accounts WHERE id = account_id) WHERE currency IS NULL");
+      await db.execute("UPDATE $table SET to_amount = amount, exchange_rate = 1, to_currency = (SELECT currency FROM accounts WHERE id = to_account_id) WHERE type = 'transfer' AND to_amount IS NULL");
+      for (final operation in ['INSERT', 'UPDATE']) {
+        await db.execute("CREATE TRIGGER IF NOT EXISTS validate_${table}_${operation.toLowerCase()} BEFORE $operation ON $table WHEN NEW.amount <= 0 OR NEW.type NOT IN ('income','expense','transfer') OR (NEW.type = 'transfer' AND (NEW.to_account_id IS NULL OR NEW.to_account_id = NEW.account_id OR NEW.to_amount IS NULL OR NEW.to_amount <= 0 OR NEW.exchange_rate IS NULL OR NEW.exchange_rate <= 0 OR NOT EXISTS (SELECT 1 FROM accounts WHERE id = NEW.to_account_id))) BEGIN SELECT RAISE(ABORT, 'Invalid movement'); END");
+      }
+    }
+    final historyColumns = (await db.rawQuery('PRAGMA table_info(global_currency_history)')).map((r) => r['name']).toSet();
+    if (!historyColumns.contains('base_currency')) {
+      await db.execute('ALTER TABLE global_currency_history ADD COLUMN base_currency TEXT');
+      await db.execute("UPDATE global_currency_history SET base_currency = COALESCE((SELECT value FROM app_settings WHERE key = 'currency'),'\$')");
+    }
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_acc_curr_hist ON account_currency_history(account_id, created_at DESC)');
+    for (final operation in ['INSERT', 'UPDATE']) {
+      await db.execute("CREATE TRIGGER IF NOT EXISTS validate_rate_${operation.toLowerCase()} BEFORE $operation ON global_currency_rates WHEN NEW.rate <= 0 BEGIN SELECT RAISE(ABORT, 'Invalid exchange rate'); END");
+    }
+  }
+
+  static Future<void> _migrateLegacyColumns(DatabaseExecutor db) async {
     final tables = (await db.rawQuery(
       "SELECT name FROM sqlite_master WHERE type = 'table'",
     )).map((r) => r['name']).toSet();
@@ -438,70 +467,6 @@ class DatabaseSchema {
       }
     }
 
-    if (!tables.contains('front_pending_items')) {
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS front_pending_items (
-          id TEXT PRIMARY KEY,
-          category TEXT NOT NULL,
-          title TEXT NOT NULL,
-          subtitle TEXT NOT NULL DEFAULT '',
-          due_date TEXT,
-          source_id TEXT NOT NULL,
-          source_index INTEGER,
-          is_completed INTEGER NOT NULL DEFAULT 0,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )
-      ''');
-      await db.execute(
-        'CREATE INDEX IF NOT EXISTS idx_front_pending_cat ON front_pending_items(category, is_completed)',
-      );
-    }
-
-    if (!tables.contains('account_currency_history')) {
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS account_currency_history (
-          id TEXT PRIMARY KEY,
-          account_id TEXT NOT NULL,
-          base_currency TEXT NOT NULL,
-          currency TEXT NOT NULL,
-          conversion_rate REAL NOT NULL DEFAULT 1.0,
-          previous_rate REAL,
-          change_type TEXT NOT NULL,
-          notes TEXT NOT NULL DEFAULT '',
-          created_at TEXT NOT NULL,
-          FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE
-        )
-      ''');
-      await db.execute(
-        'CREATE INDEX IF NOT EXISTS idx_acc_curr_hist ON account_currency_history(account_id, created_at DESC)',
-      );
-    }
-
-    if (!tables.contains('global_currency_rates')) {
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS global_currency_rates (
-          currency TEXT PRIMARY KEY,
-          rate REAL NOT NULL,
-          updated_at TEXT NOT NULL
-        )
-      ''');
-    }
-
-    if (!tables.contains('global_currency_history')) {
-      await db.execute('''
-        CREATE TABLE IF NOT EXISTS global_currency_history (
-          id TEXT PRIMARY KEY,
-          currency TEXT NOT NULL,
-          previous_rate REAL,
-          new_rate REAL NOT NULL,
-          notes TEXT NOT NULL DEFAULT '',
-          created_at TEXT NOT NULL
-        )
-      ''');
-      await db.execute(
-        'CREATE INDEX IF NOT EXISTS idx_global_curr_hist ON global_currency_history(currency, created_at DESC)',
-      );
-    }
+    await _createV4Tables(db);
   }
 }

@@ -77,6 +77,7 @@ mixin BackupRepository on DatabaseContext {
           'before-restore',
         );
       }
+      final localConnection = await txn.query('app_settings', where: "key LIKE 'github_%' AND key != 'github_token'");
       for (final table in DatabaseBackup.deleteOrder) {
         await txn.delete(table);
       }
@@ -85,6 +86,7 @@ mixin BackupRepository on DatabaseContext {
           await txn.insert(table, row);
         }
       }
+      for (final row in localConnection) { await txn.insert('app_settings', row); }
       for (final row in data['accounts']!.where(
         (row) => !row.containsKey('opening_balance'),
       )) {

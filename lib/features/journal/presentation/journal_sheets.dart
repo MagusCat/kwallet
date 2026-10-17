@@ -79,6 +79,7 @@ class _NoteSheetState
         ),
         const SizedBox(height: 16),
         SegmentedButton<String>(
+            showSelectedIcon: false,
           segments: const [
             ButtonSegment(
               value: 'note',

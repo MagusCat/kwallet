@@ -99,6 +99,7 @@ class _AddTransactionSheetState
 
   Widget _accountPicker({bool destination = false}) =>
       DropdownButtonFormField<String>(
+              icon: const Icon(Icons.expand_more_rounded),
         initialValue: destination ? _destination : _account,
         isExpanded: true,
         decoration: InputDecoration(
@@ -108,7 +109,7 @@ class _AddTransactionSheetState
           for (final account in widget.accounts)
             DropdownMenuItem(
               value: account.id,
-              child: Text(account.name, overflow: TextOverflow.ellipsis),
+              child: Text('${account.name} · ${account.currency}', overflow: TextOverflow.ellipsis),
             ),
         ],
         onChanged: _saving
@@ -176,7 +177,7 @@ class _AddTransactionSheetState
             style: KwallTheme.fontDisplay.copyWith(fontSize: 28),
             decoration: InputDecoration(
               labelText: 'Monto',
-              prefixText: '${widget.currency} ',
+              prefixText: '${widget.accounts.firstWhere((a) => a.id == _account).currency} ',
             ),
           ),
           SizedBox(height: 12),
@@ -199,6 +200,7 @@ class _AddTransactionSheetState
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
+              icon: const Icon(Icons.expand_more_rounded),
                     key: ValueKey('$_type:$_category:${_categories.length}'),
                     initialValue: _category,
                     isExpanded: true,

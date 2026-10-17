@@ -1,3 +1,4 @@
+import '../currency_snapshot.dart';
 import '../../../features/bodega/models/transaction_record.dart';
 import '../../../features/bodega/models/transaction_filter.dart';
 import '../../../features/bodega/models/monthly_movement_summary.dart';
@@ -49,26 +50,35 @@ mixin LedgerRepository on DatabaseContext {
   ) async {
     final db = await database;
     final query = filter.sql();
-    final row = (await db.rawQuery(
-      "SELECT COUNT(*) AS count, SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) AS income, SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) AS expense FROM ${filter.archived ? 'transaction_archive' : 'transactions'} WHERE ${query.where}",
-      query.args,
-    )).first;
-    return (
-      count: row['count'] as int,
-      income: (row['income'] as num?)?.toDouble() ?? 0,
-      expense: (row['expense'] as num?)?.toDouble() ?? 0,
-    );
+    final table = filter.archived ? 'transaction_archive' : 'transactions';
+    final rows = await db.rawQuery("SELECT type, COALESCE(currency,(SELECT currency FROM accounts WHERE accounts.id = $table.account_id),'\$') AS unit, COUNT(*) AS count, SUM(amount) AS amount FROM $table WHERE ${query.where} GROUP BY type,unit", query.args);
+    final snapshot = await CurrencySnapshot.read(db);
+    var count = 0; double income = 0, expense = 0;
+    for (final row in rows) {
+      count += row['count'] as int;
+      if (row['type'] == 'transfer') continue;
+      final amount = snapshot.convert((row['amount'] as num).toDouble(), row['unit'] as String);
+      if (row['type'] == 'income') income += amount;
+      if (row['type'] == 'expense') expense += amount;
+    }
+    return (count: count, income: income, expense: expense);
   }
 
-  Future<List<MonthlyMovementSummary>> getMonthlyHistory(
-    TransactionFilter filter,
-  ) async {
+  Future<List<MonthlyMovementSummary>> getMonthlyHistory(TransactionFilter filter) async {
     final db = await database;
     final query = filter.sql();
-    return (await db.rawQuery(
-      "SELECT substr(date,1,7) AS month, SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) AS income, SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) AS expense FROM ${filter.archived ? 'transaction_archive' : 'transactions'} WHERE ${query.where} GROUP BY substr(date,1,7) ORDER BY month DESC",
-      query.args,
-    )).map(MonthlyMovementSummary.fromMap).toList();
+    final table = filter.archived ? 'transaction_archive' : 'transactions';
+    final rows = await db.rawQuery("SELECT substr(date,1,7) AS month, type, COALESCE(currency,(SELECT currency FROM accounts WHERE accounts.id = $table.account_id),'\$') AS unit, SUM(amount) AS amount FROM $table WHERE ${query.where} GROUP BY month,type,unit ORDER BY month DESC", query.args);
+    final snapshot = await CurrencySnapshot.read(db);
+    final months = <String, Map<String, Object?>>{};
+    for (final row in rows) {
+      final month = row['month'] as String;
+      final values = months.putIfAbsent(month, () => {'month': month, 'income': 0.0, 'expense': 0.0});
+      final type = row['type'] as String;
+      if (type == 'transfer') continue;
+      values[type] = (values[type] as double) + snapshot.convert((row['amount'] as num).toDouble(), row['unit'] as String);
+    }
+    return months.values.map(MonthlyMovementSummary.fromMap).toList();
   }
 
   Future<void> verifyDataIntegrity() async {
@@ -85,7 +95,7 @@ mixin LedgerRepository on DatabaseContext {
         "SELECT account_id, type, SUM(amount) AS amount FROM transactions GROUP BY account_id,type",
       );
       final destinations = await txn.rawQuery(
-        "SELECT to_account_id AS account_id, SUM(amount) AS amount FROM transactions WHERE type = 'transfer' GROUP BY to_account_id",
+        "SELECT to_account_id AS account_id, SUM(COALESCE(to_amount,amount)) AS amount FROM transactions WHERE type = 'transfer' GROUP BY to_account_id",
       );
       for (final account in accounts) {
         var expected = (account['opening_balance'] as num).toDouble();
@@ -156,7 +166,7 @@ mixin LedgerRepository on DatabaseContext {
         );
         await txn.rawUpdate(
           'UPDATE accounts SET balance = ROUND(balance - ?, 8) WHERE id = ?',
-          [tx.amount, tx.toAccountId],
+          [tx.toAmount ?? tx.amount, tx.toAccountId],
         );
       }
     });

@@ -28,6 +28,7 @@ class _CurrencyRateDialogState extends State<CurrencyRateDialog> {
   List<Map<String, dynamic>>? _history;
   bool _showHistory = false;
   bool _saving = false;
+  String? _error;
 
   @override
   void initState() {
@@ -56,10 +57,14 @@ class _CurrencyRateDialogState extends State<CurrencyRateDialog> {
 
   Future<void> _submit() async {
     final val = double.tryParse(_rateController.text.trim().replaceAll(',', '.'));
-    if (val == null || val <= 0) return;
+    if (val == null || !val.isFinite || val <= 0) return;
     setState(() => _saving = true);
-    await widget.onSave(val, _notesController.text.trim());
-    if (mounted) Navigator.of(context).pop();
+    try {
+      await widget.onSave(val, _notesController.text.trim());
+      if (mounted) Navigator.of(context).pop();
+    } catch (_) {
+      if (mounted) setState(() { _saving = false; _error = 'No se guardó la tasa. Reintenta.'; });
+    }
   }
 
   @override
@@ -71,8 +76,9 @@ class _CurrencyRateDialogState extends State<CurrencyRateDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (_error != null) Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
             Text(
-              'Valor de 1 ${widget.currency} en tu moneda principal (${widget.dominantCurrency}):',
+              '1 ${widget.currency} =',
               style: TextStyle(fontSize: 13, color: KwallTheme.textSecondary),
             ),
             const SizedBox(height: 12),
@@ -89,7 +95,7 @@ class _CurrencyRateDialogState extends State<CurrencyRateDialog> {
             TextField(
               controller: _notesController,
               decoration: const InputDecoration(
-                labelText: 'Motivo o nota (opcional)',
+                labelText: 'Nota opcional',
                 hintText: 'Ej. Ajuste de mercado',
                 isDense: true,
               ),
@@ -99,7 +105,7 @@ class _CurrencyRateDialogState extends State<CurrencyRateDialog> {
               TextButton.icon(
                 onPressed: _loadHistory,
                 icon: const Icon(Icons.history_rounded, size: 18),
-                label: const Text('Ver trazabilidad de cambios'),
+                label: const Text('Historial'),
               )
             else ...[
               Row(
@@ -122,6 +128,7 @@ class _CurrencyRateDialogState extends State<CurrencyRateDialog> {
                 )
               else
                 ..._history!.map((entry) {
+                  final base = entry['base_currency'] as String? ?? widget.dominantCurrency;
                   final prev = (entry['previous_rate'] as num?)?.toDouble();
                   final next = (entry['new_rate'] as num?)?.toDouble() ?? 1.0;
                   final date = (entry['created_at'] as String? ?? '').replaceAll('T', ' ').split('.').first;
@@ -139,8 +146,8 @@ class _CurrencyRateDialogState extends State<CurrencyRateDialog> {
                         children: [
                           Text(
                             prev == null
-                                ? 'Inicial: 1 = $next ${widget.dominantCurrency}'
-                                : '$prev -> $next ${widget.dominantCurrency}',
+                                ? '1 = $next $base'
+                                : '$prev → $next $base',
                             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
                           ),
                           if (notes.isNotEmpty)

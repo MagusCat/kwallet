@@ -1,3 +1,4 @@
+import '../../../core/widgets/currency_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/app_dependencies.dart';
@@ -181,12 +182,6 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               ],
             ),
             const SizedBox(height: 16),
-            _infoCard(
-              icon: Icons.tips_and_updates_outlined,
-              title: 'Consejos para usar Kwallet',
-              description:
-                  '1. Registra tus movimientos al momento para evitar gastos invisibles.\n2. Separa tus cuentas por propósito (efectivo, banco, reserva de ahorro).\n3. Revisa tus límites para gastar con tranquilidad y sin sorpresas.',
-            ),
             const SizedBox(height: 24),
             _stepIndicator(),
             const SizedBox(height: 20),
@@ -196,12 +191,12 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               label: const Text('Configurar mi compañero'),
             ),
             const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              alignment: WrapAlignment.center,
               children: [
                 TextButton(
                   onPressed: _entering ? null : () => _enter(0),
-                  child: const Text('Empezar con valores por defecto'),
+                  child: const Text('Empezar'),
                 ),
                 const Text('·'),
                 TextButton(
@@ -308,49 +303,13 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               textAlign: TextAlign.center,
               style: KwallTheme.fontTitle.copyWith(fontSize: 24),
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Define tu moneda dominante y las monedas de referencia para saber cómo se diversifica tu efectivo.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: KwallTheme.textSecondary, fontSize: 13),
-            ),
             const SizedBox(height: 16),
-            TextField(
-              controller: _currency,
-              maxLength: 8,
-              decoration: const InputDecoration(
-                labelText: 'Moneda dominante (principal)',
-                hintText: 'C\$, USD, €, MXN…',
-                prefixIcon: Icon(Icons.monetization_on_outlined),
-                helperText: 'Base principal de tus saldos y metas.',
-              ),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Sugerencias rápidas:',
-              style: TextStyle(color: KwallTheme.textSecondary, fontSize: 12),
-            ),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final cur in ['\$', 'USD', 'C\$', 'EUR', 'MXN', 'COP'])
-                  ActionChip(
-                    label: Text(cur),
-                    onPressed: () => setState(() => _currency.text = cur),
-                  ),
-              ],
-            ),
+            CurrencySelector(value: _currency.text, options: CurrencySelector.catalog.keys,
+              label: 'Moneda principal', onChanged: (value) => setState(() => _currency.text = value)),
             const SizedBox(height: 16),
             Text(
-              'Otras monedas alternativas (de referencia)',
+              'Monedas de referencia',
               style: KwallTheme.fontTitle.copyWith(fontSize: 14),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Podrás asignarlas a tus cuentas para tener claro cómo está diversificado tu dinero.',
-              style: TextStyle(color: KwallTheme.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 8),
             if (_referenceCurrencies.isNotEmpty)
@@ -369,28 +328,14 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _newRefCurrency,
-                    decoration: const InputDecoration(
-                      hintText: 'Agregar moneda (ej. EUR, NIO, USD)',
-                      isDense: true,
-                    ),
-                    onSubmitted: (_) {
-                      final val = _newRefCurrency.text.trim().toUpperCase();
-                      if (val.isNotEmpty && !_referenceCurrencies.contains(val)) {
-                        setState(() {
-                          _referenceCurrencies.add(val);
-                          _newRefCurrency.clear();
-                        });
-                      }
-                    },
-                  ),
+                  child: CurrencySelector(value: _newRefCurrency.text.isEmpty ? 'EUR' : _newRefCurrency.text,
+                    options: CurrencySelector.catalog.keys, onChanged: (value) => setState(() => _newRefCurrency.text = value)),
                 ),
                 const SizedBox(width: 8),
                 IconButton.filledTonal(
                   tooltip: 'Añadir moneda',
                   onPressed: () {
-                    final val = _newRefCurrency.text.trim().toUpperCase();
+                    final val = _newRefCurrency.text.trim().isEmpty ? 'EUR' : _newRefCurrency.text.trim().toUpperCase();
                     if (val.isNotEmpty && !_referenceCurrencies.contains(val)) {
                       setState(() {
                         _referenceCurrencies.add(val);

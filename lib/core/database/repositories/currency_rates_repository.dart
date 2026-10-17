@@ -1,3 +1,4 @@
+import '../../models/currency_conversion.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
@@ -23,10 +24,11 @@ class CurrencyRatesRepository {
     required double rate,
     String notes = '',
   }) async {
-    final trimmed = currency.trim().toUpperCase();
-    if (trimmed.isEmpty) return;
+    final trimmed = CurrencyConversion.code(currency);
+    if (trimmed.isEmpty || !rate.isFinite || rate <= 0) throw ArgumentError('Tasa inválida');
+    await db.transaction((txn) async {
 
-    final existing = await db.query(
+    final existing = await txn.query(
       'global_currency_rates',
       where: 'currency = ?',
       whereArgs: [trimmed],
@@ -37,9 +39,11 @@ class CurrencyRatesRepository {
       prevRate = (existing.first['rate'] as num?)?.toDouble();
     }
 
+    final baseRows = await txn.query('app_settings', where: 'key = ?', whereArgs: ['currency']);
+    final baseCurrency = baseRows.firstOrNull?['value'] as String? ?? '\$';
     final now = DateTime.now().toIso8601String();
 
-    await db.insert(
+    await txn.insert(
       'global_currency_rates',
       {
         'currency': trimmed,
@@ -49,18 +53,24 @@ class CurrencyRatesRepository {
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
 
-    await db.insert('global_currency_history', {
+    await txn.insert('global_currency_history', {
       'id': _uuid.v4(),
       'currency': trimmed,
       'previous_rate': prevRate,
       'new_rate': rate,
+      'base_currency': baseCurrency,
       'notes': notes,
       'created_at': now,
+    });
     });
   }
 
   Future<void> removeRate(String currency) async {
-    final trimmed = currency.trim().toUpperCase();
+    final trimmed = CurrencyConversion.code(currency);
+    final accounts = await db.query('accounts');
+    if (accounts.any((a) => CurrencyConversion.code(a['currency'] as String) == trimmed)) {
+      throw StateError('La moneda está en uso por una cuenta');
+    }
     await db.delete(
       'global_currency_rates',
       where: 'currency = ?',
@@ -73,7 +83,7 @@ class CurrencyRatesRepository {
       return db.query(
         'global_currency_history',
         where: 'currency = ?',
-        whereArgs: [currency.trim().toUpperCase()],
+        whereArgs: [CurrencyConversion.code(currency)],
         orderBy: 'created_at DESC',
         limit: 50,
       );
@@ -92,22 +102,6 @@ class CurrencyRatesRepository {
     required Map<String, double> rates,
     required String dominantCurrency,
   }) {
-    if (from.toUpperCase() == to.toUpperCase()) return amount;
-
-    // Convert from origin to dominant
-    double inDominant = amount;
-    if (from.toUpperCase() != dominantCurrency.toUpperCase()) {
-      final rateFrom = rates[from.toUpperCase()] ?? 1.0;
-      inDominant = amount * rateFrom;
-    }
-
-    // Convert from dominant to destination
-    if (to.toUpperCase() == dominantCurrency.toUpperCase()) {
-      return inDominant;
-    }
-
-    final rateTo = rates[to.toUpperCase()] ?? 1.0;
-    if (rateTo == 0) return inDominant;
-    return inDominant / rateTo;
+    return CurrencyConversion.convert(amount, from: from, to: to, rates: rates, dominantCurrency: dominantCurrency);
   }
 }

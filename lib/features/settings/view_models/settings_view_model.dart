@@ -17,7 +17,7 @@ class SettingsViewModel extends ViewModel {
   bool _githubBusy = false;
   bool get backupBusy => (busy && _backupOperation) || _githubBusy;
   bool get githubBusy => _githubBusy;
-  bool get isGitHubConnected => (settings['github_token'] ?? '').isNotEmpty;
+  bool get isGitHubConnected => settings['github_connected'] == 'true';
   String get githubUsername => settings['github_username'] ?? '';
   String get githubGistId => settings['github_gist_id'] ?? '';
   String get githubLastSync => settings['github_last_sync'] ?? '';
@@ -200,8 +200,9 @@ class SettingsViewModel extends ViewModel {
     try {
       final user = await cloud.verifyToken(cleanToken);
       final existingGistId = await cloud.findBackupGist(cleanToken);
+      await repository.saveGitHubToken(cleanToken);
       await _write({
-        'github_token': cleanToken,
+        'github_connected': 'true',
         'github_username': user.login,
         'github_gist_id': existingGistId ?? '',
       });
@@ -220,8 +221,9 @@ class SettingsViewModel extends ViewModel {
     error = null;
     changed();
     try {
+      await repository.saveGitHubToken(null);
       await _write({
-        'github_token': '',
+        'github_connected': 'false',
         'github_username': '',
         'github_gist_id': '',
         'github_last_sync': '',
@@ -234,7 +236,7 @@ class SettingsViewModel extends ViewModel {
   }
 
   Future<bool> syncToGitHub() async {
-    final token = settings['github_token'];
+    final token = await repository.getGitHubToken();
     if (token == null || token.isEmpty) {
       fail('Conecta tu cuenta de GitHub antes de sincronizar.');
       return false;
@@ -268,7 +270,8 @@ class SettingsViewModel extends ViewModel {
   }
 
   Future<BackupPreview?> prepareGitHubRestore() async {
-    final token = settings['github_token'];
+    _pendingRestore = null;
+    final token = await repository.getGitHubToken();
     final gistId = settings['github_gist_id'];
     if (token == null || token.isEmpty || gistId == null || gistId.isEmpty) {
       fail('No se encontró un respaldo vinculado en tu cuenta de GitHub.');

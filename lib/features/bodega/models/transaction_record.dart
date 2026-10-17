@@ -1,4 +1,8 @@
 class TransactionRecord {
+  final String? currency;
+  final String? toCurrency;
+  final double? toAmount;
+  final double? exchangeRate;
   final String id;
   final String accountId;
   final String? toAccountId;
@@ -11,6 +15,7 @@ class TransactionRecord {
   final DateTime createdAt;
 
   TransactionRecord({
+    this.currency, this.toCurrency, this.toAmount, this.exchangeRate,
     required this.id,
     required this.accountId,
     this.toAccountId,
@@ -25,6 +30,7 @@ class TransactionRecord {
 
   Map<String, dynamic> toMap() {
     return {
+      'currency': currency, 'to_currency': toCurrency, 'to_amount': toAmount, 'exchange_rate': exchangeRate,
       'id': id,
       'account_id': accountId,
       'to_account_id': toAccountId,
@@ -39,6 +45,8 @@ class TransactionRecord {
 
   factory TransactionRecord.fromMap(Map<String, dynamic> map) {
     return TransactionRecord(
+      currency: map['currency'] as String?, toCurrency: map['to_currency'] as String?,
+      toAmount: (map['to_amount'] as num?)?.toDouble(), exchangeRate: (map['exchange_rate'] as num?)?.toDouble(),
       id: map['id'] as String,
       accountId: map['account_id'] as String,
       toAccountId: map['to_account_id'] as String?,

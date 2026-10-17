@@ -1,3 +1,4 @@
+import '../../../../core/widgets/currency_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/kwall_theme.dart';
@@ -40,39 +41,13 @@ class CurrenciesSettingsSection extends StatelessWidget {
   }
 
   void _promptAddCurrency(BuildContext context) {
-    final textController = TextEditingController();
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Agregar moneda alternativa'),
-        content: TextField(
-          controller: textController,
-          autofocus: true,
-          textCapitalization: TextCapitalization.characters,
-          decoration: const InputDecoration(
-            labelText: 'Código o símbolo',
-            hintText: 'USD, EUR, NIO, CAD…',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final code = textController.text.trim().toUpperCase();
-              if (code.isNotEmpty &&
-                  code != dominantCurrencyController.text.trim().toUpperCase()) {
-                Navigator.of(ctx).pop();
-                _openRateDialog(context, code, isNew: true);
-              }
-            },
-            child: const Text('Siguiente'),
-          ),
-        ],
-      ),
-    );
+    var selected = CurrencySelector.catalog.keys.firstWhere((code) => code != dominantCurrencyController.text, orElse: () => 'EUR');
+    showDialog<void>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setState) => AlertDialog(
+      title: const Text('Añadir moneda'),
+      content: CurrencySelector(value: selected, options: CurrencySelector.catalog.keys, onChanged: (value) => setState(() => selected = value)),
+      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+        FilledButton(onPressed: () { Navigator.pop(ctx); _openRateDialog(context, selected, isNew: true); }, child: const Text('Siguiente'))],
+    )));
   }
 
   @override
@@ -89,24 +64,13 @@ class CurrenciesSettingsSection extends StatelessWidget {
           style: KwallTheme.fontTitle.copyWith(fontSize: 21),
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: dominantCurrencyController,
-          maxLength: 12,
-          decoration: const InputDecoration(
-            labelText: 'Moneda dominante (principal)',
-            hintText: 'C\$, USD, €, puntos…',
-            helperText: 'Moneda base principal de tus finanzas y metas.',
-          ),
-        ),
+        CurrencySelector(value: dominantCurrencyController.text,
+          options: {...CurrencySelector.catalog.keys, ...rates.keys}, label: 'Moneda principal',
+          onChanged: (value) => dominantCurrencyController.text = value),
         const SizedBox(height: 14),
         Text(
-          'Monedas alternativas y conversión global',
+          'Tipos de cambio',
           style: KwallTheme.fontTitle.copyWith(fontSize: 14),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Asigna la tasa de conversión para cada moneda alternativa respecto a $dominant. Todas tus cuentas mostrarán su equivalencia.',
-          style: TextStyle(color: KwallTheme.textSecondary, fontSize: 12),
         ),
         const SizedBox(height: 10),
         if (referenceCurrencies.isNotEmpty)
@@ -134,7 +98,7 @@ class CurrenciesSettingsSection extends StatelessWidget {
         OutlinedButton.icon(
           onPressed: () => _promptAddCurrency(context),
           icon: const Icon(Icons.add_rounded),
-          label: const Text('Agregar moneda alternativa'),
+          label: const Text('Añadir moneda'),
         ),
       ],
     );

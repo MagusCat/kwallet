@@ -18,6 +18,18 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
+        val vault = CredentialVault(applicationContext)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.kwall.kwall/credentials").setMethodCallHandler { call, result ->
+            try {
+                when (call.method) {
+                    "read" -> result.success(vault.read())
+                    "write" -> { vault.write(call.argument<String>("token")); result.success(null) }
+                    else -> result.notImplemented()
+                }
+            } catch (_: Exception) {
+                result.error("CREDENTIAL_STORE", "No se pudo acceder al almacenamiento seguro", null)
+            }
+        }
         createNotificationChannels()
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WIDGET_CHANNEL).setMethodCallHandler { call, result ->

@@ -127,6 +127,7 @@ class _PlanSheetState extends ViewModelState<PlanSheet, PlanEditorViewModel> {
           ),
           SizedBox(height: 12),
           DropdownButtonFormField<String>(
+              icon: const Icon(Icons.expand_more_rounded),
             initialValue: _category,
             isExpanded: true,
             decoration: InputDecoration(labelText: 'Categoría'),
@@ -141,6 +142,7 @@ class _PlanSheetState extends ViewModelState<PlanSheet, PlanEditorViewModel> {
           ),
           SizedBox(height: 12),
           DropdownButtonFormField<String>(
+              icon: const Icon(Icons.expand_more_rounded),
             initialValue: _account,
             isExpanded: true,
             decoration: InputDecoration(
@@ -167,6 +169,7 @@ class _PlanSheetState extends ViewModelState<PlanSheet, PlanEditorViewModel> {
         ),
         SizedBox(height: 12),
         DropdownButtonFormField<String>(
+              icon: const Icon(Icons.expand_more_rounded),
           initialValue: _recurrence,
           decoration: InputDecoration(labelText: 'Repetir'),
           items: [

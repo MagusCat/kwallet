@@ -1,3 +1,4 @@
+import '../../models/currency_conversion.dart';
 import 'dart:convert';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
@@ -24,12 +25,13 @@ mixin AccountsRepository on DatabaseContext {
         account.minimumBalance < 0) {
       throw ArgumentError('Saldo inválido');
     }
-    await db.insert('accounts', account.toMap());
+    await db.transaction((txn) async {
+    await txn.insert('accounts', account.toMap());
 
     // Registrar historial de moneda base y secundarias con conversión 1 a 1
     final now = DateTime.now().toIso8601String();
     for (final c in account.currencies) {
-      await db.insert('account_currency_history', {
+      await txn.insert('account_currency_history', {
         'id': const Uuid().v4(),
         'account_id': account.id,
         'base_currency': account.currency,
@@ -43,56 +45,29 @@ mixin AccountsRepository on DatabaseContext {
         'created_at': now,
       });
     }
+    });
     notifyChanged();
   }
 
   Future<void> updateAccount(Account account) async {
     final db = await database;
-    final oldRows = await db.query(
-      'accounts',
-      where: 'id = ?',
-      whereArgs: [account.id],
-    );
-
-    if (oldRows.isNotEmpty) {
-      final oldAcc = Account.fromMap(oldRows.first);
-      if (oldAcc.currency != account.currency) {
-        await recordCurrencyChange(
-          accountId: account.id,
-          baseCurrency: account.currency,
-          currency: account.currency,
-          rate: 1.0,
-          changeType: 'base_changed',
-          notes: 'Moneda base cambiada de ${oldAcc.currency} a ${account.currency}',
-        );
-      }
-      for (final c in account.currencies) {
-        if (!oldAcc.currencies.contains(c)) {
-          await recordCurrencyChange(
-            accountId: account.id,
-            baseCurrency: account.currency,
-            currency: c,
-            rate: 1.0,
-            changeType: 'currency_added',
-            notes: 'Moneda añadida con conversión 1 a 1',
-          );
-        }
-      }
-      for (final c in oldAcc.currencies) {
-        if (!account.currencies.contains(c)) {
-          await recordCurrencyChange(
-            accountId: account.id,
-            baseCurrency: account.currency,
-            currency: c,
-            rate: 1.0,
-            changeType: 'currency_removed',
-            notes: 'Moneda removida de la cuenta',
-          );
-        }
-      }
+    if (!account.minimumBalance.isFinite || account.minimumBalance < 0) throw ArgumentError('Reserva inválida');
+    await db.transaction((txn) async {
+    final oldRows = await txn.query('accounts', where: 'id = ?', whereArgs: [account.id]);
+    if (oldRows.isEmpty) throw StateError('La cuenta ya no existe');
+    if (CurrencyConversion.code(oldRows.single['currency'] as String) != CurrencyConversion.code(account.currency)) {
+      throw StateError('Crea otra cuenta para usar otra moneda');
     }
-
-    await db.update(
+    final oldAccount = Account.fromMap(oldRows.single);
+    for (final currency in {...oldAccount.currencies, ...account.currencies}) {
+      if (oldAccount.currencies.contains(currency) == account.currencies.contains(currency)) continue;
+      await txn.insert('account_currency_history', {
+        'id': const Uuid().v4(), 'account_id': account.id, 'base_currency': account.currency,
+        'currency': currency, 'conversion_rate': 1.0, 'change_type': account.currencies.contains(currency) ? 'currency_added' : 'currency_removed',
+        'notes': '', 'created_at': DateTime.now().toIso8601String(),
+      });
+    }
+    await txn.update(
       'accounts',
       {
         'name': account.name,
@@ -106,6 +81,7 @@ mixin AccountsRepository on DatabaseContext {
       where: 'id = ?',
       whereArgs: [account.id],
     );
+    });
     notifyChanged();
   }
 

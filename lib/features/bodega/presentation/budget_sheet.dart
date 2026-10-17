@@ -80,6 +80,7 @@ class _BudgetSheetState
           ),
           const SizedBox(height: 18),
           SegmentedButton<String>(
+            showSelectedIcon: false,
             segments: const [
               ButtonSegment(
                 value: 'assigned',

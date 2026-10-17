@@ -107,6 +107,8 @@ abstract interface class JournalRepository implements Repository {
 }
 
 abstract interface class SettingsRepository implements Repository {
+  Future<String?> getGitHubToken();
+  Future<void> saveGitHubToken(String? token);
   Future<Map<String, String>> getSettings();
   Future<void> saveSettings(Map<String, String> values);
   Future<String> exportFullDataAsJson();

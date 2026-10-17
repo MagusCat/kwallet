@@ -1,3 +1,4 @@
+import '../currency_snapshot.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:uuid/uuid.dart';
 
@@ -25,40 +26,16 @@ mixin BudgetRepository on DatabaseContext {
 
   Future<double> getSpentBetween(DateTime start, DateTime end) async {
     final db = await database;
-    final rows = await db.rawQuery(
-      "SELECT SUM(amount) AS total FROM transactions WHERE type = 'expense' AND date >= ? AND date < ?",
-      [dayKey(start), dayKey(end)],
-    );
-    return (rows.first['total'] as num?)?.toDouble() ?? 0;
+    return CurrencySnapshot.sum(db, "type = 'expense' AND date >= ? AND date < ?", [dayKey(start), dayKey(end)]);
   }
 
   Future<Map<BudgetPeriod, double>> getPeriodSpending(DateTime date) async {
-    final db = await database;
-    final ranges = {
-      for (final period in BudgetPeriod.values)
-        period: periodRange(period, date),
-    };
-    final starts = ranges.values.map((range) => range.start).toList()..sort();
-    final ends = ranges.values.map((range) => range.end).toList()..sort();
-    final columns = ranges.keys.map(
-      (period) =>
-          'COALESCE(SUM(CASE WHEN date >= ? AND date < ? THEN amount ELSE 0 END),0) AS ${period.name}',
-    );
-    final row = (await db.rawQuery(
-      "SELECT ${columns.join(', ')} FROM transactions WHERE type = 'expense' AND date >= ? AND date < ?",
-      [
-        for (final range in ranges.values) ...[
-          dayKey(range.start),
-          dayKey(range.end),
-        ],
-        dayKey(starts.first),
-        dayKey(ends.last),
-      ],
-    )).single;
-    return {
-      for (final period in BudgetPeriod.values)
-        period: (row[period.name] as num).toDouble(),
-    };
+    final result = <BudgetPeriod, double>{};
+    for (final period in BudgetPeriod.values) {
+      final range = periodRange(period, date);
+      result[period] = await getSpentBetween(range.start, range.end);
+    }
+    return result;
   }
 
   Future<BudgetModel> getCurrentBudget() async {
@@ -124,17 +101,7 @@ mixin BudgetRepository on DatabaseContext {
 
   Future<double> getMonthlySpentTotal(int month, int year) async {
     final db = await database;
-    final startStr = DateTime(year, month, 1).toIso8601String();
-    final endStr = DateTime(year, month + 1, 0, 23, 59, 59).toIso8601String();
-
-    final result = await db.rawQuery(
-      "SELECT SUM(amount) as total FROM transactions WHERE type = 'expense' AND date BETWEEN ? AND ?",
-      [startStr, endStr],
-    );
-
-    final total = result.first['total'];
-    if (total == null) return 0.0;
-    return (total as num).toDouble();
+    return CurrencySnapshot.sum(db, "type = 'expense' AND date >= ? AND date < ?", [DateTime(year, month).toIso8601String(), DateTime(year, month + 1).toIso8601String()]);
   }
 
   Future<Map<BudgetPeriod, double>> getBudgetAllocations(DateTime date) async {

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/database/repositories/currency_rates_repository.dart';
+import '../../../../core/models/currency_conversion.dart';
 import '../../../../core/theme/kwall_theme.dart';
 import '../../../../core/widgets/juice_widgets.dart';
 import '../../models/account.dart';
@@ -93,8 +93,9 @@ class AccountCard extends StatelessWidget {
                       currency.trim().toUpperCase();
                   final equivalents = <String>[];
 
+                  try {
                   if (isDiff) {
-                    final inDominant = CurrencyRatesRepository.convert(
+                    final inDominant = CurrencyConversion.convert(
                       account.balance,
                       from: account.currency,
                       to: currency,
@@ -107,7 +108,7 @@ class AccountCard extends StatelessWidget {
                   } else if (rates.isNotEmpty) {
                     for (final entry in rates.entries) {
                       if (entry.key.toUpperCase() != currency.toUpperCase()) {
-                        final inAlt = CurrencyRatesRepository.convert(
+                        final inAlt = CurrencyConversion.convert(
                           account.balance,
                           from: currency,
                           to: entry.key,
@@ -121,6 +122,7 @@ class AccountCard extends StatelessWidget {
                     }
                   }
 
+                  } on StateError { equivalents.add('Tasa pendiente'); }
                   if (equivalents.isEmpty) return const SizedBox.shrink();
 
                   return Padding(

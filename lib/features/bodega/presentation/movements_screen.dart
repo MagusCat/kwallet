@@ -101,6 +101,7 @@ class _MovementsScreenState
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
+              icon: const Icon(Icons.expand_more_rounded),
                         initialValue: _account,
                         isExpanded: true,
                         decoration: const InputDecoration(labelText: 'Cuenta'),
@@ -124,6 +125,7 @@ class _MovementsScreenState
                     const SizedBox(width: 10),
                     Expanded(
                       child: DropdownButtonFormField<String>(
+              icon: const Icon(Icons.expand_more_rounded),
                         initialValue: _type,
                         isExpanded: true,
                         decoration: const InputDecoration(labelText: 'Tipo'),

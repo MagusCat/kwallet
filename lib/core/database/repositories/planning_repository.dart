@@ -1,3 +1,4 @@
+import '../currency_snapshot.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../features/bodega/models/planned_expense.dart';
@@ -26,13 +27,19 @@ mixin PlanningRepository on DatabaseContext {
       }
       final now = DateTime.now();
       if (plan.amount > 0) {
+        final sourceRows = plan.accountId == null ? <Map<String, Object?>>[] : await txn.query('accounts', where: 'id = ?', whereArgs: [plan.accountId]);
+        final targetRows = await txn.query('accounts', where: 'id = ?', whereArgs: [accountId]);
+        if (targetRows.isEmpty) throw StateError('Selecciona una cuenta');
+        final snapshot = await CurrencySnapshot.read(txn);
+        final sourceCurrency = sourceRows.firstOrNull?['currency'] as String? ?? snapshot.base;
+        final paidAmount = snapshot.convert(plan.amount, sourceCurrency, targetRows.single['currency'] as String);
         await TransactionWriter.insert(
           txn,
           TransactionRecord(
             id: const Uuid().v4(),
             accountId: accountId,
             categoryId: plan.categoryId,
-            amount: plan.amount,
+            amount: paidAmount,
             type: 'expense',
             note: plan.title,
             date: now,
@@ -42,7 +49,6 @@ mixin PlanningRepository on DatabaseContext {
       }
       final next = plan.nextDate(plan.dueDate);
       final updated = plan.copyWith(
-        accountId: accountId,
         dueDate: next,
         isCompleted: next == null,
       );

@@ -56,7 +56,7 @@ class MovementTile extends StatelessWidget {
                   ? '-'
                   : tx.isIncome
                   ? '+'
-                  : ''}${KwallTheme.formatCurrency(tx.amount, currency)}',
+                  : ''}${KwallTheme.formatCurrency(tx.amount, tx.currency ?? currency)}',
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: tx.isExpense

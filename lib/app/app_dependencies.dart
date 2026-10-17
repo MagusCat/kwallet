@@ -49,7 +49,7 @@ class AppDependencies {
   MovementsViewModel movements() => MovementsViewModel(finance)..load();
   CategoriesViewModel categories(String type) =>
       CategoriesViewModel(finance, type)..load();
-  AccountEditorViewModel accountEditor() => AccountEditorViewModel(finance);
+  AccountEditorViewModel accountEditor() => AccountEditorViewModel(finance, settings)..loadCurrencies();
   BudgetEditorViewModel budgetEditor() => BudgetEditorViewModel(finance);
   PlanEditorViewModel planEditor() => PlanEditorViewModel(finance);
   TransactionEditorViewModel transactionEditor(

@@ -85,6 +85,7 @@ class _JournalScreenState
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
                 children: [
                   SegmentedButton<int>(
+            showSelectedIcon: false,
                     segments: const [
                       ButtonSegment(
                         value: 0,

@@ -6,7 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class DatabaseBackup {
-  static const version = 4;
+  static const version = 5;
   static const tables = [
     'accounts',
     'categories',
@@ -21,8 +21,13 @@ class DatabaseBackup {
     'habits',
     'habit_logs',
     'reward_events',
+    'account_currency_history',
+    'global_currency_rates',
+    'global_currency_history',
+    'front_pending_items',
   ];
   static const deleteOrder = [
+    'front_pending_items', 'account_currency_history', 'global_currency_history', 'global_currency_rates',
     'habit_logs',
     'reward_events',
     'transactions',
@@ -57,7 +62,10 @@ class DatabaseBackup {
     )).map((r) => r['name']).toSet();
     final data = <String, Object?>{};
     for (final table in tables.where(existing.contains)) {
-      data[table] = await db.query(table);
+      final rows = await db.query(table);
+      data[table] = table == 'app_settings'
+          ? rows.where((row) => !(row['key'] as String).startsWith('github_')).toList()
+          : rows;
     }
     return const JsonEncoder.withIndent('  ').convert({
       'app': 'kwall',
@@ -99,6 +107,9 @@ class DatabaseBackup {
         throw FormatException('Falta la tabla $required.');
       }
     }
+    if (schemaVersion >= 5 && tables.any((table) => data[table] is! List)) {
+      throw const FormatException('El respaldo está incompleto.');
+    }
     final result = <String, List<Map<String, Object?>>>{};
     for (final table in tables) {
       final rows = data[table] ?? [];
@@ -111,7 +122,7 @@ class DatabaseBackup {
       final ids = <Object?>{};
       for (final row in result[table]!) {
         final key =
-            row[table == 'app_settings'
+            row[table == 'global_currency_rates' ? 'currency' : table == 'app_settings'
                 ? 'key'
                 : table == 'budget_allocations'
                 ? 'period_key'
@@ -127,6 +138,26 @@ class DatabaseBackup {
           }
         }
       }
+    }
+    result['app_settings']!.removeWhere((row) => (row['key'] as String).startsWith('github_'));
+    final accountCurrencies = {for (final row in result['accounts']!) row['id']: row['currency'] ?? '\$'};
+    for (final row in [...result['transactions']!, ...result['transaction_archive']!]) {
+      row['currency'] ??= accountCurrencies[row['account_id']];
+      if (row['type'] == 'transfer') {
+        // Preserve the actual credited amount of pre-v5 transfers, never reprice history.
+        if (schemaVersion < 5) {
+          row['to_amount'] ??= row['amount'];
+          row['exchange_rate'] ??= 1.0;
+          row['to_currency'] ??= accountCurrencies[row['to_account_id']];
+        }
+        if (row['to_amount'] is! num || (row['to_amount'] as num) <= 0 ||
+            row['exchange_rate'] is! num || (row['exchange_rate'] as num) <= 0 ||
+            row['to_currency'] is! String) { throw const FormatException('Transferencia inválida.'); }
+      }
+    }
+    for (final row in [...result['global_currency_rates']!, ...result['global_currency_history']!]) {
+      final rate = row['rate'] ?? row['new_rate'];
+      if (rate is! num || rate <= 0) throw const FormatException('Tasa inválida.');
     }
     final activeIds = result['transactions']!.map((row) => row['id']).toSet();
     if (result['transaction_archive']!.any(
@@ -261,8 +292,8 @@ class DatabaseBackup {
       if (tx['type'] == 'transfer') {
         deltas.update(
           tx['to_account_id'],
-          (value) => value + amount,
-          ifAbsent: () => amount,
+          (value) => value + (tx['to_amount'] as num).toDouble(),
+          ifAbsent: () => (tx['to_amount'] as num).toDouble(),
         );
       }
     }

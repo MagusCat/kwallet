@@ -1,3 +1,4 @@
+import '../../../core/models/currency_conversion.dart';
 import '../../../core/contracts/app_repositories.dart';
 import '../../../core/models/date_span.dart';
 import '../../../core/mvvm/view_model.dart';
@@ -17,6 +18,8 @@ class PlanningViewModel extends ViewModel {
   List<PersonalNote> notes = const [];
   DateTime month = DateTime(DateTime.now().year, DateTime.now().month);
   DateSpan range = DateSpan(dateOnly(DateTime.now()), dateOnly(DateTime.now()));
+  String currency = '\$';
+  Map<String, double> rates = const {};
   bool loading = true;
   bool rangeMode = false;
   DateTime? rangeAnchor;
@@ -31,9 +34,10 @@ class PlanningViewModel extends ViewModel {
     }
   }
 
-  double get balance => accounts.fold(0, (sum, a) => sum + a.balance);
+  double _convert(double amount, String from) => CurrencyConversion.convert(amount, from: from, to: currency, rates: rates, dominantCurrency: currency);
+  double get balance => accounts.fold(0, (sum, a) => sum + _convert(a.balance, a.currency));
   double get committed => plannedTotal(
-    plans,
+    plans.map((p) => p.copyWith(amount: _convert(p.amount, accounts.where((a) => a.id == p.accountId).firstOrNull?.currency ?? currency))).toList(),
     dateOnly(DateTime.now()),
     DateTime.now().add(const Duration(days: 30)),
     includeOverdue: true,
@@ -106,10 +110,14 @@ class PlanningViewModel extends ViewModel {
       final nextAccounts = await repository.getAccounts();
       final nextCategories = await repository.getCategories(type: 'expense');
       final nextNotes = journal != null ? await journal!.getNotes() : const <PersonalNote>[];
-      final settings = restoreRange
-          ? await preferences.getSettings()
-          : <String, String>{};
+      final settings = await preferences.getSettings();
+      final nextRates = await preferences.getCurrencyRates();
+      for (final account in nextAccounts) {
+        CurrencyConversion.convert(account.balance, from: account.currency, to: settings['currency'] ?? '\$', rates: nextRates, dominantCurrency: settings['currency'] ?? '\$');
+      }
       if (!isCurrent(request)) return;
+      currency = settings['currency'] ?? '\$';
+      rates = Map.unmodifiable(nextRates);
       plans = List.unmodifiable(nextPlans);
       accounts = List.unmodifiable(nextAccounts);
       categories = List.unmodifiable(nextCategories);
@@ -118,7 +126,7 @@ class PlanningViewModel extends ViewModel {
       error = null;
       final start = DateTime.tryParse(settings['plan_range_start'] ?? '');
       final end = DateTime.tryParse(settings['plan_range_end'] ?? '');
-      if (start != null && end != null && !end.isBefore(start)) {
+      if (restoreRange && start != null && end != null && !end.isBefore(start)) {
         range = DateSpan(dateOnly(start), dateOnly(end));
         rangeMode = dateOnly(start) != dateOnly(end);
         month = DateTime(start.year, start.month);

@@ -35,8 +35,8 @@ abstract class ViewModel extends ChangeNotifier {
     try {
       await action();
       return true;
-    } catch (_) {
-      if (!_disposed) error = failure;
+    } catch (e) {
+      if (!_disposed) error = e is StateError ? e.message.toString() : failure;
       return false;
     } finally {
       busy = false;

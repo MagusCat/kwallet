@@ -5,6 +5,12 @@ import 'package:kwall/core/models/recovery_copy.dart';
 import 'package:kwall/features/welcome/view_models/launch_view_model.dart';
 
 class FakeSettingsRepository implements SettingsRepository {
+  String? _token;
+  @override
+  Future<String?> getGitHubToken() async => _token;
+  @override
+  Future<void> saveGitHubToken(String? token) async { _token = token; }
+
   final Map<String, String> data = {};
   final ValueNotifier<int> _changes = ValueNotifier<int>(0);
   @override

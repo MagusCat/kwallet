@@ -193,6 +193,7 @@ class _HabitDaysSheetState
           ),
           const SizedBox(height: 18),
           SegmentedButton<bool>(
+            showSelectedIcon: false,
             segments: const [
               ButtonSegment(
                 value: true,

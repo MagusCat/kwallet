@@ -1,3 +1,4 @@
+import '../currency_snapshot.dart';
 import '../../../features/bodega/models/spending_summary.dart';
 import '../../../features/bodega/models/category_model.dart';
 import '../database_context.dart';
@@ -20,21 +21,7 @@ mixin InsightsRepository on DatabaseContext {
         0,
         0,
       ).toIso8601String();
-      final end = DateTime(
-        targetDate.year,
-        targetDate.month,
-        targetDate.day,
-        23,
-        59,
-        59,
-      ).toIso8601String();
-
-      final rows = await db.rawQuery(
-        "SELECT SUM(amount) as total FROM transactions WHERE type = 'expense' AND date BETWEEN ? AND ?",
-        [start, end],
-      );
-
-      final total = (rows.first['total'] as num?)?.toDouble() ?? 0.0;
+      final total = await CurrencySnapshot.sum(db, "type = 'expense' AND date >= ? AND date < ?", [start, DateTime(targetDate.year, targetDate.month, targetDate.day + 1).toIso8601String()]);
       final dayLabel = weekdays[targetDate.weekday - 1];
 
       result.add(
@@ -55,29 +42,25 @@ mixin InsightsRepository on DatabaseContext {
   ) async {
     final db = await database;
     final start = DateTime(year, month, 1).toIso8601String();
-    final end = DateTime(year, month + 1, 0, 23, 59, 59).toIso8601String();
+    final end = DateTime(year, month + 1).toIso8601String();
 
-    final totalSpentResult = await db.rawQuery(
-      "SELECT SUM(amount) as grand_total FROM transactions WHERE type = 'expense' AND date BETWEEN ? AND ?",
-      [start, end],
-    );
-    final grandTotal =
-        (totalSpentResult.first['grand_total'] as num?)?.toDouble() ?? 0.0;
+    final snapshot = await CurrencySnapshot.read(db);
+    final rows = await db.rawQuery("SELECT category_id, COALESCE(currency,(SELECT currency FROM accounts WHERE accounts.id = transactions.account_id),'\$') AS unit, SUM(amount) AS total FROM transactions WHERE type = 'expense' AND date >= ? AND date < ? GROUP BY category_id,unit", [start, end]);
+    final totals = <String, double>{};
+    for (final row in rows) {
+      final id = row['category_id'] as String;
+      totals[id] = (totals[id] ?? 0) + snapshot.convert((row['total'] as num).toDouble(), row['unit'] as String);
+    }
+    final grandTotal = totals.values.fold<double>(0, (sum, value) => sum + value);
     if (grandTotal <= 0) return [];
-
-    final rows = await db.rawQuery(
-      "SELECT category_id, SUM(amount) as total FROM transactions WHERE type = 'expense' AND date BETWEEN ? AND ? GROUP BY category_id ORDER BY total DESC",
-      [start, end],
-    );
-
     final categories = (await db.query('categories'))
         .map(CategoryModel.fromMap);
     final catMap = {for (var c in categories) c.id: c};
 
     final List<CategoryBreakdown> breakdown = [];
-    for (final r in rows) {
-      final catId = r['category_id'] as String;
-      final total = (r['total'] as num).toDouble();
+    for (final r in totals.entries) {
+      final catId = r.key;
+      final total = r.value;
       final cat =
           catMap[catId] ??
           CategoryModel(
@@ -96,6 +79,7 @@ mixin InsightsRepository on DatabaseContext {
         ),
       );
     }
+    breakdown.sort((a, b) => b.amount.compareTo(a.amount));
     return breakdown;
   }
 }

@@ -1,3 +1,4 @@
+import '../../../core/widgets/currency_selector.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/app_dependencies.dart';
@@ -58,7 +59,7 @@ class _AddAccountDialogState
       minimumText: _minimum.text,
       type: _type,
       currency: cur,
-      currencies: [cur],
+      currencies: widget.account?.currencies ?? [cur],
       color: KwallTheme.accent.toARGB32(),
     );
     if (saved && mounted) {
@@ -79,7 +80,7 @@ class _AddAccountDialogState
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              widget.account == null ? 'Nueva cuenta' : 'Cuidar mi cuenta',
+              widget.account == null ? 'Nueva cuenta' : 'Editar cuenta',
               style: KwallTheme.fontTitle.copyWith(fontSize: 22),
             ),
             const SizedBox(height: 20),
@@ -91,6 +92,7 @@ class _AddAccountDialogState
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
+              icon: const Icon(Icons.expand_more_rounded),
               initialValue: _type,
               decoration: const InputDecoration(labelText: 'Tipo'),
               items: [
@@ -105,50 +107,15 @@ class _AddAccountDialogState
               onChanged: (value) => setState(() => _type = value!),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _baseCurrency,
-              decoration: const InputDecoration(
-                labelText: 'Moneda de la cuenta',
-                hintText: 'USD, C\$, EUR, etc.',
-                prefixIcon: Icon(Icons.payments_outlined),
-                helperText: 'Moneda principal en la que opera esta cuenta.',
-              ),
-              onChanged: (_) => setState(() {}),
+            CurrencySelector(
+              value: _baseCurrency.text,
+              options: {widget.currency, ...model.currencyOptions},
+              onChanged: widget.account != null || _saving ? null : (value) => setState(() => _baseCurrency.text = value),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _balance,
               readOnly: widget.account != null,
-              onTap: widget.account != null
-                  ? () {
-                      ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          content: Row(
-                            children: [
-                              Icon(
-                                Icons.lock_outline_rounded,
-                                color: Theme.of(context).snackBarTheme.contentTextStyle?.color ??
-                                    (KwallTheme.isDark ? const Color(0xFF191C19) : const Color(0xFFF0F1EB)),
-                                size: 20,
-                              ),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  'Saldo de solo lectura. Se calcula automáticamente con tus transacciones.',
-                                ),
-                              ),
-                            ],
-                          ),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    }
-                  : null,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
                 signed: true,
@@ -156,21 +123,18 @@ class _AddAccountDialogState
               decoration: InputDecoration(
                 labelText: widget.account == null
                     ? 'Saldo inicial'
-                    : 'Saldo actual (solo lectura)',
+                    : 'Saldo actual',
                 prefixText: '${_baseCurrency.text} ',
                 suffixIcon: widget.account != null
                     ? Tooltip(
                         message:
-                            'Solo lectura: se actualiza con los movimientos',
+                            'Saldo calculado por movimientos',
                         child: Icon(
                           Icons.lock_outline_rounded,
                           size: 20,
                           color: KwallTheme.textSecondary,
                         ),
                       )
-                    : null,
-                helperText: widget.account != null
-                    ? 'Solo lectura · Calculado según tus movimientos'
                     : null,
               ),
             ),
@@ -181,14 +145,10 @@ class _AddAccountDialogState
                 decimal: true,
               ),
               decoration: InputDecoration(
-                labelText: 'Mínimo que quiero proteger',
+                labelText: 'Reserva mínima',
                 prefixText: '${_baseCurrency.text} ',
                 prefixIcon: const Icon(Icons.shield_outlined),
               ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'El anillo muestra cuánto del mínimo está cubierto. El presupuesto flexible protege esta reserva.',
             ),
             const SizedBox(height: 20),
             if (_error != null)
@@ -215,7 +175,7 @@ class _AddAccountDialogState
                     : Icon(
                         _savedSuccess
                             ? Icons.check_circle_rounded
-                            : Icons.check,
+                            : Icons.save_outlined,
                         key: ValueKey(_savedSuccess),
                       ),
               ),
@@ -225,7 +185,7 @@ class _AddAccountDialogState
                   _saving
                       ? 'Guardando…'
                       : _savedSuccess
-                          ? '¡Guardado!'
+                          ? 'Guardado'
                           : 'Guardar cuenta',
                   key: ValueKey('$_saving-$_savedSuccess'),
                 ),

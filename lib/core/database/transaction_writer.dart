@@ -2,6 +2,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../../features/bodega/models/transaction_record.dart';
 import 'reward_events.dart';
+import 'currency_snapshot.dart';
 
 class TransactionWriter {
   static Future<void> insert(Transaction txn, TransactionRecord tx) async {
@@ -17,6 +18,10 @@ class TransactionWriter {
       whereArgs: [tx.accountId],
     );
     if (source.isEmpty) throw StateError('La cuenta ya no está disponible');
+    final sourceCurrency = source.single['currency'] as String;
+    String? targetCurrency;
+    double? targetAmount;
+    double? exchangeRate;
     if (tx.type == 'transfer') {
       final target = await txn.query(
         'accounts',
@@ -26,8 +31,14 @@ class TransactionWriter {
       if (tx.accountId == tx.toAccountId || target.isEmpty) {
         throw ArgumentError('Selecciona otra cuenta de destino');
       }
+      targetCurrency = target.single['currency'] as String;
+      final snapshot = await CurrencySnapshot.read(txn);
+      exchangeRate = snapshot.convert(1, sourceCurrency, targetCurrency);
+      targetAmount = double.parse((tx.amount * exchangeRate).toStringAsFixed(8));
+      if (!targetAmount.isFinite || targetAmount <= 0) throw ArgumentError('Monto de destino inválido');
     }
-    await txn.insert('transactions', tx.toMap());
+    await txn.insert('transactions', {...tx.toMap(), 'currency': sourceCurrency,
+      'to_currency': targetCurrency, 'to_amount': targetAmount, 'exchange_rate': exchangeRate});
     await RewardEvents.award(txn, 'transaction:${tx.id}', 5);
     final delta = tx.type == 'income' ? tx.amount : -tx.amount;
     await txn.rawUpdate(
@@ -37,7 +48,7 @@ class TransactionWriter {
     if (tx.type == 'transfer') {
       await txn.rawUpdate(
         'UPDATE accounts SET balance = ROUND(balance + ?, 8) WHERE id = ?',
-        [tx.amount, tx.toAccountId],
+        [targetAmount, tx.toAccountId],
       );
     }
   }

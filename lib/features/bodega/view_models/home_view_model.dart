@@ -1,3 +1,4 @@
+import '../../../core/models/currency_conversion.dart';
 import 'dart:math' as math;
 
 import '../../../core/mvvm/view_model.dart';
@@ -5,13 +6,11 @@ import 'package:uuid/uuid.dart';
 
 import '../../../core/contracts/app_repositories.dart';
 import '../../../core/services/widget_sync_service.dart';
-import '../../../core/theme/kwall_theme.dart';
 import '../../journal/models/journal_models.dart';
 import '../models/account.dart';
 import '../models/budget_model.dart';
 import '../models/category_model.dart';
 import '../models/finance_overview.dart';
-import '../models/front_pending_item.dart';
 import '../models/planned_expense.dart';
 import '../models/transaction_record.dart';
 
@@ -58,7 +57,8 @@ class HomeViewModel extends ViewModel {
   String? get filter => _filter;
   int get xp => _xp;
   String get currency => _settings['currency'] ?? '\$';
-  double get balance => _accounts.fold(0, (sum, a) => sum + a.balance);
+  double _convert(double value, String from) => CurrencyConversion.convert(value, from: from, to: currency, rates: _rates, dominantCurrency: currency);
+  double get balance => _accounts.fold(0, (sum, a) => sum + _convert(a.balance, a.currency));
 
   // Grouped cash diversification by account base currency
   Map<String, double> get cashByCurrency {
@@ -70,9 +70,10 @@ class HomeViewModel extends ViewModel {
     return map;
   }
 
-  double get reserves => _accounts.fold(0, (sum, a) => sum + a.minimumBalance);
+  double get reserves => _accounts.fold(0, (sum, a) => sum + _convert(a.minimumBalance, a.currency));
+  List<PlannedExpense> get _convertedPlans => _plans.map((p) => p.copyWith(amount: _convert(p.amount, _accounts.where((a) => a.id == p.accountId).firstOrNull?.currency ?? currency))).toList();
   double get committed => plannedTotal(
-    _plans,
+    _convertedPlans,
     DateTime.now(),
     DateTime.now().add(const Duration(days: 30)),
     includeOverdue: true,
@@ -80,7 +81,7 @@ class HomeViewModel extends ViewModel {
   double get weeklyCommitments {
     final week = periodRange(BudgetPeriod.weekly, DateTime.now());
     return plannedTotal(
-      _plans,
+      _convertedPlans,
       week.start,
       week.end.subtract(const Duration(days: 1)),
     );
@@ -270,6 +271,10 @@ class HomeViewModel extends ViewModel {
       final notes = await journal.getNotes();
       final habits = await journal.getHabits();
       final spent = await finance.getPeriodSpending(now);
+      for (final account in accounts) {
+        CurrencyConversion.convert(account.balance, from: account.currency, to: settings['currency'] ?? '\$', rates: rates, dominantCurrency: settings['currency'] ?? '\$');
+        CurrencyConversion.convert(account.minimumBalance, from: account.currency, to: settings['currency'] ?? '\$', rates: rates, dominantCurrency: settings['currency'] ?? '\$');
+      }
       if (!isCurrent(version)) return;
       _reward = _loaded ? math.max(0, xp - _xp) : 0;
       _accounts = List.unmodifiable(accounts);
@@ -288,77 +293,13 @@ class HomeViewModel extends ViewModel {
       _loaded = true;
       error = null;
 
-      // Sync and persist pending items for dashboard overview
-      final todayStr = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      final pendingList = <FrontPendingItem>[];
-      for (final note in notes) {
-        if (note.kind == 'list') {
-          for (var i = 0; i < note.items.length; i++) {
-            if (!note.items[i].done) {
-              pendingList.add(
-                FrontPendingItem(
-                  id: 'task_${note.id}_$i',
-                  category: 'task',
-                  title: note.items[i].text,
-                  subtitle: 'Lista: ${note.title}',
-                  sourceId: note.id,
-                  sourceIndex: i,
-                  isCompleted: false,
-                  createdAt: note.updatedAt,
-                  updatedAt: now,
-                ),
-              );
-            }
-          }
-        }
-      }
-
-      for (final habit in habits) {
-        final log = habit.logFor(now);
-        if (log?.completed != true) {
-          pendingList.add(
-            FrontPendingItem(
-              id: 'habit_${habit.id}_$todayStr',
-              category: 'habit',
-              title: habit.title,
-              subtitle: 'Hábito diario',
-              sourceId: habit.id,
-              isCompleted: false,
-              createdAt: now,
-              updatedAt: now,
-            ),
-          );
-        }
-      }
-
-      final todayStart = DateTime(now.year, now.month, now.day);
-      final monthLimit = todayStart.add(const Duration(days: 30));
-      for (final plan in plans) {
-        if (!plan.dueDate.isBefore(todayStart) && !plan.dueDate.isAfter(monthLimit)) {
-          pendingList.add(
-            FrontPendingItem(
-              id: 'plan_${plan.id}',
-              category: 'plan',
-              title: plan.title,
-              subtitle: '${KwallTheme.formatCurrency(plan.amount, settings['currency'] ?? '\$')} (${plan.recurrenceLabel})',
-              dueDate: plan.dueDate,
-              sourceId: plan.id,
-              isCompleted: false,
-              createdAt: plan.createdAt,
-              updatedAt: now,
-            ),
-          );
-        }
-      }
-
-      await journal.syncFrontPendingItems(pendingList);
 
       changed();
       _syncWidget();
-    } catch (_) {
+    } catch (e) {
       if (isCurrent(version)) {
         _reward = 0;
-        error = 'No se pudieron cargar tus datos.';
+        error = e is StateError ? e.message.toString() : 'No se pudieron cargar tus datos.';
         changed();
       }
     }

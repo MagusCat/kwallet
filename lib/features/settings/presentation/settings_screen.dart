@@ -73,7 +73,8 @@ class _SettingsScreenState
       rate: rate,
       notes: notes,
     );
-    if (ok && mounted) {
+    if (!ok) throw StateError(model.error ?? 'No se pudo guardar la tasa');
+    if (mounted) {
       if (!_referenceCurrencies.contains(currency)) {
         setState(() {
           _referenceCurrencies.add(currency);
@@ -366,6 +367,7 @@ class _SettingsScreenState
                   ),
                   const SizedBox(height: 16),
                   SegmentedButton<String>(
+            showSelectedIcon: false,
                     segments: const [
                       ButtonSegment(
                         value: 'light',

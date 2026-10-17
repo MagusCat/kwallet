@@ -141,6 +141,7 @@ class _PlannedExpensesScreenState
                 const SizedBox(height: 16),
                 AgendaDueNotesPanel(model: model),
                 SegmentedButton<bool>(
+            showSelectedIcon: false,
                   segments: const [
                     ButtonSegment(
                       value: false,

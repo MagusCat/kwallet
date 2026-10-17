@@ -48,6 +48,8 @@ class MockHttpClientRequest implements HttpClientRequest {
 
   @override
   int contentLength = 0;
+  @override
+  bool followRedirects = false;
 
   @override
   Future<HttpClientResponse> close() async {
@@ -104,6 +106,12 @@ class MockHttpHeaders implements HttpHeaders {
 }
 
 class FakeSettingsRepo implements SettingsRepository {
+  String? _token;
+  @override
+  Future<String?> getGitHubToken() async => _token;
+  @override
+  Future<void> saveGitHubToken(String? token) async { _token = token; }
+
   Map<String, String> data = {};
   @override
   final changes = ValueNotifier<int>(0);

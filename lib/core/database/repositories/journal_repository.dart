@@ -1,3 +1,4 @@
+import '../../../features/bodega/models/planned_expense.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../../../features/bodega/models/finance_overview.dart';
@@ -242,6 +243,7 @@ mixin JournalRepository on DatabaseContext {
   Future<void> syncFrontPendingItems(List<FrontPendingItem> items) async {
     final db = await database;
     await db.transaction((txn) async {
+      await txn.delete('front_pending_items');
       for (final item in items) {
         await txn.insert(
           'front_pending_items',
@@ -253,13 +255,77 @@ mixin JournalRepository on DatabaseContext {
   }
 
   Future<List<FrontPendingItem>> getFrontPendingItems({bool onlyPending = true}) async {
+    // Derived from authoritative sources on every request; no stale persisted cache.
+    final now = DateTime.now();
+    final notes = await getNotes();
+    final habits = await getHabits();
     final db = await database;
-    final rows = await db.query(
-      'front_pending_items',
-      where: onlyPending ? 'is_completed = 0' : null,
-      orderBy: 'updated_at DESC',
-    );
-    return rows.map(FrontPendingItem.fromMap).toList();
+    final plans = (await db.query('planned_expenses', where: 'is_completed = 0')).map(PlannedExpense.fromMap).toList();
+
+      final todayStr = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final pendingList = <FrontPendingItem>[];
+      for (final note in notes) {
+        if (note.kind == 'list') {
+          for (var i = 0; i < note.items.length; i++) {
+            if (!note.items[i].done) {
+              pendingList.add(
+                FrontPendingItem(
+                  id: 'task_${note.id}_$i',
+                  category: 'task',
+                  title: note.items[i].text,
+                  subtitle: 'Lista: ${note.title}',
+                  sourceId: note.id,
+                  sourceIndex: i,
+                  isCompleted: false,
+                  createdAt: note.updatedAt,
+                  updatedAt: now,
+                ),
+              );
+            }
+          }
+        }
+      }
+
+      for (final habit in habits) {
+        final log = habit.logFor(now);
+        if (log?.completed != true) {
+          pendingList.add(
+            FrontPendingItem(
+              id: 'habit_${habit.id}_$todayStr',
+              category: 'habit',
+              title: habit.title,
+              subtitle: 'Hábito diario',
+              sourceId: habit.id,
+              isCompleted: false,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+        }
+      }
+
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final monthLimit = todayStart.add(const Duration(days: 30));
+      for (final plan in plans) {
+        if (!plan.dueDate.isBefore(todayStart) && !plan.dueDate.isAfter(monthLimit)) {
+          pendingList.add(
+            FrontPendingItem(
+              id: 'plan_${plan.id}',
+              category: 'plan',
+              title: plan.title,
+              subtitle: plan.recurrenceLabel,
+              dueDate: plan.dueDate,
+              sourceId: plan.id,
+              isCompleted: false,
+              createdAt: plan.createdAt,
+              updatedAt: now,
+            ),
+          );
+        }
+      }
+
+      return pendingList;
+
   }
 
   Future<void> markFrontPendingItemDone(String id, bool done) async {

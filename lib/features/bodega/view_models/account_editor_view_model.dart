@@ -1,3 +1,4 @@
+import '../../../core/models/currency_conversion.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/contracts/app_repositories.dart';
@@ -7,7 +8,19 @@ import '../models/account.dart';
 
 class AccountEditorViewModel extends ViewModel {
   final FinanceRepository repository;
-  AccountEditorViewModel(this.repository);
+  final SettingsRepository? preferences;
+  List<String> currencyOptions = const [];
+  AccountEditorViewModel(this.repository, [this.preferences]);
+  Future<void> loadCurrencies() async {
+    if (preferences == null) return;
+    try {
+      final settings = await preferences!.getSettings();
+      final rates = await preferences!.getCurrencyRates();
+      if (disposed) return;
+      currencyOptions = {CurrencyConversion.code(settings['currency'] ?? '\$'), ...rates.keys.map(CurrencyConversion.code)}.toList();
+      changed();
+    } catch (_) { fail('No se pudieron cargar las monedas'); }
+  }
   Future<bool> save({
     Account? original,
     required String name,

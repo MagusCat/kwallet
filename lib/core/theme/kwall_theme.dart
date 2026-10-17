@@ -153,6 +153,7 @@ class KwallTheme {
         ),
       ),
       chipTheme: ChipThemeData(
+        showCheckmark: false,
         labelStyle: TextStyle(fontFamily: 'Roboto', color: textPrimary),
         secondaryLabelStyle: TextStyle(
           fontFamily: 'Roboto',
