@@ -35,13 +35,6 @@ class _AddAccountDialogState
   late final _baseCurrency = TextEditingController(
     text: widget.account?.currency ?? widget.currency,
   );
-  late final List<String> _currencies = [
-    if (widget.account != null)
-      ...widget.account!.currencies
-    else
-      widget.currency,
-  ];
-  final _newCurrencyController = TextEditingController();
   late String _type = widget.account?.type ?? widget.initialType;
   bool get _saving => model.busy;
   bool _savedSuccess = false;
@@ -53,83 +46,19 @@ class _AddAccountDialogState
     _balance.dispose();
     _minimum.dispose();
     _baseCurrency.dispose();
-    _newCurrencyController.dispose();
     super.dispose();
   }
 
-  void _addCurrency() {
-    final cur = _newCurrencyController.text.trim();
-    if (cur.isNotEmpty && !_currencies.contains(cur)) {
-      setState(() {
-        _currencies.add(cur);
-        _newCurrencyController.clear();
-      });
-    }
-  }
-
-  void _removeCurrency(String cur) {
-    if (cur == _baseCurrency.text.trim()) return; // Cannot remove base currency
-    setState(() {
-      _currencies.remove(cur);
-    });
-  }
-
-  Future<void> _showCurrencyHistory() async {
-    if (widget.account == null) return;
-    final history = await model.loadCurrencyHistory(widget.account!.id);
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Registro de cambios de monedas'),
-        content: SizedBox(
-          width: 360,
-          child: history.isEmpty
-              ? const Text('Aún no hay cambios registrados.')
-              : ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: history.length,
-                  separatorBuilder: (_, _) => const Divider(),
-                  itemBuilder: (_, i) {
-                    final item = history[i];
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.currency_exchange_rounded),
-                      title: Text(
-                        '${item['currency']} (1:${(item['conversion_rate'] as num?)?.toDouble() ?? 1.0})',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        '${item['notes'] ?? item['change_type']}\n${item['created_at']?.toString().substring(0, 19)}',
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                    );
-                  },
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cerrar'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Future<void> _save() async {
-    final base = _baseCurrency.text.trim().isEmpty ? '\$' : _baseCurrency.text.trim();
-    if (!_currencies.contains(base)) {
-      _currencies.insert(0, base);
-    }
+    final cur = _baseCurrency.text.trim().isEmpty ? widget.currency : _baseCurrency.text.trim();
     final saved = await model.save(
       original: widget.account,
       name: _name.text,
       balanceText: _balance.text,
       minimumText: _minimum.text,
       type: _type,
-      currency: base,
-      currencies: _currencies,
+      currency: cur,
+      currencies: [cur],
       color: KwallTheme.accent.toARGB32(),
     );
     if (saved && mounted) {
@@ -179,78 +108,12 @@ class _AddAccountDialogState
             TextField(
               controller: _baseCurrency,
               decoration: const InputDecoration(
-                labelText: 'Moneda dominante de la cuenta',
+                labelText: 'Moneda de la cuenta',
                 hintText: 'USD, C\$, EUR, etc.',
-                helperText: 'Determina la diversificación del efectivo de esta cuenta.',
+                prefixIcon: Icon(Icons.payments_outlined),
+                helperText: 'Moneda principal en la que opera esta cuenta.',
               ),
-              onChanged: (val) {
-                final base = val.trim();
-                if (base.isNotEmpty && !_currencies.contains(base)) {
-                  setState(() {
-                    if (_currencies.isNotEmpty) {
-                      _currencies[0] = base;
-                    } else {
-                      _currencies.add(base);
-                    }
-                  });
-                }
-              },
-            ),
-            const SizedBox(height: 12),
-            // Multi-currency list support (1:1 conversion)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Monedas secundarias de referencia (1 a 1)',
-                  style: KwallTheme.fontTitle.copyWith(fontSize: 14),
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (final c in _currencies)
-                      Chip(
-                        label: Text(c == _baseCurrency.text.trim() ? '$c (dominante)' : '$c (1:1)'),
-                        onDeleted: c == _baseCurrency.text.trim() ? null : () => _removeCurrency(c),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _newCurrencyController,
-                        decoration: const InputDecoration(
-                          hintText: 'Agregar moneda (ej. EUR, MXN)',
-                          isDense: true,
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        ),
-                        onSubmitted: (_) => _addCurrency(),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.filledTonal(
-                      tooltip: 'Añadir a la lista',
-                      onPressed: _addCurrency,
-                      icon: const Icon(Icons.add_rounded),
-                    ),
-                  ],
-                ),
-                if (widget.account != null) ...[
-                  const SizedBox(height: 6),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: _showCurrencyHistory,
-                      icon: const Icon(Icons.history_rounded, size: 16),
-                      label: const Text('Ver registro de cambios de moneda'),
-                    ),
-                  ),
-                ],
-              ],
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: 12),
             TextField(

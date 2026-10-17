@@ -38,6 +38,7 @@ class HomeViewModel extends ViewModel {
   List<PersonalNote> _notes = const [];
   List<Habit> _habits = const [];
   Map<String, String> _settings = const {};
+  Map<String, double> _rates = const {};
   Map<BudgetPeriod, double> _allocations = const {};
   BudgetModel? _budget;
   Map<BudgetPeriod, double> _spent = const {};
@@ -50,6 +51,7 @@ class HomeViewModel extends ViewModel {
   List<PersonalNote> get notes => _notes;
   List<Habit> get habits => _habits;
   Map<String, String> get settings => _settings;
+  Map<String, double> get rates => _rates;
   BudgetModel? get budget => _budget;
   BudgetPeriod get period => _period;
   double get spent => _spent[_period] ?? 0;
@@ -58,7 +60,7 @@ class HomeViewModel extends ViewModel {
   String get currency => _settings['currency'] ?? '\$';
   double get balance => _accounts.fold(0, (sum, a) => sum + a.balance);
 
-  /// Diversificación del efectivo agrupado por la moneda dominante de cada cuenta
+  // Grouped cash diversification by account base currency
   Map<String, double> get cashByCurrency {
     final map = <String, double>{};
     for (final a in _accounts) {
@@ -262,6 +264,7 @@ class HomeViewModel extends ViewModel {
       final budget = await finance.getCurrentBudget();
       final plans = await finance.getPlannedExpenses(includeCompleted: false);
       final settings = await preferences.getSettings();
+      final rates = await preferences.getCurrencyRates();
       final allocations = await finance.getBudgetAllocations(now);
       final xp = await journal.getExperience();
       final notes = await journal.getNotes();
@@ -276,6 +279,7 @@ class HomeViewModel extends ViewModel {
       _budget = budget;
       _plans = List.unmodifiable(plans);
       _settings = Map.unmodifiable(settings);
+      _rates = Map.unmodifiable(rates);
       _allocations = Map.unmodifiable(allocations);
       _spent = Map.unmodifiable(spent);
       _notes = List.unmodifiable(notes);
@@ -284,7 +288,7 @@ class HomeViewModel extends ViewModel {
       _loaded = true;
       error = null;
 
-      // Sincronizar y registrar en la DB los datos pendientes que se muestran en el frente
+      // Sync and persist pending items for dashboard overview
       final todayStr = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       final pendingList = <FrontPendingItem>[];
       for (final note in notes) {

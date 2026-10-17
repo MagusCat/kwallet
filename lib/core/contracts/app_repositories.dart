@@ -114,4 +114,12 @@ abstract interface class SettingsRepository implements Repository {
   Future<void> importFullDataFromJson(String content);
   Future<List<RecoveryCopy>> getRecoveryCopies();
   Future<String> readRecoveryCopy(String id);
+  Future<Map<String, double>> getCurrencyRates();
+  Future<void> setCurrencyRate({
+    required String currency,
+    required double rate,
+    String notes = '',
+  });
+  Future<void> removeCurrencyRate(String currency);
+  Future<List<Map<String, dynamic>>> getCurrencyRateHistory({String? currency});
 }

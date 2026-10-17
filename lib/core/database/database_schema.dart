@@ -279,8 +279,25 @@ class DatabaseSchema {
         FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE
       )
     ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS global_currency_rates (
+        currency TEXT PRIMARY KEY,
+        rate REAL NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS global_currency_history (
+        id TEXT PRIMARY KEY,
+        currency TEXT NOT NULL,
+        previous_rate REAL,
+        new_rate REAL NOT NULL,
+        notes TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL
+      )
+    ''');
     await db.execute(
-      'CREATE INDEX IF NOT EXISTS idx_acc_curr_hist ON account_currency_history(account_id, created_at DESC)',
+      'CREATE INDEX IF NOT EXISTS idx_global_curr_hist ON global_currency_history(currency, created_at DESC)',
     );
   }
 
@@ -458,6 +475,32 @@ class DatabaseSchema {
       ''');
       await db.execute(
         'CREATE INDEX IF NOT EXISTS idx_acc_curr_hist ON account_currency_history(account_id, created_at DESC)',
+      );
+    }
+
+    if (!tables.contains('global_currency_rates')) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS global_currency_rates (
+          currency TEXT PRIMARY KEY,
+          rate REAL NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      ''');
+    }
+
+    if (!tables.contains('global_currency_history')) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS global_currency_history (
+          id TEXT PRIMARY KEY,
+          currency TEXT NOT NULL,
+          previous_rate REAL,
+          new_rate REAL NOT NULL,
+          notes TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL
+        )
+      ''');
+      await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_global_curr_hist ON global_currency_history(currency, created_at DESC)',
       );
     }
   }

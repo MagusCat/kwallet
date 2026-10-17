@@ -116,6 +116,7 @@ class _HomeHubState extends State<HomeHub> {
                             child: AccountCard(
                               account: account,
                               currency: widget.controller.currency,
+                              rates: widget.controller.rates,
                               selected: widget.controller.filter == account.id,
                               onTap: () =>
                                   widget.controller.selectAccount(account.id),

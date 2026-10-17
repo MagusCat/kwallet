@@ -1,6 +1,7 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../database_context.dart';
+import 'currency_rates_repository.dart';
 
 mixin PreferencesRepository on DatabaseContext {
   Future<String> getCurrency() async {
@@ -126,5 +127,35 @@ mixin PreferencesRepository on DatabaseContext {
       whereArgs: ['main_kitty'],
     );
     notifyChanged();
+  }
+
+  Future<Map<String, double>> getCurrencyRates() async {
+    final db = await database;
+    return CurrencyRatesRepository(db).getRates();
+  }
+
+  Future<void> setCurrencyRate({
+    required String currency,
+    required double rate,
+    String notes = '',
+  }) async {
+    final db = await database;
+    await CurrencyRatesRepository(db).setRate(
+      currency: currency,
+      rate: rate,
+      notes: notes,
+    );
+    notifyChanged();
+  }
+
+  Future<void> removeCurrencyRate(String currency) async {
+    final db = await database;
+    await CurrencyRatesRepository(db).removeRate(currency);
+    notifyChanged();
+  }
+
+  Future<List<Map<String, dynamic>>> getCurrencyRateHistory({String? currency}) async {
+    final db = await database;
+    return CurrencyRatesRepository(db).getHistory(currency: currency);
   }
 }

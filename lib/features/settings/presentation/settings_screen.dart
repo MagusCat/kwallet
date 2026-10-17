@@ -9,6 +9,7 @@ import '../../../core/widgets/kitty_companion.dart';
 import '../../../core/widgets/pet_picker.dart';
 import 'widgets/notifications_settings_tile.dart';
 import 'widgets/streaks_settings_tile.dart';
+import 'widgets/currencies_settings_section.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String currentCurrency;
@@ -30,7 +31,6 @@ class _SettingsScreenState
   SettingsViewModel createViewModel(AppDependencies dependencies) =>
       dependencies.settingsScreen();
   final _currency = TextEditingController();
-  final _newRefCurrency = TextEditingController();
   final _petName = TextEditingController();
   List<String> _referenceCurrencies = [];
   Map<String, String> get _petSettings => model.settings;
@@ -61,19 +61,35 @@ class _SettingsScreenState
 
   @override
   void dispose() {
-    for (final controller in [_currency, _newRefCurrency, _petName]) {
+    for (final controller in [_currency, _petName]) {
       controller.dispose();
     }
     super.dispose();
   }
 
-  void _addRefCurrency() {
-    final cur = _newRefCurrency.text.trim().toUpperCase();
-    if (cur.isNotEmpty && !_referenceCurrencies.contains(cur) && cur != _currency.text.trim()) {
+  Future<void> _saveCurrencyRate(String currency, double rate, String notes) async {
+    final ok = await model.setCurrencyRate(
+      currency: currency,
+      rate: rate,
+      notes: notes,
+    );
+    if (ok && mounted) {
+      if (!_referenceCurrencies.contains(currency)) {
+        setState(() {
+          _referenceCurrencies.add(currency);
+        });
+        await _save();
+      }
+    }
+  }
+
+  Future<void> _removeCurrency(String currency) async {
+    final ok = await model.removeCurrencyRate(currency);
+    if (ok && mounted) {
       setState(() {
-        _referenceCurrencies.add(cur);
-        _newRefCurrency.clear();
+        _referenceCurrencies.remove(currency);
       });
+      await _save();
     }
   }
 
@@ -395,63 +411,13 @@ class _SettingsScreenState
                   ),
                   const SizedBox(height: 12),
                   const Divider(height: 40),
-                  Text(
-                    'Monedas',
-                    style: KwallTheme.fontTitle.copyWith(fontSize: 21),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _currency,
-                    maxLength: 12,
-                    decoration: const InputDecoration(
-                      labelText: 'Moneda dominante (principal)',
-                      hintText: 'C\$, USD, €, puntos…',
-                      helperText: 'Moneda base principal de tus finanzas y metas.',
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Monedas alternativas de referencia',
-                    style: KwallTheme.fontTitle.copyWith(fontSize: 14),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Agrega las monedas adicionales que utilizas. Podrás designarlas en tus cuentas para ver la diversificación de tu efectivo.',
-                    style: TextStyle(color: KwallTheme.textSecondary, fontSize: 12),
-                  ),
-                  const SizedBox(height: 8),
-                  if (_referenceCurrencies.isNotEmpty)
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final c in _referenceCurrencies)
-                          Chip(
-                            label: Text(c),
-                            onDeleted: () => setState(() => _referenceCurrencies.remove(c)),
-                          ),
-                      ],
-                    ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _newRefCurrency,
-                          decoration: const InputDecoration(
-                            hintText: 'Agregar moneda (ej. EUR, USD, NIO)',
-                            isDense: true,
-                          ),
-                          onSubmitted: (_) => _addRefCurrency(),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      IconButton.filledTonal(
-                        tooltip: 'Agregar moneda alternativa',
-                        onPressed: _addRefCurrency,
-                        icon: const Icon(Icons.add_rounded),
-                      ),
-                    ],
+                  CurrenciesSettingsSection(
+                    dominantCurrencyController: _currency,
+                    referenceCurrencies: _referenceCurrencies,
+                    rates: model.rates,
+                    onSaveRate: _saveCurrencyRate,
+                    onRemoveCurrency: _removeCurrency,
+                    onFetchHistory: model.getRateHistory,
                   ),
                   const Divider(height: 40),
                   Text(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/database/repositories/currency_rates_repository.dart';
 import '../../../../core/theme/kwall_theme.dart';
 import '../../../../core/widgets/juice_widgets.dart';
 import '../../models/account.dart';
@@ -7,6 +8,7 @@ import '../../models/account.dart';
 class AccountCard extends StatelessWidget {
   final Account account;
   final String currency;
+  final Map<String, double> rates;
   final bool selected;
   final VoidCallback onTap;
   final VoidCallback onEdit;
@@ -14,6 +16,7 @@ class AccountCard extends StatelessWidget {
     super.key,
     required this.account,
     required this.currency,
+    this.rates = const {},
     required this.selected,
     required this.onTap,
     required this.onEdit,
@@ -84,31 +87,72 @@ class AccountCard extends StatelessWidget {
                   style: KwallTheme.fontDisplay.copyWith(fontSize: 20),
                 ),
               ),
-              if (account.currencies.length > 1) ...[
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: [
-                    for (final c in account.currencies.where((c) => c != account.currency))
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: KwallTheme.surfaceContainer.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '≈ $c ${account.balance.toStringAsFixed(2)} (1:1)',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w600,
-                            color: KwallTheme.textSecondary,
+              Builder(
+                builder: (context) {
+                  final isDiff = account.currency.trim().toUpperCase() !=
+                      currency.trim().toUpperCase();
+                  final equivalents = <String>[];
+
+                  if (isDiff) {
+                    final inDominant = CurrencyRatesRepository.convert(
+                      account.balance,
+                      from: account.currency,
+                      to: currency,
+                      rates: rates,
+                      dominantCurrency: currency,
+                    );
+                    equivalents.add(
+                      '≈ ${KwallTheme.formatCurrency(inDominant, currency)}',
+                    );
+                  } else if (rates.isNotEmpty) {
+                    for (final entry in rates.entries) {
+                      if (entry.key.toUpperCase() != currency.toUpperCase()) {
+                        final inAlt = CurrencyRatesRepository.convert(
+                          account.balance,
+                          from: currency,
+                          to: entry.key,
+                          rates: rates,
+                          dominantCurrency: currency,
+                        );
+                        equivalents.add(
+                          '≈ ${KwallTheme.formatCurrency(inAlt, entry.key)}',
+                        );
+                      }
+                    }
+                  }
+
+                  if (equivalents.isEmpty) return const SizedBox.shrink();
+
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: [
+                        for (final eq in equivalents)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: KwallTheme.surfaceContainer.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              eq,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: KwallTheme.textSecondary,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
+                      ],
+                    ),
+                  );
+                },
+              ),
               const SizedBox(height: 8),
               Text(
                 'Mín. ${KwallTheme.formatCurrency(account.minimumBalance, account.currency)}',

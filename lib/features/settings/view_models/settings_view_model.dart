@@ -10,6 +10,7 @@ class SettingsViewModel extends ViewModel {
   final DeviceFiles files;
   final GitHubCloudService cloud;
   Map<String, String> settings = const {};
+  Map<String, double> rates = const {};
   List<RecoveryCopy> recoveries = const [];
   bool loading = true;
   bool _backupOperation = false;
@@ -31,8 +32,10 @@ class SettingsViewModel extends ViewModel {
     final request = beginRequest();
     try {
       final data = await repository.getSettings();
+      final ratesData = await repository.getCurrencyRates();
       if (!isCurrent(request)) return;
       settings = Map.unmodifiable(data);
+      rates = Map.unmodifiable(ratesData);
       loading = false;
       error = null;
       changed();
@@ -89,6 +92,41 @@ class SettingsViewModel extends ViewModel {
       }),
     );
   }
+
+  Future<bool> setCurrencyRate({
+    required String currency,
+    required double rate,
+    String notes = '',
+  }) async {
+    final ok = await perform(
+      () => repository.setCurrencyRate(
+        currency: currency,
+        rate: rate,
+        notes: notes,
+      ),
+      failure: 'No se pudo actualizar la tasa de cambio.',
+    );
+    if (ok) {
+      rates = Map.unmodifiable(await repository.getCurrencyRates());
+      changed();
+    }
+    return ok;
+  }
+
+  Future<bool> removeCurrencyRate(String currency) async {
+    final ok = await perform(
+      () => repository.removeCurrencyRate(currency),
+      failure: 'No se pudo eliminar la moneda.',
+    );
+    if (ok) {
+      rates = Map.unmodifiable(await repository.getCurrencyRates());
+      changed();
+    }
+    return ok;
+  }
+
+  Future<List<Map<String, dynamic>>> getRateHistory(String currency) =>
+      repository.getCurrencyRateHistory(currency: currency);
 
   Future<bool> _backup(
     Future<void> Function() action, {

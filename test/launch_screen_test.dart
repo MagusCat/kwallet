@@ -33,6 +33,22 @@ class FakeSettingsRepository implements SettingsRepository {
 
   @override
   Future<String> readRecoveryCopy(String id) async => '{}';
+
+  @override
+  Future<Map<String, double>> getCurrencyRates() async => {};
+
+  @override
+  Future<void> setCurrencyRate({
+    required String currency,
+    required double rate,
+    String notes = '',
+  }) async {}
+
+  @override
+  Future<void> removeCurrencyRate(String currency) async {}
+
+  @override
+  Future<List<Map<String, dynamic>>> getCurrencyRateHistory({String? currency}) async => [];
 }
 
 void main() {

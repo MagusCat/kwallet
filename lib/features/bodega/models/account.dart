@@ -7,8 +7,8 @@ class Account {
   final double balance;
   final double minimumBalance;
   final double openingBalance;
-  final String currency; // Moneda base
-  final List<String> currencies; // Lista de monedas soportadas (base + secundarias 1:1)
+  final String currency;
+  final List<String> currencies;
   final String iconKey;
   final int colorValue;
   final bool isArchived;
