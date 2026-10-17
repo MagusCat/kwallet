@@ -89,6 +89,7 @@ abstract interface class JournalRepository implements Repository {
     String title, {
     String iconKey,
     int colorValue,
+    String timeBlock,
   });
   Future<void> deleteHabit(String id);
   Future<void> logHabitDays(

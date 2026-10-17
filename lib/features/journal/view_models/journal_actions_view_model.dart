@@ -13,6 +13,7 @@ class JournalActionsViewModel extends ViewModel {
     Habit? habit,
     String iconKey = 'spa_rounded',
     int colorValue = 0xFF4CAF50,
+    String timeBlock = 'anytime',
   }) {
     if (title.trim().isEmpty) return Future.value(fail('Escribe un hábito.'));
     return perform(
@@ -21,6 +22,7 @@ class JournalActionsViewModel extends ViewModel {
         title.trim(),
         iconKey: iconKey,
         colorValue: colorValue,
+        timeBlock: timeBlock,
       ),
     );
   }

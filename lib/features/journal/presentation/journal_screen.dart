@@ -11,6 +11,7 @@ import 'habit_check_in.dart';
 import 'journal_sheets.dart';
 
 import '../models/journal_models.dart';
+import 'widgets/habit_time_block_filter.dart';
 
 export 'journal_sheets.dart' show NoteSheet;
 
@@ -36,6 +37,7 @@ class _JournalScreenState
   Map<String, String> get _settings => model.settings;
   int get _xp => model.xp;
   late int _tab = widget.initialTab;
+  String _activeTimeBlock = 'all';
   DateTime? _selectedDay;
   DateTime get _day => _selectedDay ?? DateTime.now();
   void _selectDay(DateTime date) => setState(
@@ -248,8 +250,15 @@ class _JournalScreenState
                       settings: _settings,
                       reward: _xp,
                     ),
+                    if (_habits.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      HabitTimeBlockFilter(
+                        activeBlock: _activeTimeBlock,
+                        onChanged: (block) => setState(() => _activeTimeBlock = block),
+                      ),
+                    ],
                     const SizedBox(height: 12),
-                    for (final habit in _habits)
+                    for (final habit in HabitTimeBlockFilter.filter(_habits, _activeTimeBlock))
                       HabitCard(
                         key: ValueKey(habit.id),
                         habit: habit,

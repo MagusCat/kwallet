@@ -7,6 +7,7 @@ import '../view_models/journal_actions_view_model.dart';
 import '../../../core/theme/kwall_theme.dart';
 import '../../../core/widgets/finance_widgets.dart';
 import '../models/journal_models.dart';
+import 'widgets/habit_time_block_selector.dart';
 
 class NoteSheet extends StatefulWidget {
   final PersonalNote? note;
@@ -171,6 +172,7 @@ class _HabitSheetState
   late final _title = TextEditingController(text: widget.initial);
   late String _iconKey = widget.habit?.iconKey ?? 'spa_rounded';
   late int _colorValue = widget.habit?.colorValue ?? 0xFF4CAF50;
+  late String _timeBlock = widget.habit?.timeBlock ?? 'anytime';
   int _selectedCategoryIndex = 0;
 
   @override
@@ -352,6 +354,11 @@ class _HabitSheetState
                 ),
             ],
           ),
+          const SizedBox(height: 16),
+          HabitTimeBlockSelector(
+            selected: _timeBlock,
+            onChanged: (val) => setState(() => _timeBlock = val),
+          ),
           if (model.error != null) ...[
             const SizedBox(height: 8),
             Text(model.error!, style: TextStyle(color: KwallTheme.expenseRed)),
@@ -366,6 +373,7 @@ class _HabitSheetState
                       habit: widget.habit,
                       iconKey: _iconKey,
                       colorValue: _colorValue,
+                      timeBlock: _timeBlock,
                     );
                     if (saved && context.mounted) Navigator.pop(context, true);
                   },

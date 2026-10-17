@@ -200,6 +200,7 @@ class Habit {
   final String title;
   final String iconKey;
   final int colorValue;
+  final String timeBlock;
   final List<HabitLog> logs;
 
   const Habit({
@@ -207,6 +208,7 @@ class Habit {
     required this.title,
     this.iconKey = 'spa_rounded',
     this.colorValue = 0xFF4CAF50,
+    this.timeBlock = 'anytime',
     this.logs = const [],
   });
 

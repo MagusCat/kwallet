@@ -128,6 +128,7 @@ mixin JournalRepository on DatabaseContext {
             title: habit['title'] as String,
             iconKey: (habit['icon_key'] as String?) ?? 'spa_rounded',
             colorValue: (habit['color_value'] as int?) ?? 0xFF4CAF50,
+            timeBlock: (habit['time_block'] as String?) ?? 'anytime',
             logs: byHabit[habit['id']] ?? const [],
           ),
         )
@@ -139,6 +140,7 @@ mixin JournalRepository on DatabaseContext {
     String title, {
     String iconKey = 'spa_rounded',
     int colorValue = 0xFF4CAF50,
+    String timeBlock = 'anytime',
   }) async {
     if (title.trim().isEmpty) throw ArgumentError('Escribe un hábito');
     final db = await database;
@@ -148,6 +150,7 @@ mixin JournalRepository on DatabaseContext {
         'title': title.trim(),
         'icon_key': iconKey,
         'color_value': colorValue,
+        'time_block': timeBlock,
       },
       where: 'id = ?',
       whereArgs: [id],
@@ -158,6 +161,7 @@ mixin JournalRepository on DatabaseContext {
         'title': title.trim(),
         'icon_key': iconKey,
         'color_value': colorValue,
+        'time_block': timeBlock,
         'created_at': DateTime.now().toIso8601String(),
       });
       await RewardEvents.award(db, 'habit_created:$id', 10);
