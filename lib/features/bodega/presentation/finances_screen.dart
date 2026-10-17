@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/kwall_theme.dart';
 import '../../../core/widgets/finance_widgets.dart';
+import '../../../core/widgets/financial_balance_card.dart';
 import '../../../core/widgets/juice_widgets.dart';
 import '../../../core/widgets/pet_cameo_empty_state.dart';
 import '../models/account.dart';
@@ -79,95 +80,13 @@ class FinancesScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // 1. Tarjeta de Saldo y Disponibilidad
-              LedgerPanel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Saldo Total',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: KwallTheme.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        KwallTheme.formatCurrency(
-                          controller.balance,
-                          controller.currency,
-                        ),
-                        style: KwallTheme.fontDisplay.copyWith(fontSize: 36),
-                      ),
-                    ),
-                    if (cashByCur.length > 1) ...[
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 6,
-                        children: [
-                          for (final entry in cashByCur.entries)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: KwallTheme.surfaceContainer.withValues(alpha: 0.6),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: KwallTheme.border.withValues(alpha: 0.2),
-                                ),
-                              ),
-                              child: Text(
-                                '${entry.key}: ${KwallTheme.formatCurrency(entry.value, entry.key)}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: KwallTheme.textSecondary,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: KwallTheme.surfaceContainer.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 10,
-                            height: 10,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: KwallTheme.incomeGreen,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Libre para gastar: ${KwallTheme.formatCurrency(controller.available, controller.currency)}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: KwallTheme.accent,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+              // 1. Unified Balance Card
+              FinancialBalanceCard(
+                title: 'Saldo Total',
+                balance: controller.balance,
+                available: controller.available,
+                currency: controller.currency,
+                cashByCurrency: cashByCur,
               ),
               const SizedBox(height: 16),
 
