@@ -364,13 +364,7 @@ class _PetHeroCardState extends State<PetHeroCard>
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          PetDialogueBubble(
-            controller: controller,
-            isPurring: _isCelebrating,
-            isAnnoyed: _isAnnoyed,
-          ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
           LayoutBuilder(
             builder: (context, constraints) {
@@ -422,6 +416,22 @@ class _PetHeroCardState extends State<PetHeroCard>
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: shadowOpacity),
                           borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+
+                    // Integrated pet dialogue bubble following the pet
+                    AnimatedAlign(
+                      duration: _isGrabbed
+                          ? Duration.zero
+                          : const Duration(milliseconds: 320),
+                      curve: Curves.easeOutCubic,
+                      alignment: Alignment(_xPos, _yPos - 0.40),
+                      child: IgnorePointer(
+                        child: PetDialogueBubble(
+                          controller: controller,
+                          isPurring: _isCelebrating,
+                          isAnnoyed: _isAnnoyed,
                         ),
                       ),
                     ),
