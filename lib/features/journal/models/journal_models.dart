@@ -79,7 +79,7 @@ class HabitPalette {
 
 const habitPalettes = [
   HabitPalette(
-    category: 'Salud y Naturaleza (Bosque)',
+    category: 'Salud y Naturaleza',
     icons: [
       ('spa_rounded', 'Salud'),
       ('directions_run_rounded', 'Ejercicio'),
@@ -96,7 +96,7 @@ const habitPalettes = [
     ],
   ),
   HabitPalette(
-    category: 'Productividad y Mente (Ciruela)',
+    category: 'Productividad y Mente',
     icons: [
       ('book_rounded', 'Lectura'),
       ('laptop_chromebook_rounded', 'Trabajo'),
@@ -113,14 +113,14 @@ const habitPalettes = [
     ],
   ),
   HabitPalette(
-    category: 'Creatividad y Pasión (Rosa)',
+    category: 'Creatividad y Pasión',
     icons: [
       ('palette_rounded', 'Arte'),
       ('music_note_rounded', 'Música'),
       ('camera_alt_rounded', 'Fotografía'),
       ('brush_rounded', 'Dibujo'),
       ('draw_rounded', 'Escritura'),
-      ('mic_rounded', 'Canto / Voz'),
+      ('mic_rounded', 'Canto y Voz'),
     ],
     colors: [
       (0xFFA14665, 'Palo de rosa'),
@@ -130,13 +130,13 @@ const habitPalettes = [
     ],
   ),
   HabitPalette(
-    category: 'Energía y Finanzas (Miel)',
+    category: 'Energía y Finanzas',
     icons: [
-      ('local_fire_department_rounded', 'Racha / Energía'),
+      ('local_fire_department_rounded', 'Racha y Energía'),
       ('savings_rounded', 'Ahorro'),
       ('bolt_rounded', 'Vitalidad'),
       ('emoji_events_rounded', 'Logros'),
-      ('coffee_rounded', 'Café / Mañana'),
+      ('coffee_rounded', 'Café matutino'),
       ('eco_rounded', 'Naturaleza'),
     ],
     colors: [
@@ -147,7 +147,7 @@ const habitPalettes = [
     ],
   ),
   HabitPalette(
-    category: 'Equilibrio y Calma (Tierra)',
+    category: 'Equilibrio y Calma',
     icons: [
       ('spa_rounded', 'Armonía'),
       ('check_circle_rounded', 'Constancia'),

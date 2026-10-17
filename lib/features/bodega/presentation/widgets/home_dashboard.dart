@@ -15,7 +15,7 @@ import 'habit_dot_tracker.dart';
 import 'home_tasks_panel.dart';
 import 'upcoming_dates_panel.dart';
 
-class HomeDashboard extends StatelessWidget {
+class HomeDashboard extends StatefulWidget {
   final HomeViewModel controller;
   final ValueChanged<String> onTransaction;
   final VoidCallback onAddAccount;
@@ -40,19 +40,36 @@ class HomeDashboard extends StatelessWidget {
   });
 
   @override
+  State<HomeDashboard> createState() => _HomeDashboardState();
+}
+
+class _HomeDashboardState extends State<HomeDashboard> {
+  bool _isHoldingPet = false;
+
+  void _onPetHoldChanged(bool isHolding) {
+    if (_isHoldingPet != isHolding) {
+      setState(() => _isHoldingPet = isHolding);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) => SafeArea(
     bottom: false,
     child: ContentWidth(
       child: RefreshIndicator(
-        onRefresh: controller.load,
+        onRefresh: widget.controller.load,
         child: ListView(
+          physics: _isHoldingPet
+              ? const NeverScrollableScrollPhysics()
+              : const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
           children: [
             // 1. Hero Pet Companion & Resumen de Saldos y Acciones
             HomeOverview(
-              controller: controller,
-              onOpenFinances: onOpenFinances,
-              onSettings: onSettings,
+              controller: widget.controller,
+              onOpenFinances: widget.onOpenFinances,
+              onSettings: widget.onSettings,
+              onPetHoldChanged: _onPetHoldChanged,
             ),
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -61,51 +78,51 @@ class HomeDashboard extends StatelessWidget {
                 color: KwallTheme.accent,
               ),
               title: Text(
-                '${KwallTheme.formatCurrency(controller.weeklyCommitments, controller.currency)} previstos esta semana',
+                '${KwallTheme.formatCurrency(widget.controller.weeklyCommitments, widget.controller.currency)} previstos esta semana',
               ),
               trailing: const Icon(Icons.chevron_right),
-              onTap: onAgenda,
+              onTap: widget.onAgenda,
             ),
             const SizedBox(height: 16),
 
             // 2. Hub de Cuentas, Notas y Hábitos (Selector interactivo)
             HomeHub(
-              controller: controller,
-              onAddAccount: onAddAccount,
-              onEditAccount: onEditAccount,
-              onJournal: onJournal,
+              controller: widget.controller,
+              onAddAccount: widget.onAddAccount,
+              onEditAccount: widget.onEditAccount,
+              onJournal: widget.onJournal,
             ),
             const SizedBox(height: 16),
 
             // 3. Hábitos con gráfico de 7 puntos y marcado directo
             HabitDotTracker(
-              controller: controller,
+              controller: widget.controller,
               onAddHabit: () => editHabit(context),
-              onOpenHabits: () => onJournal(1),
+              onOpenHabits: () => widget.onJournal(1),
             ),
             const SizedBox(height: 16),
 
             // 4. Tareas pendientes de listas
             HomeTasksPanel(
-              controller: controller,
+              controller: widget.controller,
               onNewTask: () => showModalBottomSheet(
                 context: context,
                 isScrollControlled: true,
                 builder: (_) => const NoteSheet(initialKind: 'list'),
               ),
-              onOpenNotes: () => onJournal(0),
+              onOpenNotes: () => widget.onJournal(0),
             ),
             const SizedBox(height: 16),
 
             // 5. Fechas importantes y compromisos
             UpcomingDatesPanel(
-              controller: controller,
-              onOpenAgenda: onAgenda,
+              controller: widget.controller,
+              onOpenAgenda: widget.onAgenda,
             ),
             const SizedBox(height: 16),
 
             // 6. Presupuesto flexible
-            BudgetPanel(controller: controller, onEdit: onBudget),
+            BudgetPanel(controller: widget.controller, onEdit: widget.onBudget),
             const SizedBox(height: 26),
 
             // 7. Movimientos recientes
@@ -113,7 +130,7 @@ class HomeDashboard extends StatelessWidget {
               'Movimientos',
               style: KwallTheme.fontTitle.copyWith(fontSize: 21),
             ),
-            if (controller.transactions.isEmpty)
+            if (widget.controller.transactions.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 20),
                 child: Text(
@@ -126,18 +143,18 @@ class HomeDashboard extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (_) =>
-                      MovementsScreen(currency: controller.currency),
+                      MovementsScreen(currency: widget.controller.currency),
                 ),
               ),
               icon: const Icon(Icons.manage_search_rounded),
               label: const Text('Ver todo el historial'),
             ),
-            for (final tx in controller.transactions)
+            for (final tx in widget.controller.transactions)
               MovementTile(
                 tx: tx,
-                currency: controller.currency,
-                categories: controller.categories,
-                onVoid: controller.voidMovement,
+                currency: widget.controller.currency,
+                categories: widget.controller.categories,
+                onVoid: widget.controller.voidMovement,
               ),
           ],
         ),

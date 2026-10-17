@@ -9,18 +9,19 @@ class HomeOverview extends StatelessWidget {
   final HomeViewModel controller;
   final VoidCallback? onOpenFinances;
   final VoidCallback? onSettings;
+  final ValueChanged<bool>? onPetHoldChanged;
 
   const HomeOverview({
     super.key,
     required this.controller,
     this.onOpenFinances,
     this.onSettings,
+    this.onPetHoldChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    final mirror = controller.settings['mirror_currency'] ?? '';
-    final rate = double.tryParse(controller.settings['mirror_rate'] ?? '') ?? 0;
+    final cashByCur = controller.cashByCurrency;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -46,7 +47,10 @@ class HomeOverview extends StatelessWidget {
         ),
 
         // 1. CARD PRINCIPAL: LA MASCOTA VIRTUAL
-        PetHeroCard(controller: controller),
+        PetHeroCard(
+          controller: controller,
+          onHoldChanged: onPetHoldChanged,
+        ),
         const SizedBox(height: 16),
 
         // 2. CARD DE ESTADO FINANCIERO (Sin botones de registro de movimiento)
@@ -125,14 +129,35 @@ class HomeOverview extends StatelessWidget {
                   style: KwallTheme.fontDisplay.copyWith(fontSize: 34),
                 ),
               ),
-              if (mirror.isNotEmpty && rate > 0) ...[
-                const SizedBox(height: 2),
-                Text(
-                  '≈ ${KwallTheme.formatCurrency(controller.balance * rate, mirror)}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: KwallTheme.textSecondary,
-                  ),
+              if (cashByCur.length > 1) ...[
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    for (final entry in cashByCur.entries)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: KwallTheme.surfaceContainer.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: KwallTheme.border.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Text(
+                          '${entry.key}: ${KwallTheme.formatCurrency(entry.value, entry.key)}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: KwallTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ],
               const SizedBox(height: 12),

@@ -32,6 +32,17 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- Kwall Virtual Pet & Habits Widget Configure Activity -->
+        <activity
+            android:name=".KwallPetWidgetConfigureActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.Dialog"
+            android:label="Configurar Widget Kwall">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <!-- Kwall Virtual Pet & Habits AppWidget -->
         <receiver
             android:name=".KwallPetWidgetProvider"

@@ -29,8 +29,7 @@ class FinancesScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mirror = controller.settings['mirror_currency'] ?? '';
-    final rate = double.tryParse(controller.settings['mirror_rate'] ?? '') ?? 0;
+    final cashByCur = controller.cashByCurrency;
 
     return SafeArea(
       bottom: false,
@@ -104,14 +103,35 @@ class FinancesScreen extends StatelessWidget {
                         style: KwallTheme.fontDisplay.copyWith(fontSize: 36),
                       ),
                     ),
-                    if (mirror.isNotEmpty && rate > 0) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '≈ ${KwallTheme.formatCurrency(controller.balance * rate, mirror)}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: KwallTheme.textSecondary,
-                        ),
+                    if (cashByCur.length > 1) ...[
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          for (final entry in cashByCur.entries)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: KwallTheme.surfaceContainer.withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: KwallTheme.border.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: Text(
+                                '${entry.key}: ${KwallTheme.formatCurrency(entry.value, entry.key)}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: KwallTheme.textSecondary,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                     const SizedBox(height: 14),

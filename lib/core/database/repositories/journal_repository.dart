@@ -160,6 +160,7 @@ mixin JournalRepository on DatabaseContext {
         'color_value': colorValue,
         'created_at': DateTime.now().toIso8601String(),
       });
+      await RewardEvents.award(db, 'habit_created:$id', 10);
     }
     notifyChanged();
   }

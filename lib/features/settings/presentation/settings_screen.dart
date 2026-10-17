@@ -28,14 +28,13 @@ class _SettingsScreenState
   SettingsViewModel createViewModel(AppDependencies dependencies) =>
       dependencies.settingsScreen();
   final _currency = TextEditingController();
-  final _mirror = TextEditingController();
-  final _rate = TextEditingController();
+  final _newRefCurrency = TextEditingController();
   final _petName = TextEditingController();
+  List<String> _referenceCurrencies = [];
   Map<String, String> get _petSettings => model.settings;
   bool get _loading => model.loading;
   bool get _saving => model.busy;
   bool get _backupBusy => model.backupBusy;
-  bool _mirrorEnabled = false;
   bool _fieldsReady = false;
   bool _justSaved = false;
   String? get _error => model.error;
@@ -49,18 +48,31 @@ class _SettingsScreenState
 
   void _syncFields() {
     _currency.text = model.settings['currency'] ?? widget.currentCurrency;
-    _mirror.text = model.settings['mirror_currency'] ?? '';
-    _rate.text = model.settings['mirror_rate'] ?? '';
+    final rawRefs = model.settings['reference_currencies'] ?? '';
+    _referenceCurrencies = rawRefs
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
     _petName.text = model.settings['pet_name'] ?? 'Mishi';
-    _mirrorEnabled = _mirror.text.isNotEmpty;
   }
 
   @override
   void dispose() {
-    for (final controller in [_currency, _mirror, _rate, _petName]) {
+    for (final controller in [_currency, _newRefCurrency, _petName]) {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  void _addRefCurrency() {
+    final cur = _newRefCurrency.text.trim().toUpperCase();
+    if (cur.isNotEmpty && !_referenceCurrencies.contains(cur) && cur != _currency.text.trim()) {
+      setState(() {
+        _referenceCurrencies.add(cur);
+        _newRefCurrency.clear();
+      });
+    }
   }
 
   Future<void> _appearance(String key, String value) =>
@@ -68,24 +80,24 @@ class _SettingsScreenState
   Future<void> _save() async {
     final saved = await model.save(
       currency: _currency.text,
-      mirrorEnabled: _mirrorEnabled,
-      mirror: _mirror.text,
-      rateText: _rate.text,
+      referenceCurrencies: _referenceCurrencies,
       petName: _petName.text,
     );
     if (saved && mounted) {
       widget.onCurrencyChanged(_currency.text.trim());
       setState(() => _justSaved = true);
       ScaffoldMessenger.of(context).removeCurrentSnackBar();
+      final iconColor = Theme.of(context).snackBarTheme.contentTextStyle?.color ??
+          (KwallTheme.isDark ? const Color(0xFF191C19) : const Color(0xFFF0F1EB));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          content: const Row(
+          content: Row(
             children: [
-              Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-              SizedBox(width: 10),
-              Text('Ajustes guardados correctamente'),
+              Icon(Icons.check_circle_rounded, color: iconColor, size: 20),
+              const SizedBox(width: 10),
+              const Text('Ajustes guardados correctamente'),
             ],
           ),
           duration: const Duration(seconds: 2),
@@ -222,17 +234,19 @@ class _SettingsScreenState
   Future<void> _syncToGitHub() async {
     final ok = await model.syncToGitHub();
     if (ok && mounted) {
+      final iconColor = Theme.of(context).snackBarTheme.contentTextStyle?.color ??
+          (KwallTheme.isDark ? const Color(0xFF191C19) : const Color(0xFFF0F1EB));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          content: const Row(
+          content: Row(
             children: [
-              Icon(Icons.cloud_done_rounded, color: Colors.white, size: 20),
-              SizedBox(width: 10),
-              Text('Respaldo sincronizado en GitHub'),
+              Icon(Icons.cloud_done_rounded, color: iconColor, size: 20),
+              const SizedBox(width: 10),
+              const Text('Respaldo sincronizado en GitHub'),
             ],
           ),
         ),
@@ -388,44 +402,55 @@ class _SettingsScreenState
                     controller: _currency,
                     maxLength: 12,
                     decoration: const InputDecoration(
-                      labelText: 'Moneda principal',
+                      labelText: 'Moneda dominante (principal)',
                       hintText: 'C\$, USD, €, puntos…',
+                      helperText: 'Moneda base principal de tus finanzas y metas.',
                     ),
                   ),
+                  const SizedBox(height: 14),
                   Text(
-                    'Cambiar el símbolo no convierte tus saldos existentes.',
-                    style: TextStyle(color: KwallTheme.textSecondary),
+                    'Monedas alternativas de referencia',
+                    style: KwallTheme.fontTitle.copyWith(fontSize: 14),
                   ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Moneda espejo'),
-                    value: _mirrorEnabled,
-                    onChanged: (value) =>
-                        setState(() => _mirrorEnabled = value),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Agrega las monedas adicionales que utilizas. Podrás designarlas en tus cuentas para ver la diversificación de tu efectivo.',
+                    style: TextStyle(color: KwallTheme.textSecondary, fontSize: 12),
                   ),
-                  if (_mirrorEnabled) ...[
-                    TextField(
-                      controller: _mirror,
-                      maxLength: 12,
-                      decoration: const InputDecoration(
-                        labelText: 'Símbolo espejo',
-                      ),
+                  const SizedBox(height: 8),
+                  if (_referenceCurrencies.isNotEmpty)
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final c in _referenceCurrencies)
+                          Chip(
+                            label: Text(c),
+                            onDeleted: () => setState(() => _referenceCurrencies.remove(c)),
+                          ),
+                      ],
                     ),
-                    TextField(
-                      controller: _rate,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _newRefCurrency,
+                          decoration: const InputDecoration(
+                            hintText: 'Agregar moneda (ej. EUR, USD, NIO)',
+                            isDense: true,
+                          ),
+                          onSubmitted: (_) => _addRefCurrency(),
+                        ),
                       ),
-                      decoration: const InputDecoration(
-                        labelText: '1 moneda principal equivale a',
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        tooltip: 'Agregar moneda alternativa',
+                        onPressed: _addRefCurrency,
+                        icon: const Icon(Icons.add_rounded),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tasa manual de referencia.',
-                      style: TextStyle(color: KwallTheme.textSecondary),
-                    ),
-                  ],
+                    ],
+                  ),
                   const Divider(height: 40),
                   Text(
                     'Tu compañero',
@@ -497,71 +522,50 @@ class _SettingsScreenState
                     style: KwallTheme.fontTitle.copyWith(fontSize: 21),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    'Personaliza el fondo del widget de Android para que combine con tu pantalla de inicio.',
-                    style: TextStyle(color: KwallTheme.textSecondary),
-                  ),
-                  const SizedBox(height: 16),
-                  SegmentedButton<String>(
-                    segments: const [
-                      ButtonSegment(
-                        value: 'default',
-                        icon: Icon(Icons.crop_portrait_rounded),
-                        label: Text('Tarjeta'),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: KwallTheme.surfaceContainer.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: KwallTheme.border.withValues(alpha: 0.25),
                       ),
-                      ButtonSegment(
-                        value: 'transparent',
-                        icon: Icon(Icons.blur_on_rounded),
-                        label: Text('Sin fondo'),
-                      ),
-                      ButtonSegment(
-                        value: 'color',
-                        icon: Icon(Icons.color_lens_outlined),
-                        label: Text('Color'),
-                      ),
-                    ],
-                    selected: {model.settings['widget_bg_mode'] ?? 'default'},
-                    onSelectionChanged: (value) =>
-                        _appearance('widget_bg_mode', value.first),
-                  ),
-                  if ((model.settings['widget_bg_mode'] ?? 'default') == 'color') ...[
-                    const SizedBox(height: 14),
-                    Text(
-                      'Color de fondo del widget',
-                      style: KwallTheme.fontTitle.copyWith(fontSize: 14),
                     ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        for (final preset in const [
-                          ('Bosque', 0xFF212722),
-                          ('Ciruela', 0xFF281F2C),
-                          ('Rosa', 0xFF2C1E23),
-                          ('Miel', 0xFF2C261A),
-                          ('OLED', 0xFF101211),
-                          ('Pizarra', 0xFF1E252B),
-                        ])
-                          ChoiceChip(
-                            avatar: Container(
-                              width: 14,
-                              height: 14,
-                              decoration: BoxDecoration(
-                                color: Color(preset.$2),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white24),
+                        Icon(
+                          Icons.widgets_outlined,
+                          color: KwallTheme.accent,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Personalización nativa de Android',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
                               ),
-                            ),
-                            label: Text(preset.$1),
-                            selected: (model.settings['widget_bg_color'] ?? '0xFF212722') == preset.$2.toString() ||
-                                (model.settings['widget_bg_color'] == null && preset.$2 == 0xFF212722),
-                            onSelected: (_) =>
-                                _appearance('widget_bg_color', preset.$2.toString()),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Para configurar o cambiar el estilo de tu widget, mantén presionado el widget en tu pantalla de inicio de Android y toca el icono de editar / lápiz.',
+                                style: TextStyle(
+                                  color: KwallTheme.textSecondary,
+                                  fontSize: 12,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
                       ],
                     ),
-                  ],
+                  ),
                   const Divider(height: 40),
                   Text(
                     'Tus datos, a salvo',

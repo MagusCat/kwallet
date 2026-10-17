@@ -1,5 +1,4 @@
 import '../../../core/contracts/app_repositories.dart';
-import '../../../core/models/amount.dart';
 import '../../../core/models/backup_preview.dart';
 import '../../../core/models/recovery_copy.dart';
 import '../../../core/mvvm/view_model.dart';
@@ -67,22 +66,25 @@ class SettingsViewModel extends ViewModel {
   }
   Future<bool> save({
     required String currency,
-    required bool mirrorEnabled,
-    required String mirror,
-    required String rateText,
+    List<String>? referenceCurrencies,
+    bool mirrorEnabled = false,
+    String mirror = '',
+    String rateText = '',
     required String petName,
   }) {
-    final rate = parseAmount(rateText);
-    if (currency.trim().isEmpty ||
-        (mirrorEnabled &&
-            (mirror.trim().isEmpty || rate == null || rate <= 0))) {
-      return Future.value(fail('Revisa el símbolo y la tasa de conversión.'));
+    if (currency.trim().isEmpty) {
+      return Future.value(fail('Revisa el símbolo de la moneda dominante.'));
     }
+    final refCurrenciesStr = (referenceCurrencies != null && referenceCurrencies.isNotEmpty)
+        ? referenceCurrencies.map((c) => c.trim()).where((c) => c.isNotEmpty).join(',')
+        : (mirrorEnabled && mirror.trim().isNotEmpty ? mirror.trim() : '');
+
     return perform(
       () => _write({
         'currency': currency.trim(),
-        'mirror_currency': mirrorEnabled ? mirror.trim() : '',
-        'mirror_rate': mirrorEnabled ? rate.toString() : '',
+        'reference_currencies': refCurrenciesStr,
+        'mirror_currency': '',
+        'mirror_rate': '',
         'pet_name': petName.trim().isEmpty ? 'Mishi' : petName.trim(),
       }),
     );

@@ -28,6 +28,9 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
 
   late final PageController _pageController;
   late final TextEditingController _petName;
+  late final TextEditingController _currency;
+  late final TextEditingController _newRefCurrency;
+  late final List<String> _referenceCurrencies;
   int _currentStep = 0;
   String _selectedStyle = 'classic';
   bool _initialized = false;
@@ -37,6 +40,9 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
     super.initState();
     _pageController = PageController();
     _petName = TextEditingController(text: 'Mishi');
+    _currency = TextEditingController(text: '\$');
+    _newRefCurrency = TextEditingController();
+    _referenceCurrencies = ['USD', 'EUR'];
   }
 
   @override
@@ -45,6 +51,18 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
       _selectedStyle = model.settings['pet_style'] ?? 'classic';
       final initialName = model.settings['pet_name'] ?? 'Mishi';
       _petName.text = initialName;
+      final initialCur = model.settings['currency'];
+      if (initialCur != null && initialCur.isNotEmpty) {
+        _currency.text = initialCur;
+      }
+      final rawRefs = model.settings['reference_currencies'] ?? '';
+      if (rawRefs.isNotEmpty) {
+        _referenceCurrencies = rawRefs
+            .split(',')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toList();
+      }
       _initialized = true;
     }
   }
@@ -53,6 +71,8 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
   void dispose() {
     _pageController.dispose();
     _petName.dispose();
+    _currency.dispose();
+    _newRefCurrency.dispose();
     super.dispose();
   }
 
@@ -61,7 +81,14 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
   Future<void> _enter(int page) async {
     final petName =
         _petName.text.trim().isEmpty ? 'Mishi' : _petName.text.trim();
-    if (await model.enter(petStyle: _selectedStyle, petName: petName)) {
+    final cur = _currency.text.trim().isEmpty ? '\$' : _currency.text.trim();
+    final refCur = _referenceCurrencies.join(',');
+    if (await model.enter(
+      petStyle: _selectedStyle,
+      petName: petName,
+      currency: cur,
+      referenceCurrencies: refCur,
+    )) {
       if (mounted) setState(() => _page = page);
     } else if (mounted) {
       showFailure(context, model.error ?? 'No pudimos abrir tu inicio.');
@@ -93,6 +120,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
       ..._settings,
       'pet_style': _selectedStyle,
       'pet_name': _petName.text,
+      'currency': _currency.text,
     };
 
     return Scaffold(
@@ -106,6 +134,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               children: [
                 _buildIntroStep(currentPetSettings),
                 _buildPetStep(currentPetSettings),
+                _buildCurrencyStep(currentPetSettings),
                 _buildPrivacyStep(currentPetSettings),
               ],
             ),
@@ -149,9 +178,16 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                 _feature(Icons.spa_outlined, 'Hábitos'),
               ],
             ),
-            const SizedBox(height: 28),
-            _stepIndicator(),
+            const SizedBox(height: 16),
+            _infoCard(
+              icon: Icons.tips_and_updates_outlined,
+              title: 'Consejos para usar Kwallet',
+              description:
+                  '1. Registra tus movimientos al momento para evitar gastos invisibles.\n2. Separa tus cuentas por propósito (efectivo, banco, reserva de ahorro).\n3. Revisa tus límites para gastar con tranquilidad y sin sorpresas.',
+            ),
             const SizedBox(height: 24),
+            _stepIndicator(),
+            const SizedBox(height: 20),
             FilledButton.icon(
               onPressed: () => _goToStep(1),
               icon: const Icon(Icons.arrow_forward_rounded),
@@ -176,7 +212,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
         ),
       );
 
-  /// Paso 1: Personalizar estilo de la mascota y su nombre
+  /// Paso 1: Personalizar estilo de la mascota y su nombre, junto con el compromiso
   Widget _buildPetStep(Map<String, String> petSettings) => SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Column(
@@ -212,12 +248,12 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               ),
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               'Raza o estilo:',
               style: KwallTheme.fontTitle.copyWith(fontSize: 14),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -253,6 +289,13 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                   ),
               ],
             ),
+            const SizedBox(height: 16),
+            _infoCard(
+              icon: Icons.favorite_border_rounded,
+              title: 'Compromiso con tu compañero',
+              description:
+                  'Tu mascota virtual se alimenta de tu constancia. Cada hábito completado te otorga +10 XP para subirla de nivel y desbloquear nuevas reacciones. Si abandonas tus registros, se quedará dormida o desganada.',
+            ),
             const SizedBox(height: 24),
             _stepIndicator(),
             const SizedBox(height: 20),
@@ -269,6 +312,136 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                   child: FilledButton.icon(
                     onPressed: () => _goToStep(2),
                     icon: const Icon(Icons.arrow_forward_rounded),
+                    label: const Text('Configurar monedas'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+
+  /// Paso 2: Configuración de moneda dominante y monedas alternativas
+  Widget _buildCurrencyStep(Map<String, String> petSettings) => SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Tus monedas',
+              textAlign: TextAlign.center,
+              style: KwallTheme.fontTitle.copyWith(fontSize: 24),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Define tu moneda dominante y las monedas de referencia para saber cómo se diversifica tu efectivo.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: KwallTheme.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _currency,
+              maxLength: 8,
+              decoration: const InputDecoration(
+                labelText: 'Moneda dominante (principal)',
+                hintText: 'C\$, USD, €, MXN…',
+                prefixIcon: Icon(Icons.monetization_on_outlined),
+                helperText: 'Base principal de tus saldos y metas.',
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Sugerencias rápidas:',
+              style: TextStyle(color: KwallTheme.textSecondary, fontSize: 12),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final cur in ['\$', 'USD', 'C\$', 'EUR', 'MXN', 'COP'])
+                  ActionChip(
+                    label: Text(cur),
+                    onPressed: () => setState(() => _currency.text = cur),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Otras monedas alternativas (de referencia)',
+              style: KwallTheme.fontTitle.copyWith(fontSize: 14),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Podrás asignarlas a tus cuentas para tener claro cómo está diversificado tu dinero.',
+              style: TextStyle(color: KwallTheme.textSecondary, fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+            if (_referenceCurrencies.isNotEmpty)
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final c in _referenceCurrencies)
+                    Chip(
+                      label: Text(c),
+                      onDeleted: () => setState(() => _referenceCurrencies.remove(c)),
+                    ),
+                ],
+              ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _newRefCurrency,
+                    decoration: const InputDecoration(
+                      hintText: 'Agregar moneda (ej. EUR, NIO, USD)',
+                      isDense: true,
+                    ),
+                    onSubmitted: (_) {
+                      final val = _newRefCurrency.text.trim().toUpperCase();
+                      if (val.isNotEmpty && !_referenceCurrencies.contains(val)) {
+                        setState(() {
+                          _referenceCurrencies.add(val);
+                          _newRefCurrency.clear();
+                        });
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filledTonal(
+                  tooltip: 'Añadir moneda',
+                  onPressed: () {
+                    final val = _newRefCurrency.text.trim().toUpperCase();
+                    if (val.isNotEmpty && !_referenceCurrencies.contains(val)) {
+                      setState(() {
+                        _referenceCurrencies.add(val);
+                        _newRefCurrency.clear();
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.add_rounded),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _stepIndicator(),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _goToStep(1),
+                    child: const Text('Atrás'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => _goToStep(3),
+                    icon: const Icon(Icons.arrow_forward_rounded),
                     label: const Text('Continuar'),
                   ),
                 ),
@@ -278,7 +451,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
         ),
       );
 
-  /// Paso 2: Explicación de almacenamiento local y nube opcional
+  /// Paso 3: Explicación de almacenamiento local y nube opcional
   Widget _buildPrivacyStep(Map<String, String> petSettings) => SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Column(
@@ -324,7 +497,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _goToStep(1),
+                    onPressed: () => _goToStep(2),
                     child: const Text('Atrás'),
                   ),
                 ),
@@ -395,7 +568,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
   Widget _stepIndicator() => Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          for (var i = 0; i < 3; i++)
+          for (var i = 0; i < 4; i++)
             AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               margin: const EdgeInsets.symmetric(horizontal: 4),

@@ -37,21 +37,28 @@ class FakeSettingsRepository implements SettingsRepository {
 
 void main() {
   group('LaunchViewModel Start Flow Tests', () {
-    test('enter saves selected petStyle, petName, and welcome_seen', () async {
+    test('enter saves selected petStyle, petName, currency, and referenceCurrencies', () async {
       final repo = FakeSettingsRepository();
       final vm = LaunchViewModel(repo);
 
       await vm.load();
       expect(vm.returning, false);
 
-      final entered = await vm.enter(petStyle: 'calico', petName: 'Manchitas');
+      final entered = await vm.enter(
+        petStyle: 'calico',
+        petName: 'Manchitas',
+        currency: 'USD',
+        referenceCurrencies: 'EUR,NIO',
+      );
       expect(entered, true);
       expect(repo.data['welcome_seen'], '1');
       expect(repo.data['pet_style'], 'calico');
       expect(repo.data['pet_name'], 'Manchitas');
+      expect(repo.data['currency'], 'USD');
+      expect(repo.data['reference_currencies'], 'EUR,NIO');
     });
 
-    test('enter defaults gracefully when pet parameters are omitted', () async {
+    test('enter defaults gracefully when parameters are omitted', () async {
       final repo = FakeSettingsRepository();
       final vm = LaunchViewModel(repo);
 

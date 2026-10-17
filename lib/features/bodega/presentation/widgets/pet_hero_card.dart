@@ -10,8 +10,13 @@ import '../../view_models/home_view_model.dart';
 
 class PetHeroCard extends StatefulWidget {
   final HomeViewModel controller;
+  final ValueChanged<bool>? onHoldChanged;
 
-  const PetHeroCard({super.key, required this.controller});
+  const PetHeroCard({
+    super.key,
+    required this.controller,
+    this.onHoldChanged,
+  });
 
   @override
   State<PetHeroCard> createState() => _PetHeroCardState();
@@ -188,6 +193,7 @@ class _PetHeroCardState extends State<PetHeroCard>
   }
 
   void _handlePetDropped(bool wasMoved) {
+    widget.onHoldChanged?.call(false);
     HapticFeedback.mediumImpact();
     _roamTimer?.cancel();
     _walkStepTimer?.cancel();
@@ -256,13 +262,12 @@ class _PetHeroCardState extends State<PetHeroCard>
     final allHabitsDone =
         controller.totalHabitsToday > 0 && controller.pendingHabitsCount == 0;
     final isSleepingTime = hour >= 22 || hour < 7 || (hour >= 14 && hour < 16);
-    final isPlayingTime = (hour >= 7 && hour < 12) || (hour >= 16 && hour < 20);
 
     final defaultActivity = isSleepingTime
         ? PetActivity.sleep
         : (allHabitsDone
             ? PetActivity.celebrate
-            : (isPlayingTime ? PetActivity.run : _currentActivity));
+            : _currentActivity);
 
     final effectiveActivity = _isGrabbed
         ? PetActivity.grabbed
@@ -413,9 +418,11 @@ class _PetHeroCardState extends State<PetHeroCard>
                       curve: _isGrabbed ? Curves.linear : Curves.bounceOut,
                       alignment: Alignment(_xPos, _yPos),
                       child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
                         onTap: _giveAffection,
                         onPanStart: (details) {
                           HapticFeedback.lightImpact();
+                          widget.onHoldChanged?.call(true);
                           _roamTimer?.cancel();
                           _walkStepTimer?.cancel();
                           _annoyedTimer?.cancel();
@@ -440,6 +447,7 @@ class _PetHeroCardState extends State<PetHeroCard>
                           _handlePetDropped(wasLifted);
                         },
                         onPanCancel: () {
+                          widget.onHoldChanged?.call(false);
                           _handlePetDropped(false);
                         },
                         child: AnimatedScale(

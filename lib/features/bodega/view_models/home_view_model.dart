@@ -56,6 +56,17 @@ class HomeViewModel extends ViewModel {
   int get xp => _xp;
   String get currency => _settings['currency'] ?? '\$';
   double get balance => _accounts.fold(0, (sum, a) => sum + a.balance);
+
+  /// Diversificación del efectivo agrupado por la moneda dominante de cada cuenta
+  Map<String, double> get cashByCurrency {
+    final map = <String, double>{};
+    for (final a in _accounts) {
+      final cur = a.currency.trim().isEmpty ? currency : a.currency.trim();
+      map[cur] = (map[cur] ?? 0.0) + a.balance;
+    }
+    return map;
+  }
+
   double get reserves => _accounts.fold(0, (sum, a) => sum + a.minimumBalance);
   double get committed => plannedTotal(
     _plans,

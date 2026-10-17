@@ -23,13 +23,24 @@ class LaunchViewModel extends ViewModel {
     }
   }
 
-  Future<bool> enter({String? petStyle, String? petName}) => perform(() async {
+  Future<bool> enter({
+    String? petStyle,
+    String? petName,
+    String? currency,
+    String? referenceCurrencies,
+  }) => perform(() async {
         final updates = <String, String>{'welcome_seen': '1'};
         if (petStyle != null && petStyle.isNotEmpty) {
           updates['pet_style'] = petStyle;
         }
         if (petName != null && petName.trim().isNotEmpty) {
           updates['pet_name'] = petName.trim();
+        }
+        if (currency != null && currency.trim().isNotEmpty) {
+          updates['currency'] = currency.trim();
+        }
+        if (referenceCurrencies != null && referenceCurrencies.trim().isNotEmpty) {
+          updates['reference_currencies'] = referenceCurrencies.trim();
         }
         await repository.saveSettings(updates);
       });

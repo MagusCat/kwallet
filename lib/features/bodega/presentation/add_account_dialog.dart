@@ -179,8 +179,9 @@ class _AddAccountDialogState
             TextField(
               controller: _baseCurrency,
               decoration: const InputDecoration(
-                labelText: 'Moneda base',
+                labelText: 'Moneda dominante de la cuenta',
                 hintText: 'USD, C\$, EUR, etc.',
+                helperText: 'Determina la diversificación del efectivo de esta cuenta.',
               ),
               onChanged: (val) {
                 final base = val.trim();
@@ -201,7 +202,7 @@ class _AddAccountDialogState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Monedas secundarias (conversión 1 a 1)',
+                  'Monedas secundarias de referencia (1 a 1)',
                   style: KwallTheme.fontTitle.copyWith(fontSize: 14),
                 ),
                 const SizedBox(height: 6),
@@ -211,7 +212,7 @@ class _AddAccountDialogState
                   children: [
                     for (final c in _currencies)
                       Chip(
-                        label: Text(c == _baseCurrency.text.trim() ? '$c (base)' : '$c (1:1)'),
+                        label: Text(c == _baseCurrency.text.trim() ? '$c (dominante)' : '$c (1:1)'),
                         onDeleted: c == _baseCurrency.text.trim() ? null : () => _removeCurrency(c),
                       ),
                   ],
@@ -264,10 +265,14 @@ class _AddAccountDialogState
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          content: const Row(
+                          content: Row(
                             children: [
-                              Icon(Icons.lock_outline_rounded,
-                                  color: Colors.white, size: 20),
+                              Icon(
+                                Icons.lock_outline_rounded,
+                                color: Theme.of(context).snackBarTheme.contentTextStyle?.color ??
+                                    (KwallTheme.isDark ? const Color(0xFF191C19) : const Color(0xFFF0F1EB)),
+                                size: 20,
+                              ),
                               SizedBox(width: 10),
                               Expanded(
                                 child: Text(

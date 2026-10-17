@@ -262,7 +262,7 @@ void main() {
     await service.saveHabit('h', 'Caminar');
     await service.logHabit('h', day, completed: true, mood: 'happy');
     await service.logHabit('h', day, completed: true, mood: 'happy');
-    expect(await service.getExperience(), 15);
+    expect(await service.getExperience(), 25);
     final habit = (await service.getHabits()).single;
     expect(habit.streak(day), 1);
     await service.logHabit(
@@ -281,11 +281,11 @@ void main() {
       throwsStateError,
     );
     expect((await service.getHabits()).single.logs.length, 2);
-    expect(await service.getExperience(), 15);
+    expect(await service.getExperience(), 25);
     await service.logHabitDays(['h'], previousDays, completed: true);
     await service.logHabitDays(['h'], previousDays, completed: true);
     expect((await service.getHabits()).single.logs.length, 4);
-    expect(await service.getExperience(), 35);
+    expect(await service.getExperience(), 45);
     await expectLater(
       service.logHabitDays(
         ['h'],
