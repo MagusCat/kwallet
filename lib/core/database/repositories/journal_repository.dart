@@ -1,6 +1,7 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../../../features/bodega/models/finance_overview.dart';
+import '../../../features/bodega/models/front_pending_item.dart';
 import '../../../features/journal/models/journal_models.dart';
 import '../reward_events.dart';
 import '../database_context.dart';
@@ -230,6 +231,43 @@ mixin JournalRepository on DatabaseContext {
         }
       }
     });
+    notifyChanged();
+  }
+
+  Future<void> syncFrontPendingItems(List<FrontPendingItem> items) async {
+    final db = await database;
+    await db.transaction((txn) async {
+      for (final item in items) {
+        await txn.insert(
+          'front_pending_items',
+          item.toMap(),
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+    });
+  }
+
+  Future<List<FrontPendingItem>> getFrontPendingItems({bool onlyPending = true}) async {
+    final db = await database;
+    final rows = await db.query(
+      'front_pending_items',
+      where: onlyPending ? 'is_completed = 0' : null,
+      orderBy: 'updated_at DESC',
+    );
+    return rows.map(FrontPendingItem.fromMap).toList();
+  }
+
+  Future<void> markFrontPendingItemDone(String id, bool done) async {
+    final db = await database;
+    await db.update(
+      'front_pending_items',
+      {
+        'is_completed': done ? 1 : 0,
+        'updated_at': DateTime.now().toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
     notifyChanged();
   }
 }

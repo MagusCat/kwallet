@@ -4,11 +4,13 @@ import '../../../core/mvvm/view_model.dart';
 
 import '../../../core/contracts/app_repositories.dart';
 import '../../../core/services/widget_sync_service.dart';
+import '../../../core/theme/kwall_theme.dart';
 import '../../journal/models/journal_models.dart';
 import '../models/account.dart';
 import '../models/budget_model.dart';
 import '../models/category_model.dart';
 import '../models/finance_overview.dart';
+import '../models/front_pending_item.dart';
 import '../models/planned_expense.dart';
 import '../models/transaction_record.dart';
 
@@ -148,19 +150,28 @@ class HomeViewModel extends ViewModel {
       ),
     );
     if (ok) {
+      final now = day ?? DateTime.now();
+      final todayStr = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      await journal.markFrontPendingItemDone('habit_${habit.id}_$todayStr', true);
       _syncWidget();
     }
     return ok;
   }
 
-  Future<bool> checkNote(PersonalNote note, int index, bool done) => perform(
-    () => journal.setNoteItem(
-      note.id,
-      index,
-      done,
-      expectedText: note.items[index].text,
-    ),
-  );
+  Future<bool> checkNote(PersonalNote note, int index, bool done) async {
+    final ok = await perform(
+      () => journal.setNoteItem(
+        note.id,
+        index,
+        done,
+        expectedText: note.items[index].text,
+      ),
+    );
+    if (ok) {
+      await journal.markFrontPendingItemDone('task_${note.id}_$index', done);
+    }
+    return ok;
+  }
 
   Future<bool> petCompanion([int points = 2]) async {
     bool awarded = false;
@@ -174,6 +185,9 @@ class HomeViewModel extends ViewModel {
   }
 
   void _syncWidget() {
+    final bgMode = _settings['widget_bg_mode'] ?? 'default';
+    final bgColor = int.tryParse(_settings['widget_bg_color'] ?? '');
+
     WidgetSyncService.syncWidget(
       petName: _settings['pet_name'] ?? 'Mishi',
       xp: _xp,
@@ -187,6 +201,8 @@ class HomeViewModel extends ViewModel {
               : 'Todo al día y organizado.'),
       petStyle: _settings['pet_style'] ?? 'classic',
       themePalette: _settings['palette'] ?? 'forest',
+      widgetBgMode: bgMode,
+      widgetBgColor: bgColor,
     );
   }
 
@@ -229,6 +245,72 @@ class HomeViewModel extends ViewModel {
       _xp = xp;
       _loaded = true;
       error = null;
+
+      // Sincronizar y registrar en la DB los datos pendientes que se muestran en el frente
+      final todayStr = '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+      final pendingList = <FrontPendingItem>[];
+      for (final note in notes) {
+        if (note.kind == 'list') {
+          for (var i = 0; i < note.items.length; i++) {
+            if (!note.items[i].done) {
+              pendingList.add(
+                FrontPendingItem(
+                  id: 'task_${note.id}_$i',
+                  category: 'task',
+                  title: note.items[i].text,
+                  subtitle: 'Lista: ${note.title}',
+                  sourceId: note.id,
+                  sourceIndex: i,
+                  isCompleted: false,
+                  createdAt: note.updatedAt,
+                  updatedAt: now,
+                ),
+              );
+            }
+          }
+        }
+      }
+
+      for (final habit in habits) {
+        final log = habit.logFor(now);
+        if (log?.completed != true) {
+          pendingList.add(
+            FrontPendingItem(
+              id: 'habit_${habit.id}_$todayStr',
+              category: 'habit',
+              title: habit.title,
+              subtitle: 'Hábito diario',
+              sourceId: habit.id,
+              isCompleted: false,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+        }
+      }
+
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final monthLimit = todayStart.add(const Duration(days: 30));
+      for (final plan in plans) {
+        if (!plan.dueDate.isBefore(todayStart) && !plan.dueDate.isAfter(monthLimit)) {
+          pendingList.add(
+            FrontPendingItem(
+              id: 'plan_${plan.id}',
+              category: 'plan',
+              title: plan.title,
+              subtitle: '${KwallTheme.formatCurrency(plan.amount, settings['currency'] ?? '\$')} (${plan.recurrenceLabel})',
+              dueDate: plan.dueDate,
+              sourceId: plan.id,
+              isCompleted: false,
+              createdAt: plan.createdAt,
+              updatedAt: now,
+            ),
+          );
+        }
+      }
+
+      await journal.syncFrontPendingItems(pendingList);
+
       changed();
       _syncWidget();
     } catch (_) {

@@ -52,7 +52,7 @@ class HomeTasksPanel extends StatelessWidget {
                     Text(
                       tasks.isEmpty
                           ? (hasLists ? '¡Todo completado!' : 'Sin tareas pendientes')
-                          : '${tasks.length} ${tasks.length == 1 ? "tarea pendiente" : "tareas pendientes"}',
+                          : '${tasks.length} ${tasks.length == 1 ? "tarea pendiente" : "tareas pendientes"} · DB',
                       style: TextStyle(
                         fontSize: 12,
                         color: KwallTheme.textSecondary,

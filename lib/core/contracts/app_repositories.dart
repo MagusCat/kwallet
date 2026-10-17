@@ -9,6 +9,7 @@ import '../../features/bodega/models/transaction_filter.dart';
 import '../../features/bodega/models/monthly_movement_summary.dart';
 import '../../features/bodega/models/transaction_record.dart';
 import '../../features/journal/models/journal_models.dart';
+import '../../features/bodega/models/front_pending_item.dart';
 import '../models/recovery_copy.dart';
 
 abstract interface class Repository {
@@ -60,6 +61,16 @@ abstract interface class FinanceRepository implements Repository {
     String accountId, {
     required DateTime expectedDueDate,
   });
+  Future<List<Map<String, dynamic>>> getAccountCurrencyHistory(String accountId);
+  Future<void> recordCurrencyChange({
+    required String accountId,
+    required String baseCurrency,
+    required String currency,
+    required double rate,
+    double? previousRate,
+    required String changeType,
+    String notes = '',
+  });
 }
 
 abstract interface class JournalRepository implements Repository {
@@ -89,6 +100,9 @@ abstract interface class JournalRepository implements Repository {
   });
   Future<int> getExperience();
   Future<bool> awardAffection(int points);
+  Future<void> syncFrontPendingItems(List<FrontPendingItem> items);
+  Future<List<FrontPendingItem>> getFrontPendingItems({bool onlyPending = true});
+  Future<void> markFrontPendingItemDone(String id, bool done);
 }
 
 abstract interface class SettingsRepository implements Repository {

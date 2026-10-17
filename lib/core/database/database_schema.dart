@@ -15,6 +15,7 @@ class DatabaseSchema {
         minimum_balance REAL NOT NULL DEFAULT 0,
         opening_balance REAL NOT NULL DEFAULT 0,
         currency TEXT NOT NULL DEFAULT '\$',
+        currencies TEXT NOT NULL DEFAULT '[]',
         icon_key TEXT NOT NULL,
         color_value INTEGER NOT NULL,
         is_archived INTEGER NOT NULL DEFAULT 0,
@@ -247,6 +248,40 @@ class DatabaseSchema {
     await db.execute(
       'CREATE INDEX IF NOT EXISTS idx_transactions_type_date ON transactions(type,date DESC,id DESC)',
     );
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS front_pending_items (
+        id TEXT PRIMARY KEY,
+        category TEXT NOT NULL,
+        title TEXT NOT NULL,
+        subtitle TEXT NOT NULL DEFAULT '',
+        due_date TEXT,
+        source_id TEXT NOT NULL,
+        source_index INTEGER,
+        is_completed INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_front_pending_cat ON front_pending_items(category, is_completed)',
+    );
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS account_currency_history (
+        id TEXT PRIMARY KEY,
+        account_id TEXT NOT NULL,
+        base_currency TEXT NOT NULL,
+        currency TEXT NOT NULL,
+        conversion_rate REAL NOT NULL DEFAULT 1.0,
+        previous_rate REAL,
+        change_type TEXT NOT NULL,
+        notes TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_acc_curr_hist ON account_currency_history(account_id, created_at DESC)',
+    );
   }
 
   static Future<void> backfillOpeningBalances(
@@ -350,21 +385,74 @@ class DatabaseSchema {
   }
 
   static Future<void> ensureHabitColumns(DatabaseExecutor db) async {
-    final tables = await db.rawQuery(
-      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'habits'",
-    );
-    if (tables.isEmpty) return;
-    final columns = (await db.rawQuery('PRAGMA table_info(habits)'))
-        .map((r) => r['name'])
-        .toSet();
-    if (!columns.contains('icon_key')) {
+    final tables = (await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table'",
+    )).map((r) => r['name']).toSet();
+
+    if (tables.contains('habits')) {
+      final columns = (await db.rawQuery('PRAGMA table_info(habits)'))
+          .map((r) => r['name'])
+          .toSet();
+      if (!columns.contains('icon_key')) {
+        await db.execute(
+          "ALTER TABLE habits ADD COLUMN icon_key TEXT NOT NULL DEFAULT 'spa_rounded'",
+        );
+      }
+      if (!columns.contains('color_value')) {
+        await db.execute(
+          'ALTER TABLE habits ADD COLUMN color_value INTEGER NOT NULL DEFAULT 4283226960',
+        );
+      }
+    }
+
+    if (tables.contains('accounts')) {
+      final accountCols = (await db.rawQuery('PRAGMA table_info(accounts)'))
+          .map((r) => r['name'])
+          .toSet();
+      if (!accountCols.contains('currencies')) {
+        await db.execute(
+          "ALTER TABLE accounts ADD COLUMN currencies TEXT NOT NULL DEFAULT '[]'",
+        );
+      }
+    }
+
+    if (!tables.contains('front_pending_items')) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS front_pending_items (
+          id TEXT PRIMARY KEY,
+          category TEXT NOT NULL,
+          title TEXT NOT NULL,
+          subtitle TEXT NOT NULL DEFAULT '',
+          due_date TEXT,
+          source_id TEXT NOT NULL,
+          source_index INTEGER,
+          is_completed INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )
+      ''');
       await db.execute(
-        "ALTER TABLE habits ADD COLUMN icon_key TEXT NOT NULL DEFAULT 'spa_rounded'",
+        'CREATE INDEX IF NOT EXISTS idx_front_pending_cat ON front_pending_items(category, is_completed)',
       );
     }
-    if (!columns.contains('color_value')) {
+
+    if (!tables.contains('account_currency_history')) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS account_currency_history (
+          id TEXT PRIMARY KEY,
+          account_id TEXT NOT NULL,
+          base_currency TEXT NOT NULL,
+          currency TEXT NOT NULL,
+          conversion_rate REAL NOT NULL DEFAULT 1.0,
+          previous_rate REAL,
+          change_type TEXT NOT NULL,
+          notes TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE
+        )
+      ''');
       await db.execute(
-        'ALTER TABLE habits ADD COLUMN color_value INTEGER NOT NULL DEFAULT 4283226960',
+        'CREATE INDEX IF NOT EXISTS idx_acc_curr_hist ON account_currency_history(account_id, created_at DESC)',
       );
     }
   }
