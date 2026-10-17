@@ -1,16 +1,24 @@
 package com.kwall.kwall
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val WIDGET_CHANNEL = "com.kwall.kwall/widget"
+    private val NOTIFICATION_CHANNEL = "com.kwall.kwall/notifications"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        createNotificationChannels()
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WIDGET_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
@@ -51,6 +59,75 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NOTIFICATION_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "showNotification" -> {
+                    val args = call.arguments as? Map<*, *>
+                    if (args != null) {
+                        val id = (args["id"] as? Number)?.toInt() ?: 1000
+                        val title = args["title"] as? String ?: "Kwall"
+                        val body = args["body"] as? String ?: ""
+                        val channelId = args["channelId"] as? String ?: "kwall_habits"
+                        showSystemNotification(id, title, body, channelId)
+                        result.success(true)
+                    } else {
+                        result.error("INVALID_ARGUMENTS", "Arguments must be a map", null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    private fun createNotificationChannels() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
+            val channels = listOf(
+                NotificationChannel("kwall_habits", "Hábitos y Rutinas", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                    description = "Recordatorios de hábitos y rutinas diarias"
+                },
+                NotificationChannel("kwall_finances", "Finanzas y Compromisos", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                    description = "Alertas de compromisos y presupuestos"
+                },
+                NotificationChannel("kwall_pet", "Mascota y Compañero", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                    description = "Avisos y cuidados de tu mascota"
+                }
+            )
+            for (channel in channels) {
+                manager.createNotificationChannel(channel)
+            }
+        }
+    }
+
+    private fun showSystemNotification(id: Int, title: String, body: String, channelId: String) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        } else {
+            PendingIntent.FLAG_UPDATE_CURRENT
+        }
+        val pendingIntent = PendingIntent.getActivity(this, id, intent, flags)
+
+        val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, channelId)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(this)
+        }
+
+        val notification = builder
+            .setContentTitle(title)
+            .setContentText(body)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .build()
+
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        manager?.notify(id, notification)
     }
 
     override fun onNewIntent(intent: Intent) {
