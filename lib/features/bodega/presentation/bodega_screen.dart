@@ -1,625 +1,329 @@
 import 'package:flutter/material.dart';
-import '../../../core/database/database_service.dart';
+import 'package:flutter/services.dart';
+
+import '../../../app/app_dependencies.dart';
+import '../../../core/mvvm/view_model_state.dart';
 import '../../../core/theme/kwall_theme.dart';
-import '../../../core/widgets/game_hud_widgets.dart';
 import '../../../core/widgets/kitty_companion.dart';
-import '../../../core/widgets/spending_chart.dart';
+import '../../../core/widgets/finance_widgets.dart';
+import '../../../core/widgets/pet_loading_screen.dart';
+import '../../../core/widgets/juice_widgets.dart';
+import '../../journal/presentation/journal_screen.dart';
+import '../../settings/presentation/settings_screen.dart';
+import '../view_models/home_view_model.dart';
 import '../models/account.dart';
-import '../models/budget_model.dart';
-import '../models/category_model.dart';
-import '../models/transaction_record.dart';
 import 'add_account_dialog.dart';
 import 'add_transaction_sheet.dart';
+import 'budget_sheet.dart';
 import 'categories_sheet.dart';
 import 'planned_expenses_screen.dart';
-import '../../settings/presentation/settings_screen.dart';
+import 'widgets/home_dashboard.dart';
 
 class BodegaScreen extends StatefulWidget {
-  const BodegaScreen({super.key});
-
+  final int initialPage;
+  const BodegaScreen({super.key, this.initialPage = 0});
   @override
   State<BodegaScreen> createState() => _BodegaScreenState();
 }
 
-class _BodegaScreenState extends State<BodegaScreen> {
-  int _currentNavIndex = 0;
-
-  List<Account> _accounts = [];
-  List<TransactionRecord> _transactions = [];
-  Map<String, CategoryModel> _categoryMap = {};
-  BudgetModel? _currentBudget;
-  double _monthlySpent = 0.0;
-  Map<String, dynamic> _kittyProfile = {};
-  List<DailySpend> _dailySpends = [];
-  List<CategoryBreakdown> _categoryBreakdown = [];
-
-  String _currency = '\$';
-  String? _filterAccountId;
-  bool _isLoading = true;
-
+class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  late int _nav = widget.initialPage;
+  late final AnimationController _navigation = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 180),
+    value: 1,
+  );
+  late final Animation<double> _navigationOpacity = _navigation
+      .drive(CurveTween(curve: Curves.easeOutCubic))
+      .drive(Tween<double>(begin: .8, end: 1));
+  int _journalTab = 0;
+  @override
+  HomeViewModel createViewModel(AppDependencies dependencies) =>
+      dependencies.home();
+  HomeViewModel get _home => model;
   @override
   void initState() {
     super.initState();
-    _loadAllData();
-    DatabaseService.instance.changeNotifier.addListener(_loadAllData);
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
-    DatabaseService.instance.changeNotifier.removeListener(_loadAllData);
+    WidgetsBinding.instance.removeObserver(this);
+    _navigation.dispose();
     super.dispose();
   }
 
-  Future<void> _loadAllData() async {
-    final now = DateTime.now();
-    final accounts = await DatabaseService.instance.getAccounts();
-    final categories = await DatabaseService.instance.getCategories();
-    final transactions = await DatabaseService.instance.getTransactions(
-      accountId: _filterAccountId,
-      limit: 60,
-    );
-    final budget = await DatabaseService.instance.getCurrentBudget();
-    final spent = await DatabaseService.instance.getMonthlySpentTotal(now.month, now.year);
-    final kitty = await DatabaseService.instance.getKittyProfile();
-    final daily = await DatabaseService.instance.getDailySpendingLast7Days();
-    final breakdown = await DatabaseService.instance.getCategorySpendingBreakdown(now.month, now.year);
-    final curr = await DatabaseService.instance.getCurrency();
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _home.load();
+  }
 
-    if (mounted) {
-      setState(() {
-        _accounts = accounts;
-        _categoryMap = {for (var c in categories) c.id: c};
-        _transactions = transactions;
-        _currentBudget = budget;
-        _monthlySpent = spent;
-        _kittyProfile = kitty;
-        _dailySpends = daily;
-        _categoryBreakdown = breakdown;
-        _currency = curr;
-        _isLoading = false;
-      });
+  @override
+  void onViewModelChanged() {
+    if (!mounted) return;
+    final gained = _home.takeReward();
+    if (gained > 0) {
+      HapticFeedback.lightImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 2),
+          content: Row(
+            children: [
+              KittyCompanionWidget(
+                size: 40,
+                settings: _home.settings,
+                activity: PetActivity.celebrate,
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Text('¡Un paso más! +$gained XP')),
+            ],
+          ),
+        ),
+      );
     }
   }
 
-  double get _totalNetWorth {
-    return _accounts.fold(0.0, (sum, acc) => sum + acc.balance);
-  }
-
-  void _openAddTransaction([String initialType = 'expense']) {
-    if (_accounts.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Crea primero una cuenta para registrar movimientos')),
-      );
+  void _transaction(String type) {
+    if (_home.accounts.isEmpty) {
+      _account();
       return;
     }
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => AddTransactionSheet(
-        accounts: _accounts,
-        preselectedAccountId: _filterAccountId,
-        initialType: initialType,
-        currency: _currency,
+      sheetAnimationStyle: const AnimationStyle(
+        duration: Duration(milliseconds: 180),
+        reverseDuration: Duration(milliseconds: 120),
+      ),
+      builder: (_) => AddTransactionSheet(
+        accounts: _home.accounts,
+        preselectedAccountId: _home.filter,
+        initialType: type,
+        currency: _home.currency,
       ),
     );
   }
 
-  void _openAddAccount() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AddAccountDialog(currency: _currency),
-    );
-  }
-
-  void _openManageCategories() {
+  void _account({String type = 'cash', Account? account}) => showDialog(
+    context: context,
+    builder: (_) => AddAccountDialog(
+      currency: _home.currency,
+      initialType: type,
+      account: account,
+    ),
+  );
+  void _budgetEditor() => showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    builder: (_) => BudgetSheet(
+      period: _home.period,
+      current: _home.limit,
+      available: _home.available,
+      currency: _home.currency,
+      mode: _home.budgetMode,
+      share: _home.share,
+    ),
+  );
+  void _quickActions() {
+    final actions = <(IconData, String, VoidCallback)>[
+      (Icons.north_east_rounded, 'Gasto', () => _transaction('expense')),
+      (Icons.south_west_rounded, 'Ingreso', () => _transaction('income')),
+      (Icons.swap_horiz_rounded, 'Transferir', () => _transaction('transfer')),
+      (Icons.account_balance_outlined, 'Banco', () => _account(type: 'bank')),
+      (
+        Icons.edit_note_rounded,
+        'Nota',
+        () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (_) => const NoteSheet(),
+        ),
+      ),
+      (Icons.event_outlined, 'Fecha', () => _navigate(1)),
+      (
+        Icons.category_outlined,
+        'Categorías',
+        () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (_) => const CategoriesSheet(type: 'expense'),
+        ),
+      ),
+      (Icons.local_fire_department_outlined, 'Hábitos', () => _openJournal(1)),
+      (Icons.palette_outlined, 'Apariencia', () => _navigate(3)),
+    ];
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
-      builder: (ctx) => const CategoriesSheet(type: 'expense'),
+      builder: (ctx) => SheetBody(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              '¿Qué hacemos?',
+              style: KwallTheme.fontTitle.copyWith(fontSize: 22),
+            ),
+            const SizedBox(height: 18),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columns =
+                    constraints.maxWidth < 320 ||
+                        MediaQuery.textScalerOf(context).scale(14) > 20
+                    ? 2
+                    : 3;
+                final width =
+                    (constraints.maxWidth - (columns - 1) * 12) / columns;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final (icon, label, action) in actions)
+                      SizedBox(
+                        width: width,
+                        child: JuiceButton(
+                          icon: icon,
+                          label: label,
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            action();
+                          },
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(color: KwallTheme.accent),
-        ),
+    Theme.of(context);
+    if (_home.budget == null) {
+      return PetLoadingScreen(
+        settings: _home.settings,
+        failed: _home.error != null,
+        onRetry: _home.load,
       );
     }
-
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentNavIndex,
-        children: [
-          _buildBodegaTab(),
-          PlannedExpensesScreen(currency: _currency),
-          SettingsScreen(
-            currentCurrency: _currency,
-            onCurrencyChanged: (c) => setState(() => _currency = c),
-          ),
-        ],
+    final pages = [
+      HomeDashboard(
+        controller: _home,
+        onTransaction: _transaction,
+        onAddAccount: _account,
+        onEditAccount: (account) => _account(account: account),
+        onBudget: _budgetEditor,
+        onAgenda: () => _navigate(1),
+        onJournal: _openJournal,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentNavIndex,
-        onDestinationSelected: (index) => setState(() => _currentNavIndex = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.book_rounded),
-            selectedIcon: Icon(Icons.book_rounded, color: KwallTheme.accent),
-            label: 'Bodega',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_today_rounded),
-            selectedIcon: Icon(Icons.calendar_today_rounded, color: KwallTheme.accent),
-            label: 'Planificados',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.tune_rounded),
-            selectedIcon: Icon(Icons.tune_rounded, color: KwallTheme.accent),
-            label: 'Ajustes & Gato',
-          ),
-        ],
+      PlannedExpensesScreen(currency: _home.currency),
+      JournalScreen(key: ValueKey(_journalTab), initialTab: _journalTab),
+      SettingsScreen(
+        currentCurrency: _home.currency,
+        onCurrencyChanged: (_) {},
+      ),
+    ];
+    return Scaffold(
+      body: FadeTransition(
+        opacity: _navigationOpacity,
+        child: IndexedStack(
+          index: _nav,
+          children: [
+            for (var i = 0; i < pages.length; i++)
+              TickerMode(enabled: _nav == i, child: pages[i]),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Acciones rápidas',
+        onPressed: _quickActions,
+        child: const Icon(Icons.add_rounded, size: 32),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: BottomAppBar(
+        height: 78,
+        notchMargin: 8,
+        shape: const CircularNotchedRectangle(),
+        color: KwallTheme.surface,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          children: [
+            _destination(0, Icons.account_balance_wallet_outlined, 'Inicio'),
+            _destination(1, Icons.calendar_month_outlined, 'Agenda'),
+            const SizedBox(width: 72),
+            _destination(2, Icons.spa_outlined, 'Mi espacio'),
+            _destination(3, Icons.tune_rounded, 'Ajustes'),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildBodegaTab() {
-    final kittyName = (_kittyProfile['name'] as String?) ?? 'Mishi';
-    final coatColor = (_kittyProfile['coat_color'] as String?) ?? 'orange';
-    final kittyHappiness = (_kittyProfile['happiness'] as int?) ?? 85;
-
-    return RefreshIndicator(
-      onRefresh: _loadAllData,
-      color: KwallTheme.accent,
-      child: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            floating: true,
-            title: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: KwallTheme.accent.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.pets_rounded, size: 16, color: KwallTheme.accent),
+  Widget _destination(int index, IconData icon, String label) => Expanded(
+    child: Tooltip(
+      message: label,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          _navigate(index);
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 5,
                 ),
-                const SizedBox(width: 10),
-                Text('kwall', style: KwallTheme.fontTitle.copyWith(fontSize: 20)),
-              ],
-            ),
-            actions: [
-              IconButton(
-                tooltip: 'Gestionar Categorías',
-                onPressed: _openManageCategories,
-                icon: const Icon(Icons.category_rounded, color: KwallTheme.textSecondary),
+                decoration: BoxDecoration(
+                  color: _nav == index
+                      ? KwallTheme.accentLight
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: _nav == index
+                      ? KwallTheme.accent
+                      : KwallTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: _nav == index ? FontWeight.w700 : FontWeight.w400,
+                  color: KwallTheme.textPrimary,
+                ),
               ),
             ],
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // ================= TOP HERO CARD (Cute Kitty + Balance) =================
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: KwallTheme.surface,
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: KwallTheme.border),
-                    ),
-                    child: Row(
-                      children: [
-                        // Cute, Normalito Chibi Kitty (Configurable, NO EMOJIS)
-                        KittyCompanionWidget(
-                          size: 100,
-                          coatColor: coatColor,
-                          name: kittyName,
-                          onPet: () async {
-                            await DatabaseService.instance.updateKittyMood('happy', happinessDelta: 5);
-                          },
-                        ),
-                        const SizedBox(width: 18),
-
-                        // Balance Info
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    kittyName,
-                                    style: KwallTheme.fontTitle.copyWith(
-                                      fontSize: 14,
-                                      color: KwallTheme.textSecondary,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: KwallTheme.accent.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      '♥ $kittyHappiness%',
-                                      style: TextStyle(
-                                        color: KwallTheme.accent,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Saldo Total',
-                                style: KwallTheme.fontBody.copyWith(
-                                  fontSize: 11,
-                                  color: KwallTheme.textMuted,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                KwallTheme.formatCurrency(_totalNetWorth, _currency),
-                                style: KwallTheme.fontDisplay.copyWith(
-                                  fontSize: 28,
-                                  color: _totalNetWorth >= 0 ? KwallTheme.textPrimary : KwallTheme.expenseRed,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // ================= BUDGET PROGRESS BAR =================
-                  ExpressiveBudgetBar(
-                    spent: _monthlySpent,
-                    budget: _currentBudget?.monthlyLimit ?? 1200.0,
-                    currency: _currency,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // ================= QUICK EXPRESSIVE ACTION BUTTONS =================
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ExpressiveButton(
-                          onPressed: () => _openAddTransaction('expense'),
-                          color: KwallTheme.expenseRed.withValues(alpha: 0.18),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.arrow_upward_rounded, size: 16, color: KwallTheme.expenseRed),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Gasto',
-                                style: KwallTheme.fontTitle.copyWith(
-                                  color: KwallTheme.expenseRed,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ExpressiveButton(
-                          onPressed: () => _openAddTransaction('income'),
-                          color: KwallTheme.incomeGreen.withValues(alpha: 0.18),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.arrow_downward_rounded, size: 16, color: KwallTheme.incomeGreen),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Ingreso',
-                                style: KwallTheme.fontTitle.copyWith(
-                                  color: KwallTheme.incomeGreen,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      ExpressiveButton(
-                        onPressed: () => _openAddTransaction('transfer'),
-                        color: KwallTheme.surfaceContainer,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                        child: const Icon(Icons.sync_alt_rounded, size: 18, color: KwallTheme.textPrimary),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ================= DAILY SPENDING & CHARTS =================
-                  SpendingChartWidget(
-                    dailySpends: _dailySpends,
-                    categoryBreakdowns: _categoryBreakdown,
-                    currency: _currency,
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ================= ACCOUNTS / BÓVEDAS =================
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            'Cuentas',
-                            style: KwallTheme.fontTitle.copyWith(fontSize: 15, color: KwallTheme.textPrimary),
-                          ),
-                          if (_filterAccountId != null) ...[
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: () {
-                                setState(() => _filterAccountId = null);
-                                _loadAllData();
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: KwallTheme.accent.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  'Ver todas ×',
-                                  style: TextStyle(color: KwallTheme.accent, fontSize: 11, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      TextButton.icon(
-                        onPressed: _openAddAccount,
-                        icon: const Icon(Icons.add_rounded, size: 16, color: KwallTheme.accent),
-                        label: Text('Nueva cuenta', style: TextStyle(color: KwallTheme.accent, fontSize: 13, fontWeight: FontWeight.w600)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  SizedBox(
-                    height: 82,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _accounts.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 10),
-                      itemBuilder: (context, i) {
-                        final acc = _accounts[i];
-                        final isSelected = _filterAccountId == acc.id;
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() => _filterAccountId = isSelected ? null : acc.id);
-                            _loadAllData();
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            width: 160,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? KwallTheme.accent.withValues(alpha: 0.12)
-                                  : KwallTheme.surface,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isSelected ? KwallTheme.accent : KwallTheme.border,
-                                width: isSelected ? 1.5 : 1.0,
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        acc.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: isSelected ? KwallTheme.accent : KwallTheme.textPrimary,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                    Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        color: Color(acc.colorValue),
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Text(
-                                  KwallTheme.formatCurrency(acc.balance, _currency),
-                                  style: KwallTheme.fontTitle.copyWith(
-                                    fontSize: 16,
-                                    color: acc.balance >= 0 ? KwallTheme.textPrimary : KwallTheme.expenseRed,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // ================= EL CUADERNO (Transactions List) =================
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        _filterAccountId != null ? 'Movimientos filtrados' : 'Cuaderno diario',
-                        style: KwallTheme.fontTitle.copyWith(fontSize: 15, color: KwallTheme.textPrimary),
-                      ),
-                      Text(
-                        '${_transactions.length} registros',
-                        style: KwallTheme.fontBody.copyWith(color: KwallTheme.textSecondary, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  if (_transactions.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: KwallTheme.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: KwallTheme.border),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'El cuaderno está vacío para esta selección.\nToca + Gasto para registrar el primero.',
-                          textAlign: TextAlign.center,
-                          style: KwallTheme.fontBody.copyWith(color: KwallTheme.textMuted, fontSize: 13),
-                        ),
-                      ),
-                    )
-                  else
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _transactions.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final tx = _transactions[index];
-                        final cat = _categoryMap[tx.categoryId] ??
-                            CategoryModel(
-                              id: tx.categoryId,
-                              name: 'General',
-                              type: tx.type,
-                              iconKey: 'tag',
-                              colorValue: 0xFF10B981,
-                            );
-
-                        final isExpense = tx.isExpense;
-                        final isIncome = tx.isIncome;
-                        final color = isExpense
-                            ? KwallTheme.expenseRed
-                            : (isIncome ? KwallTheme.incomeGreen : KwallTheme.infoBlue);
-                        final prefix = isExpense ? '-' : (isIncome ? '+' : '⇄ ');
-
-                        return Dismissible(
-                          key: Key(tx.id),
-                          direction: DismissDirection.endToStart,
-                          background: Container(
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.only(right: 20),
-                            decoration: BoxDecoration(
-                              color: KwallTheme.expenseRed,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
-                          ),
-                          onDismissed: (_) async {
-                            await DatabaseService.instance.deleteTransaction(tx);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Movimiento eliminado y saldo restaurado'),
-                                  backgroundColor: KwallTheme.surfaceElevated,
-                                ),
-                              );
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: KwallTheme.surface,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: KwallTheme.border),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: Color(cat.colorValue).withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(cat.iconData, size: 20, color: Color(cat.colorValue)),
-                                ),
-                                const SizedBox(width: 14),
-
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        tx.note.isNotEmpty ? tx.note : cat.name,
-                                        style: KwallTheme.fontTitle.copyWith(
-                                          fontSize: 14,
-                                          color: KwallTheme.textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        '${cat.name} • ${_formatDate(tx.date)}',
-                                        style: KwallTheme.fontBody.copyWith(
-                                          fontSize: 11,
-                                          color: KwallTheme.textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-
-                                Text(
-                                  '$prefix${KwallTheme.formatCurrency(tx.amount, _currency)}',
-                                  style: KwallTheme.fontTitle.copyWith(
-                                    fontSize: 15,
-                                    color: color,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-
-                  const SizedBox(height: 40),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
-    );
+    ),
+  );
+  void _navigate(int page) {
+    if (_nav == page) return;
+    setState(() => _nav = page);
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _navigation.value = 1;
+    } else {
+      _navigation.forward(from: 0);
+    }
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    if (DateUtils.isSameDay(date, now)) {
-      return 'Hoy ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-    }
-    return '${date.day}/${date.month}/${date.year}';
+  void _openJournal(int tab) {
+    setState(() => _journalTab = tab);
+    _navigate(2);
   }
 }

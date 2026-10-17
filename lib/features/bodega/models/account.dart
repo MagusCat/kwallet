@@ -3,6 +3,8 @@ class Account {
   final String name;
   final String type; // 'cash', 'bank', 'vault', 'credit'
   final double balance;
+  final double minimumBalance;
+  final double openingBalance;
   final String currency;
   final String iconKey;
   final int colorValue;
@@ -14,18 +16,21 @@ class Account {
     required this.name,
     required this.type,
     required this.balance,
+    this.minimumBalance = 0,
+    double? openingBalance,
     this.currency = '\$',
     this.iconKey = 'wallet',
     this.colorValue = 0xFF00FF9D,
     this.isArchived = false,
     required this.createdAt,
-  });
+  }) : openingBalance = openingBalance ?? balance;
 
   Account copyWith({
     String? id,
     String? name,
     String? type,
     double? balance,
+    double? minimumBalance,
     String? currency,
     String? iconKey,
     int? colorValue,
@@ -37,6 +42,8 @@ class Account {
       name: name ?? this.name,
       type: type ?? this.type,
       balance: balance ?? this.balance,
+      minimumBalance: minimumBalance ?? this.minimumBalance,
+      openingBalance: openingBalance,
       currency: currency ?? this.currency,
       iconKey: iconKey ?? this.iconKey,
       colorValue: colorValue ?? this.colorValue,
@@ -51,6 +58,8 @@ class Account {
       'name': name,
       'type': type,
       'balance': balance,
+      'minimum_balance': minimumBalance,
+      'opening_balance': openingBalance,
       'currency': currency,
       'icon_key': iconKey,
       'color_value': colorValue,
@@ -65,11 +74,15 @@ class Account {
       name: map['name'] as String,
       type: map['type'] as String,
       balance: (map['balance'] as num).toDouble(),
+      minimumBalance: (map['minimum_balance'] as num?)?.toDouble() ?? 0,
+      openingBalance: (map['opening_balance'] as num?)?.toDouble(),
       currency: (map['currency'] as String?) ?? '\$',
       iconKey: (map['icon_key'] as String?) ?? 'wallet',
       colorValue: (map['color_value'] as int?) ?? 0xFF00FF9D,
       isArchived: (map['is_archived'] as int?) == 1,
-      createdAt: DateTime.tryParse(map['created_at'] as String? ?? '') ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse(map['created_at'] as String? ?? '') ??
+          DateTime.now(),
     );
   }
 

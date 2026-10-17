@@ -1,9 +1,13 @@
+import '../../../core/theme/category_visuals.dart';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
-import '../../../core/database/database_service.dart';
+
+import '../../../app/app_dependencies.dart';
+import '../../../core/mvvm/view_model_state.dart';
+import '../view_models/transaction_editor_view_model.dart';
 import '../../../core/theme/kwall_theme.dart';
-import '../../../core/widgets/game_hud_widgets.dart';
+import '../../../core/widgets/finance_widgets.dart';
 import '../models/account.dart';
 import '../models/category_model.dart';
 import '../models/transaction_record.dart';
@@ -12,9 +16,8 @@ import 'categories_sheet.dart';
 class AddTransactionSheet extends StatefulWidget {
   final List<Account> accounts;
   final String? preselectedAccountId;
-  final String initialType; // 'expense', 'income', 'transfer'
+  final String initialType;
   final String currency;
-
   const AddTransactionSheet({
     super.key,
     required this.accounts,
@@ -22,458 +25,306 @@ class AddTransactionSheet extends StatefulWidget {
     this.initialType = 'expense',
     this.currency = '\$',
   });
-
   @override
   State<AddTransactionSheet> createState() => _AddTransactionSheetState();
 }
 
-class _AddTransactionSheetState extends State<AddTransactionSheet> {
-  late String _type; // 'expense', 'income', 'transfer'
-  late String _selectedAccountId;
-  String? _selectedToAccountId;
-  String? _selectedCategoryId;
-
-  final TextEditingController _amountController = TextEditingController();
-  final TextEditingController _noteController = TextEditingController();
-  DateTime _selectedDate = DateTime.now();
-
-  List<CategoryModel> _categories = [];
-  bool _isLoading = true;
+class _AddTransactionSheetState
+    extends ViewModelState<AddTransactionSheet, TransactionEditorViewModel> {
+  @override
+  TransactionEditorViewModel createViewModel(AppDependencies dependencies) =>
+      dependencies.transactionEditor(widget.accounts, widget.initialType);
+  final _amount = TextEditingController();
+  final _note = TextEditingController();
+  List<TransactionRecord> get _queue => model.queue;
+  String get _type => model.type;
+  late String _account;
+  String? _destination;
+  String? get _category => model.category;
+  DateTime _date = DateTime.now();
+  List<CategoryModel> get _categories => model.categories;
+  bool get _saving => model.busy;
+  String? get _error => model.error;
 
   @override
   void initState() {
     super.initState();
-    _type = widget.initialType;
-    _selectedAccountId = widget.preselectedAccountId ??
-        (widget.accounts.isNotEmpty ? widget.accounts.first.id : '');
-    if (widget.accounts.length > 1) {
-      _selectedToAccountId = widget.accounts[1].id;
-    }
-    _loadCategories();
+    _account = model.initialAccount(widget.preselectedAccountId);
+    final others = widget.accounts.where((a) => a.id != _account);
+    _destination = others.isEmpty ? null : others.first.id;
   }
 
   @override
   void dispose() {
-    _amountController.dispose();
-    _noteController.dispose();
+    _amount.dispose();
+    _note.dispose();
     super.dispose();
   }
 
-  Future<void> _loadCategories() async {
-    final catType = _type == 'income' ? 'income' : 'expense';
-    final cats = await DatabaseService.instance.getCategories(type: catType);
-    if (mounted) {
-      setState(() {
-        _categories = cats;
-        if (cats.isNotEmpty && (_selectedCategoryId == null || !cats.any((c) => c.id == _selectedCategoryId))) {
-          _selectedCategoryId = cats.first.id;
-        }
-        _isLoading = false;
-      });
+  MovementInput get _input => (
+    amount: _amount.text,
+    note: _note.text,
+    date: _date,
+    account: _account,
+    destination: _destination,
+    category: _category,
+  );
+  void _addToQueue() {
+    if (model.enqueue(_input)) {
+      _amount.clear();
+      _note.clear();
     }
   }
 
-  Future<void> _submit() async {
-    final amountText = _amountController.text.trim().replaceAll(',', '.');
-    final parsedAmount = double.tryParse(amountText) ?? 0.0;
-
-    if (parsedAmount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Ingresa un monto válido mayor a 0'),
-          backgroundColor: KwallTheme.expenseRed,
-        ),
-      );
-      return;
-    }
-
-    if (_type == 'transfer' && _selectedAccountId == _selectedToAccountId) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('La cuenta de origen y destino deben ser distintas'),
-          backgroundColor: KwallTheme.expenseRed,
-        ),
-      );
-      return;
-    }
-
-    final newTx = TransactionRecord(
-      id: const Uuid().v4(),
-      accountId: _selectedAccountId,
-      toAccountId: _type == 'transfer' ? _selectedToAccountId : null,
-      categoryId: _selectedCategoryId ?? 'cat_food',
-      amount: parsedAmount,
-      type: _type,
-      note: _noteController.text.trim(),
-      date: _selectedDate,
-      createdAt: DateTime.now(),
-    );
-
-    await DatabaseService.instance.addTransaction(newTx);
-
-    // Update Kitty mood gently
-    if (_type == 'income') {
-      await DatabaseService.instance.updateKittyMood('happy', expDelta: 15, happinessDelta: 10);
-    } else {
-      await DatabaseService.instance.updateKittyMood('happy', expDelta: 5);
-    }
-
-    if (mounted) {
-      Navigator.of(context).pop();
-    }
-  }
-
-  void _openManageCategories() async {
-    await showModalBottomSheet(
+  Future<void> _repeatDates() async {
+    if (!model.validate(_input)) return;
+    final range = await showDateRangePicker(
       context: context,
-      isScrollControlled: true,
-      builder: (ctx) => CategoriesSheet(type: _type == 'income' ? 'income' : 'expense'),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      helpText: 'Repetir el gasto en cada día del rango',
+      saveText: 'Añadir días',
     );
-    _loadCategories();
+    if (range != null &&
+        mounted &&
+        model.repeat(_input, range.start, range.end)) {
+      _amount.clear();
+      _note.clear();
+    }
   }
+
+  Future<void> _save() async {
+    if (await model.save(_input) && mounted) Navigator.pop(context);
+  }
+
+  Widget _accountPicker({bool destination = false}) =>
+      DropdownButtonFormField<String>(
+        initialValue: destination ? _destination : _account,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: destination ? 'Cuenta destino' : 'Cuenta',
+        ),
+        items: [
+          for (final account in widget.accounts)
+            DropdownMenuItem(
+              value: account.id,
+              child: Text(account.name, overflow: TextOverflow.ellipsis),
+            ),
+        ],
+        onChanged: _saving
+            ? null
+            : (value) => setState(() {
+                if (destination) {
+                  _destination = value;
+                } else {
+                  _account = value!;
+                }
+              }),
+      );
 
   @override
-  Widget build(BuildContext context) {
-    Color typeColor = _type == 'expense'
-        ? KwallTheme.expenseRed
-        : (_type == 'income' ? KwallTheme.incomeGreen : KwallTheme.infoBlue);
-
-    return Container(
-      padding: EdgeInsets.only(
-        top: 20,
-        left: 20,
-        right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Handle bar
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: KwallTheme.border,
-                  borderRadius: BorderRadius.circular(4),
+  Widget build(BuildContext context) => SheetBody(
+    child: AbsorbPointer(
+      absorbing: _saving,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Nuevo movimiento',
+                  style: KwallTheme.fontTitle.copyWith(fontSize: 20),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-
-            // Expressive Segmented Type Selector
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: KwallTheme.surfaceContainer,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  _buildTypeTab('expense', 'Gasto', KwallTheme.expenseRed),
-                  _buildTypeTab('income', 'Ingreso', KwallTheme.incomeGreen),
-                  _buildTypeTab('transfer', 'Transferir', KwallTheme.infoBlue),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Large Clean Amount Field
-            TextField(
-              controller: _amountController,
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              textAlign: TextAlign.center,
-              style: KwallTheme.fontDisplay.copyWith(
-                fontSize: 40,
-                color: typeColor,
-              ),
-              decoration: InputDecoration(
-                hintText: '${widget.currency} 0.00',
-                hintStyle: TextStyle(
-                  color: KwallTheme.textMuted.withValues(alpha: 0.5),
-                  fontSize: 40,
-                ),
-                prefixText: '${widget.currency} ',
-                prefixStyle: TextStyle(
-                  color: typeColor,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-                filled: true,
-                fillColor: KwallTheme.surfaceContainer,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Concept / Note Input
-            TextField(
-              controller: _noteController,
-              style: const TextStyle(color: KwallTheme.textPrimary, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: 'Concepto o nota (ej. Compra semanal, Café...)',
-                hintStyle: const TextStyle(color: KwallTheme.textMuted, fontSize: 13),
-                prefixIcon: const Icon(Icons.edit_note_rounded, color: KwallTheme.textSecondary),
-                filled: true,
-                fillColor: KwallTheme.surfaceContainer,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Account selection
-            Text(
-              _type == 'transfer' ? 'CUENTA ORIGEN' : 'CUENTA / BÓVEDA',
-              style: KwallTheme.fontBody.copyWith(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: KwallTheme.textSecondary,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 40,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: widget.accounts.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (context, i) {
-                  final acc = widget.accounts[i];
-                  final isSelected = acc.id == _selectedAccountId;
-                  return ChoiceChip(
-                    label: Text('${acc.name} (${KwallTheme.formatCurrency(acc.balance, widget.currency)})'),
-                    selected: isSelected,
-                    selectedColor: KwallTheme.accent.withValues(alpha: 0.2),
-                    backgroundColor: KwallTheme.surfaceContainer,
-                    side: BorderSide(
-                      color: isSelected ? KwallTheme.accent : KwallTheme.border,
-                    ),
-                    labelStyle: TextStyle(
-                      color: isSelected ? KwallTheme.accent : KwallTheme.textPrimary,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      fontSize: 12,
-                    ),
-                    onSelected: (_) => setState(() => _selectedAccountId = acc.id),
-                  );
-                },
-              ),
-            ),
-
-            if (_type == 'transfer') ...[
-              const SizedBox(height: 12),
-              Text(
-                'CUENTA DESTINO',
-                style: KwallTheme.fontBody.copyWith(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: KwallTheme.textSecondary,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 40,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: widget.accounts.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 8),
-                  itemBuilder: (context, i) {
-                    final acc = widget.accounts[i];
-                    final isSelected = acc.id == _selectedToAccountId;
-                    return ChoiceChip(
-                      label: Text('${acc.name} (${KwallTheme.formatCurrency(acc.balance, widget.currency)})'),
-                      selected: isSelected,
-                      selectedColor: KwallTheme.infoBlue.withValues(alpha: 0.2),
-                      backgroundColor: KwallTheme.surfaceContainer,
-                      side: BorderSide(
-                        color: isSelected ? KwallTheme.infoBlue : KwallTheme.border,
-                      ),
-                      labelStyle: TextStyle(
-                        color: isSelected ? KwallTheme.infoBlue : KwallTheme.textPrimary,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        fontSize: 12,
-                      ),
-                      onSelected: (_) => setState(() => _selectedToAccountId = acc.id),
-                    );
-                  },
-                ),
+              IconButton(
+                tooltip: 'Cerrar',
+                onPressed: () => Navigator.pop(context),
+                icon: Icon(Icons.close),
               ),
             ],
-
-            // Categories (if not transfer)
-            if (_type != 'transfer') ...[
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'CATEGORÍA',
-                    style: KwallTheme.fontBody.copyWith(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: KwallTheme.textSecondary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: _openManageCategories,
-                    child: Row(
-                      children: [
-                        const Icon(Icons.add_circle_outline_rounded, size: 14, color: KwallTheme.accent),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Añadir propia',
-                          style: KwallTheme.fontBody.copyWith(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: KwallTheme.accent,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              if (_isLoading)
-                const LinearProgressIndicator()
-              else
-                SizedBox(
-                  height: 44,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _categories.length + 1,
-                    separatorBuilder: (_, _) => const SizedBox(width: 8),
-                    itemBuilder: (context, i) {
-                      if (i == _categories.length) {
-                        return ActionChip(
-                          avatar: const Icon(Icons.add, size: 16, color: KwallTheme.accent),
-                          label: const Text('Nueva...'),
-                          backgroundColor: KwallTheme.surfaceContainer,
-                          side: const BorderSide(color: KwallTheme.border),
-                          labelStyle: const TextStyle(color: KwallTheme.accent, fontSize: 12),
-                          onPressed: _openManageCategories,
-                        );
-                      }
-                      final cat = _categories[i];
-                      final isSelected = cat.id == _selectedCategoryId;
-                      return ChoiceChip(
-                        avatar: Icon(cat.iconData, size: 16, color: Color(cat.colorValue)),
-                        label: Text(cat.name),
-                        selected: isSelected,
-                        selectedColor: Color(cat.colorValue).withValues(alpha: 0.25),
-                        backgroundColor: KwallTheme.surfaceContainer,
-                        side: BorderSide(
-                          color: isSelected ? Color(cat.colorValue) : KwallTheme.border,
-                        ),
-                        labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : KwallTheme.textPrimary,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                          fontSize: 12,
-                        ),
-                        onSelected: (_) => setState(() => _selectedCategoryId = cat.id),
-                      );
-                    },
-                  ),
+          ),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final type in ['expense', 'income', 'transfer'])
+                ChoiceChip(
+                  label: Text(switch (type) {
+                    'expense' => 'Gasto',
+                    'income' => 'Ingreso',
+                    _ => 'Transferir',
+                  }),
+                  avatar: Icon(switch (type) {
+                    'expense' => Icons.remove,
+                    'income' => Icons.add,
+                    _ => Icons.sync_alt,
+                  }, size: 18),
+                  selected: _type == type,
+                  onSelected: _queue.isNotEmpty
+                      ? null
+                      : (_) {
+                          model.selectType(type);
+                        },
                 ),
             ],
-
-            const SizedBox(height: 16),
-
-            // Date selector
+          ),
+          SizedBox(height: 16),
+          TextField(
+            controller: _amount,
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            style: KwallTheme.fontDisplay.copyWith(fontSize: 28),
+            decoration: InputDecoration(
+              labelText: 'Monto',
+              prefixText: '${widget.currency} ',
+            ),
+          ),
+          SizedBox(height: 12),
+          TextField(
+            controller: _note,
+            decoration: InputDecoration(
+              labelText: 'Nota',
+              prefixIcon: Icon(Icons.edit_note),
+            ),
+          ),
+          SizedBox(height: 12),
+          _accountPicker(),
+          if (_type == 'transfer') ...[
+            SizedBox(height: 12),
+            _accountPicker(destination: true),
+          ],
+          if (_type != 'transfer') ...[
+            SizedBox(height: 12),
             Row(
               children: [
-                ActionChip(
-                  avatar: const Icon(Icons.calendar_today_rounded, size: 14, color: KwallTheme.textSecondary),
-                  label: Text(_formatDateLabel(_selectedDate)),
-                  backgroundColor: KwallTheme.surfaceContainer,
-                  side: const BorderSide(color: KwallTheme.border),
-                  labelStyle: const TextStyle(color: KwallTheme.textPrimary, fontSize: 12),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    key: ValueKey('$_type:$_category:${_categories.length}'),
+                    initialValue: _category,
+                    isExpanded: true,
+                    decoration: InputDecoration(labelText: 'Categoría'),
+                    items: [
+                      for (final category in _categories)
+                        DropdownMenuItem(
+                          value: category.id,
+                          child: Row(
+                            children: [
+                              Icon(category.iconData, size: 18),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  category.name,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                    onChanged: model.selectCategory,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Gestionar categorías',
+                  icon: Icon(Icons.category_outlined),
                   onPressed: () async {
-                    final picked = await showDatePicker(
+                    await showModalBottomSheet(
                       context: context,
-                      initialDate: _selectedDate,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                      isScrollControlled: true,
+                      builder: (_) => CategoriesSheet(
+                        type: _type == 'income' ? 'income' : 'expense',
+                      ),
                     );
-                    if (picked != null) {
-                      setState(() => _selectedDate = picked);
-                    }
+                    if (mounted) model.loadCategories();
                   },
                 ),
-                const SizedBox(width: 8),
-                if (!DateUtils.isSameDay(_selectedDate, DateTime.now()))
-                  TextButton(
-                    onPressed: () => setState(() => _selectedDate = DateTime.now()),
-                    child: const Text('Volver a Hoy', style: TextStyle(color: KwallTheme.accent, fontSize: 12)),
-                  ),
               ],
             ),
-            const SizedBox(height: 24),
-
-            // Save Button
-            ExpressiveButton(
-              onPressed: _submit,
-              color: typeColor,
-              child: Center(
-                child: Text(
-                  'Guardar ${_type == 'expense' ? 'Gasto' : (_type == 'income' ? 'Ingreso' : 'Transferencia')}',
-                  style: KwallTheme.fontTitle.copyWith(
-                    color: Colors.black,
-                    fontSize: 15,
-                  ),
+          ],
+          SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ActionChip(
+              avatar: Icon(Icons.event, size: 18),
+              label: Text(DateFormat('dd/MM/yyyy').format(_date)),
+              onPressed: () async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: _date,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now(),
+                );
+                if (date != null && mounted) setState(() => _date = date);
+              },
+            ),
+          ),
+          if (_type == 'expense') ...[
+            Wrap(
+              spacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _addToQueue,
+                  icon: Icon(Icons.playlist_add),
+                  label: Text('Sumar gasto'),
+                ),
+                TextButton.icon(
+                  onPressed: _repeatDates,
+                  icon: Icon(Icons.date_range),
+                  label: Text('Repetir en días'),
+                ),
+              ],
+            ),
+            if (_queue.isNotEmpty) ...[
+              Divider(height: 24),
+              Text(
+                '${_queue.length} gastos · ${KwallTheme.formatCurrency(model.queueTotal, widget.currency)}',
+              ),
+              SizedBox(
+                height: 160,
+                child: ListView.builder(
+                  itemCount: _queue.length,
+                  itemBuilder: (_, index) {
+                    final tx = _queue[index];
+                    return ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        '${KwallTheme.formatCurrency(tx.amount, widget.currency)} · ${tx.note}',
+                      ),
+                      subtitle: Text(DateFormat('dd/MM/yyyy').format(tx.date)),
+                      trailing: IconButton(
+                        tooltip: 'Quitar del lote',
+                        icon: Icon(Icons.close),
+                        onPressed: () => model.removeQueued(index),
+                      ),
+                    );
+                  },
                 ),
               ),
-            ),
+            ],
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTypeTab(String type, String label, Color activeColor) {
-    final isSelected = _type == type;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _type = type;
-            _isLoading = true;
-          });
-          _loadCategories();
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          decoration: BoxDecoration(
-            color: isSelected ? activeColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: KwallTheme.fontBody.copyWith(
-                color: isSelected ? Colors.black : KwallTheme.textSecondary,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 13,
+          if (_error != null)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                _error!,
+                style: TextStyle(color: KwallTheme.expenseRed),
               ),
             ),
+          SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _saving ? null : _save,
+            icon: Icon(Icons.check),
+            label: Text(
+              _saving
+                  ? 'Guardando…'
+                  : _queue.isEmpty
+                  ? 'Guardar'
+                  : 'Guardar lote',
+            ),
           ),
-        ),
+        ],
       ),
-    );
-  }
-
-  String _formatDateLabel(DateTime date) {
-    final now = DateTime.now();
-    if (DateUtils.isSameDay(date, now)) return 'Hoy';
-    if (DateUtils.isSameDay(date, now.subtract(const Duration(days: 1)))) return 'Ayer';
-    return DateFormat('dd/MM/yyyy').format(date);
-  }
+    ),
+  );
 }

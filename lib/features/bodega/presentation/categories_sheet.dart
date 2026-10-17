@@ -1,8 +1,13 @@
+import '../../../core/theme/category_visuals.dart';
+
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
-import '../../../core/database/database_service.dart';
+
+import '../../../app/app_dependencies.dart';
+import '../../../core/mvvm/view_model_state.dart';
+import '../view_models/categories_view_model.dart';
 import '../../../core/theme/kwall_theme.dart';
 import '../../../core/widgets/game_hud_widgets.dart';
+import '../../../core/widgets/finance_widgets.dart';
 import '../models/category_model.dart';
 
 class CategoriesSheet extends StatefulWidget {
@@ -14,19 +19,27 @@ class CategoriesSheet extends StatefulWidget {
   State<CategoriesSheet> createState() => _CategoriesSheetState();
 }
 
-class _CategoriesSheetState extends State<CategoriesSheet> {
+class _CategoriesSheetState
+    extends ViewModelState<CategoriesSheet, CategoriesViewModel> {
+  @override
+  CategoriesViewModel createViewModel(AppDependencies dependencies) =>
+      dependencies.categories(widget.type);
   final TextEditingController _nameController = TextEditingController();
   String _selectedIconKey = 'food';
   int _selectedColor = 0xFF10B981;
-  late String _currentType;
+  String get _currentType => model.type;
 
-  List<CategoryModel> _categories = [];
-  bool _isLoading = true;
+  List<CategoryModel> get _categories => model.categories;
+  bool get _isLoading => model.loading;
 
   final List<Map<String, dynamic>> _availableIcons = [
     {'key': 'food', 'icon': Icons.restaurant_rounded, 'label': 'Comida'},
     {'key': 'home', 'icon': Icons.home_rounded, 'label': 'Hogar'},
-    {'key': 'transport', 'icon': Icons.directions_car_rounded, 'label': 'Transporte'},
+    {
+      'key': 'transport',
+      'icon': Icons.directions_car_rounded,
+      'label': 'Transporte',
+    },
     {'key': 'game', 'icon': Icons.sports_esports_rounded, 'label': 'Ocio'},
     {'key': 'potion', 'icon': Icons.medical_services_rounded, 'label': 'Salud'},
     {'key': 'loot', 'icon': Icons.shopping_bag_rounded, 'label': 'Compras'},
@@ -40,22 +53,15 @@ class _CategoriesSheetState extends State<CategoriesSheet> {
 
   final List<int> _availableColors = [
     0xFF10B981, // Emerald
-    0xFF3B82F6, // Blue
-    0xFF8B5CF6, // Purple
+    0xFF715033,
+    0xFF8C493F,
     0xFFEC4899, // Pink
     0xFFF59E0B, // Amber
-    0xFF06B6D4, // Cyan
+    0xFF6B703A,
     0xFFF97316, // Orange
     0xFFEF4444, // Red
-    0xFF64748B, // Slate
+    0xFF625B52, // Slate
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    _currentType = widget.type;
-    _loadCategories();
-  }
 
   @override
   void dispose() {
@@ -63,45 +69,16 @@ class _CategoriesSheetState extends State<CategoriesSheet> {
     super.dispose();
   }
 
-  Future<void> _loadCategories() async {
-    final cats = await DatabaseService.instance.getCategories(type: _currentType);
-    if (mounted) {
-      setState(() {
-        _categories = cats;
-        _isLoading = false;
-      });
-    }
-  }
-
   Future<void> _addCategory() async {
     final name = _nameController.text.trim();
-    if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Escribe un nombre para la categoría')),
-      );
-      return;
-    }
-
-    final newCat = CategoryModel(
-      id: const Uuid().v4(),
-      name: name,
-      type: _currentType,
-      iconKey: _selectedIconKey,
-      colorValue: _selectedColor,
-      isDefault: false,
-    );
-
-    await DatabaseService.instance.createCategory(newCat);
-    _nameController.clear();
-    await _loadCategories();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Categoría "$name" creada'),
-          backgroundColor: KwallTheme.surfaceElevated,
-        ),
-      );
+    final saved = await model.add(name, _selectedIconKey, _selectedColor);
+    if (!mounted) return;
+    if (saved) {
+      _nameController.clear();
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Categoría "$name" creada')));
+    } else {
+      showFailure(context, model.error ?? 'No se pudo guardar la categoría.');
     }
   }
 
@@ -130,7 +107,7 @@ class _CategoriesSheetState extends State<CategoriesSheet> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -141,53 +118,58 @@ class _CategoriesSheetState extends State<CategoriesSheet> {
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close_rounded, color: KwallTheme.textSecondary),
+                  icon: Icon(
+                    Icons.close_rounded,
+                    color: KwallTheme.textSecondary,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
 
             // Type Toggle
             Row(
               children: [
                 Expanded(
                   child: FilterChip(
-                    label: const Center(child: Text('Gastos')),
+                    label: Center(child: Text('Gastos')),
                     selected: _currentType == 'expense',
                     selectedColor: KwallTheme.accent.withValues(alpha: 0.2),
                     backgroundColor: KwallTheme.surfaceContainer,
                     checkmarkColor: KwallTheme.accent,
                     labelStyle: TextStyle(
-                      color: _currentType == 'expense' ? KwallTheme.accent : KwallTheme.textSecondary,
+                      color: _currentType == 'expense'
+                          ? KwallTheme.accent
+                          : KwallTheme.textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
                     onSelected: (_) {
-                      setState(() => _currentType = 'expense');
-                      _loadCategories();
+                      model.selectType('expense');
                     },
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: FilterChip(
-                    label: const Center(child: Text('Ingresos')),
+                    label: Center(child: Text('Ingresos')),
                     selected: _currentType == 'income',
                     selectedColor: KwallTheme.accent.withValues(alpha: 0.2),
                     backgroundColor: KwallTheme.surfaceContainer,
                     checkmarkColor: KwallTheme.accent,
                     labelStyle: TextStyle(
-                      color: _currentType == 'income' ? KwallTheme.accent : KwallTheme.textSecondary,
+                      color: _currentType == 'income'
+                          ? KwallTheme.accent
+                          : KwallTheme.textSecondary,
                       fontWeight: FontWeight.w600,
                     ),
                     onSelected: (_) {
-                      setState(() => _currentType = 'income');
-                      _loadCategories();
+                      model.selectType('income');
                     },
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // New category form
             Text(
@@ -199,29 +181,32 @@ class _CategoriesSheetState extends State<CategoriesSheet> {
                 letterSpacing: 0.5,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
 
             Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _nameController,
-                    style: const TextStyle(color: KwallTheme.textPrimary),
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: KwallTheme.textPrimary),
+                    decoration: InputDecoration(
                       hintText: 'Ej. Gimnasio, Libros, Streaming...',
-                      hintStyle: TextStyle(color: KwallTheme.textMuted, fontSize: 13),
+                      hintStyle: TextStyle(
+                        color: KwallTheme.textMuted,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 ExpressiveButton(
                   onPressed: _addCategory,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  child: const Icon(Icons.add_rounded, color: Colors.black),
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Icon(Icons.add_rounded, color: KwallTheme.onAccent),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
 
             // Icon Picker
             Text(
@@ -232,40 +217,48 @@ class _CategoriesSheetState extends State<CategoriesSheet> {
                 color: KwallTheme.textSecondary,
               ),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             SizedBox(
               height: 48,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _availableIcons.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                separatorBuilder: (_, _) => SizedBox(width: 8),
                 itemBuilder: (context, i) {
                   final item = _availableIcons[i];
                   final isSelected = _selectedIconKey == item['key'];
                   return GestureDetector(
-                    onTap: () => setState(() => _selectedIconKey = item['key'] as String),
+                    onTap: () => setState(
+                      () => _selectedIconKey = item['key'] as String,
+                    ),
                     child: Container(
                       width: 44,
                       height: 44,
                       decoration: BoxDecoration(
-                        color: isSelected ? KwallTheme.accent.withValues(alpha: 0.2) : KwallTheme.surfaceContainer,
-                        borderRadius: BorderRadius.circular(12),
+                        color: isSelected
+                            ? KwallTheme.accent.withValues(alpha: 0.2)
+                            : KwallTheme.surfaceContainer,
+                        borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color: isSelected ? KwallTheme.accent : Colors.transparent,
+                          color: isSelected
+                              ? KwallTheme.accent
+                              : Colors.transparent,
                           width: 1.5,
                         ),
                       ),
                       child: Icon(
                         item['icon'] as IconData,
                         size: 20,
-                        color: isSelected ? KwallTheme.accent : KwallTheme.textSecondary,
+                        color: isSelected
+                            ? KwallTheme.accent
+                            : KwallTheme.textSecondary,
                       ),
                     ),
                   );
                 },
               ),
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
 
             // Color Picker
             Text(
@@ -276,13 +269,13 @@ class _CategoriesSheetState extends State<CategoriesSheet> {
                 color: KwallTheme.textSecondary,
               ),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             SizedBox(
               height: 38,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _availableColors.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                separatorBuilder: (_, _) => SizedBox(width: 8),
                 itemBuilder: (context, i) {
                   final c = _availableColors[i];
                   final isSelected = _selectedColor == c;
@@ -295,7 +288,7 @@ class _CategoriesSheetState extends State<CategoriesSheet> {
                         color: Color(c),
                         shape: BoxShape.circle,
                         border: isSelected
-                            ? Border.all(color: Colors.white, width: 2.5)
+                            ? Border.all(color: KwallTheme.onAccent, width: 2.5)
                             : null,
                       ),
                     ),
@@ -303,7 +296,7 @@ class _CategoriesSheetState extends State<CategoriesSheet> {
                 },
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
 
             // Existing categories list
             Text(
@@ -315,31 +308,48 @@ class _CategoriesSheetState extends State<CategoriesSheet> {
                 letterSpacing: 0.5,
               ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
 
             if (_isLoading)
-              const Center(child: CircularProgressIndicator())
+              Center(child: CircularProgressIndicator())
             else
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: _categories.map((cat) {
                   return Chip(
-                    avatar: Icon(cat.iconData, size: 16, color: Color(cat.colorValue)),
+                    avatar: Icon(
+                      cat.iconData,
+                      size: 16,
+                      color: KwallTheme.displayColor(cat.colorValue),
+                    ),
                     label: Text(
                       cat.name,
-                      style: const TextStyle(fontSize: 12, color: KwallTheme.textPrimary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: KwallTheme.textPrimary,
+                      ),
                     ),
                     backgroundColor: KwallTheme.surfaceContainer,
-                    side: const BorderSide(color: KwallTheme.border),
+                    side: BorderSide(color: KwallTheme.border),
                     deleteIcon: cat.isDefault
                         ? null
-                        : const Icon(Icons.close_rounded, size: 14, color: KwallTheme.textMuted),
+                        : Icon(
+                            Icons.close_rounded,
+                            size: 14,
+                            color: KwallTheme.textMuted,
+                          ),
                     onDeleted: cat.isDefault
                         ? null
                         : () async {
-                            await DatabaseService.instance.deleteCategory(cat.id);
-                            await _loadCategories();
+                            if (!await model.remove(cat.id) &&
+                                context.mounted) {
+                              showFailure(
+                                context,
+                                model.error ??
+                                    'No se pudo eliminar la categoría.',
+                              );
+                            }
                           },
                   );
                 }).toList(),

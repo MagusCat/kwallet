@@ -7,6 +7,7 @@ class TransactionRecord {
   final String type; // 'expense', 'income', 'transfer'
   final String note;
   final DateTime date;
+  final String? storedDate;
   final DateTime createdAt;
 
   TransactionRecord({
@@ -18,6 +19,7 @@ class TransactionRecord {
     required this.type,
     this.note = '',
     required this.date,
+    this.storedDate,
     required this.createdAt,
   });
 
@@ -30,7 +32,7 @@ class TransactionRecord {
       'amount': amount,
       'type': type,
       'note': note,
-      'date': date.toIso8601String(),
+      'date': storedDate ?? date.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
     };
   }
@@ -44,8 +46,11 @@ class TransactionRecord {
       amount: (map['amount'] as num).toDouble(),
       type: map['type'] as String,
       note: (map['note'] as String?) ?? '',
+      storedDate: map['date'] as String?,
       date: DateTime.tryParse(map['date'] as String? ?? '') ?? DateTime.now(),
-      createdAt: DateTime.tryParse(map['created_at'] as String? ?? '') ?? DateTime.now(),
+      createdAt:
+          DateTime.tryParse(map['created_at'] as String? ?? '') ??
+          DateTime.now(),
     );
   }
 
