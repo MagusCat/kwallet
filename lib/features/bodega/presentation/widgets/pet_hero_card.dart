@@ -3,9 +3,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/models/pet_species.dart';
 import '../../../../core/theme/kwall_theme.dart';
 import '../../../../core/widgets/finance_widgets.dart';
 import '../../../../core/widgets/kitty_companion.dart';
+import '../../../../core/widgets/pet_visual_toast.dart';
 import '../../view_models/home_view_model.dart';
 import 'pet_dialogue_bubble.dart';
 
@@ -182,6 +184,14 @@ class _PetHeroCardState extends State<PetHeroCard>
       _earnedXpThisPet = awarded;
     });
 
+    if (mounted) {
+      PetVisualToast.show(
+        context,
+        type: awarded ? PetVisualToastType.xp : PetVisualToastType.affection,
+        badgeValue: awarded ? '+2 XP' : null,
+      );
+    }
+
     _celebrateTimer = Timer(const Duration(milliseconds: 2200), () {
       if (mounted) {
         setState(() {
@@ -256,6 +266,7 @@ class _PetHeroCardState extends State<PetHeroCard>
     final controller = widget.controller;
     final petName = controller.settings['pet_name'] ?? 'Mishi';
     final level = controller.xp ~/ 100 + 1;
+    final growthStage = PetGrowthStage.fromXp(controller.xp);
     final xpInCurrentLevel = controller.xp % 100;
     final xpProgress = (xpInCurrentLevel / 100).clamp(0.0, 1.0);
     final now = DateTime.now();
@@ -288,11 +299,9 @@ class _PetHeroCardState extends State<PetHeroCard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Header: Nombre estilizado de la mascota y chip de nivel
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Badge de nombre
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
@@ -324,7 +333,7 @@ class _PetHeroCardState extends State<PetHeroCard>
                 ),
               ),
 
-              // Chip de Nivel
+              // Growth stage and level chip
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
@@ -335,13 +344,15 @@ class _PetHeroCardState extends State<PetHeroCard>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      Icons.auto_awesome_rounded,
+                      growthStage == PetGrowthStage.master
+                          ? Icons.stars_rounded
+                          : Icons.auto_awesome_rounded,
                       color: KwallTheme.accent,
                       size: 13,
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      'Nv. $level',
+                      '${growthStage.title} • Nv. $level',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -361,7 +372,6 @@ class _PetHeroCardState extends State<PetHeroCard>
           ),
           const SizedBox(height: 10),
 
-          // Escenario interactivo: caminar, agarrar 2D, mover fluido y soltar
           LayoutBuilder(
             builder: (context, constraints) {
               final stageWidth = constraints.maxWidth;
@@ -386,7 +396,6 @@ class _PetHeroCardState extends State<PetHeroCard>
                   clipBehavior: Clip.none,
                   alignment: Alignment.bottomCenter,
                   children: [
-                    // Línea de suelo sutil
                     Positioned(
                       left: 20,
                       right: 20,
@@ -400,7 +409,7 @@ class _PetHeroCardState extends State<PetHeroCard>
                       ),
                     ),
 
-                    // Sombra dinámica bajo la mascota
+                    // Dynamic shadow
                     AnimatedAlign(
                       duration: _isGrabbed
                           ? Duration.zero
@@ -417,7 +426,6 @@ class _PetHeroCardState extends State<PetHeroCard>
                       ),
                     ),
 
-                    // Mascota interactiva: movimiento 2D fluido, reacción al soltar y mimos
                     AnimatedAlign(
                       duration: _isGrabbed
                           ? Duration.zero
@@ -459,7 +467,7 @@ class _PetHeroCardState extends State<PetHeroCard>
                         },
                         child: AnimatedScale(
                           duration: const Duration(milliseconds: 160),
-                          scale: _isGrabbed ? 1.10 : 1.0,
+                          scale: (_isGrabbed ? 1.10 : 1.0) * growthStage.scale,
                           child: Stack(
                             alignment: Alignment.center,
                             clipBehavior: Clip.none,
@@ -481,7 +489,7 @@ class _PetHeroCardState extends State<PetHeroCard>
                       ),
                     ),
 
-                    // Partículas de afecto (corazones y destellos flotantes)
+                    // Affection particles
                     if (_particleAnim.isAnimating && _particles.isNotEmpty)
                       AnimatedAlign(
                         duration: Duration.zero,
@@ -518,7 +526,7 @@ class _PetHeroCardState extends State<PetHeroCard>
                                   },
                                 ),
 
-                              // Insignia flotante animada "+2 XP" cuando se gana XP
+                              // Floating +2 XP badge
                               if (_earnedXpThisPet)
                                 Builder(
                                   builder: (context) {
@@ -559,7 +567,7 @@ class _PetHeroCardState extends State<PetHeroCard>
                           ),
                         ),
                       ),
-                    // Partículas de enojo rojas tipo 'X' flotantes en movimiento
+                    // Annoyance cross particles
                     if (_annoyedAnim.isAnimating && _annoyedParticles.isNotEmpty)
                       AnimatedAlign(
                         duration: Duration.zero,
@@ -609,7 +617,7 @@ class _PetHeroCardState extends State<PetHeroCard>
           ),
           const SizedBox(height: 12),
 
-          // Barra de progreso XP hacia el siguiente nivel
+          // XP progress towards next level
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: LinearProgressIndicator(

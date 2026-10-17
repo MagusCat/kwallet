@@ -4,9 +4,11 @@ import '../../../app/app_dependencies.dart';
 import '../../../core/mvvm/view_model_state.dart';
 import '../view_models/launch_view_model.dart';
 import '../../../core/theme/kwall_theme.dart';
+import '../../../core/models/pet_species.dart';
 import '../../../core/widgets/finance_widgets.dart';
 import '../../../core/widgets/kitty_companion.dart';
 import '../../../core/widgets/pet_loading_screen.dart';
+import '../../../core/widgets/pet_selection_panel.dart';
 import '../../bodega/presentation/bodega_screen.dart';
 
 class LaunchScreen extends StatefulWidget {
@@ -248,46 +250,20 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               ),
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 10),
-            Text(
-              'Raza o estilo:',
-              style: KwallTheme.fontTitle.copyWith(fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: [
-                for (final entry in petStyles.entries)
-                  ChoiceChip(
-                    avatar: Container(
-                      width: 18,
-                      height: 18,
-                      decoration: const BoxDecoration(shape: BoxShape.circle),
-                      child: TickerMode(
-                        enabled: false,
-                        child: KittyCompanionWidget(
-                          size: 18,
-                          settings: {'pet_style': entry.key},
-                        ),
-                      ),
-                    ),
-                    label: Text(entry.value),
-                    selected: _selectedStyle == entry.key,
-                    onSelected: (selected) {
-                      if (selected) {
-                        setState(() {
-                          _selectedStyle = entry.key;
-                          if (_petName.text.isEmpty ||
-                              petStyles.values.contains(_petName.text)) {
-                            _petName.text = entry.value;
-                          }
-                        });
-                      }
-                    },
-                  ),
-              ],
+            const SizedBox(height: 12),
+            PetSelectionPanel(
+              selectedStyle: _selectedStyle,
+              onSelectStyle: (style) {
+                setState(() => _selectedStyle = style);
+              },
+              onNameSuggested: (name) {
+                setState(() {
+                  if (_petName.text.isEmpty ||
+                      PetSpeciesCatalog.namesMap.values.contains(_petName.text)) {
+                    _petName.text = name;
+                  }
+                });
+              },
             ),
             const SizedBox(height: 16),
             _infoCard(

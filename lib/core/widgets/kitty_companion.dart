@@ -7,18 +7,11 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../models/pet_species.dart';
+
 enum PetActivity { idle, walk, run, sleep, curious, celebrate, relax, grabbed }
 
-const petStyles = {
-  'classic': 'Mishi',
-  'cream': 'Canela',
-  'ink': 'Sombra',
-  'ginger': 'Naranjito',
-  'siamese': 'Milo',
-  'calico': 'Manchas',
-  'silver': 'Plata',
-  'snow': 'Copito',
-};
+Map<String, String> get petStyles => PetSpeciesCatalog.namesMap;
 
 class KittyCompanionWidget extends StatefulWidget {
   final Map<String, String> settings;
@@ -38,13 +31,25 @@ class KittyCompanionWidget extends StatefulWidget {
     this.imagePath,
     this.reward = 0,
   });
+
+  static final Map<String, Future<ui.Image>> _atlasCache = {};
+
+  static Future<ui.Image> loadAtlas(String path) {
+    return _atlasCache.putIfAbsent(path, () async {
+      final data = await rootBundle.load(path);
+      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+      final frame = await codec.getNextFrame();
+      codec.dispose();
+      return frame.image;
+    });
+  }
+
   @override
   State<KittyCompanionWidget> createState() => _KittyCompanionWidgetState();
 }
 
 class _KittyCompanionWidgetState extends State<KittyCompanionWidget>
     with WidgetsBindingObserver {
-  static Future<ui.Image>? _cachedAtlas;
   static String? _imageData;
   static Uint8List? _imageBytes;
   ui.Image? _atlas;
@@ -71,20 +76,24 @@ class _KittyCompanionWidgetState extends State<KittyCompanionWidget>
     PetActivity.grabbed => (8, 4, 180),
   };
 
+  String get _currentAsset => PetSpeciesCatalog.resolveAsset(
+    widget.settings['pet_style'],
+    xp: widget.reward,
+  );
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _readImage();
-    _cachedAtlas ??= rootBundle.load('cat.png').then((data) async {
-      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
-      final frame = await codec.getNextFrame();
-      codec.dispose();
-      return frame.image;
-    });
-    _cachedAtlas!.then((image) {
+    _loadCurrentAtlas();
+  }
+
+  void _loadCurrentAtlas() {
+    final asset = _currentAsset;
+    KittyCompanionWidget.loadAtlas(asset).then((image) {
       if (mounted) setState(() => _atlas = image);
-    }, onError: (Object error, StackTrace stack) {});
+    }, onError: (_, _) {});
   }
 
   void _readImage() {
@@ -117,7 +126,13 @@ class _KittyCompanionWidgetState extends State<KittyCompanionWidget>
         widget.settings['pet_image_data'] !=
             oldWidget.settings['pet_image_data'] ||
         widget.settings['pet_style'] != oldWidget.settings['pet_style'];
-    if (changedPet) _readImage();
+    final changedStage =
+        PetGrowthStage.fromXp(widget.reward) !=
+        PetGrowthStage.fromXp(oldWidget.reward);
+    if (changedPet || changedStage) {
+      if (changedPet) _readImage();
+      _loadCurrentAtlas();
+    }
     if (widget.activity != oldWidget.activity) _frame = 0;
     if (widget.reward > oldWidget.reward) {
       _react(PetActivity.celebrate);
@@ -254,114 +269,9 @@ class _KittyCompanionWidgetState extends State<KittyCompanionWidget>
       ),
     );
     final style = widget.settings['pet_style'];
-    if (style == 'cream') {
-      return ColorFiltered(
-        colorFilter: const ColorFilter.matrix([
-          1.1,
-          0,
-          0,
-          0,
-          14,
-          0,
-          .9,
-          0,
-          0,
-          9,
-          0,
-          0,
-          .6,
-          0,
-          3,
-          0,
-          0,
-          0,
-          1,
-          0,
-        ]),
-        child: sprite,
-      );
-    }
-    if (style == 'ink') {
-      return ColorFiltered(
-        colorFilter: const ColorFilter.matrix([
-          .55,
-          0,
-          0,
-          0,
-          6,
-          0,
-          .58,
-          0,
-          0,
-          8,
-          0,
-          0,
-          .5,
-          0,
-          6,
-          0,
-          0,
-          0,
-          1,
-          0,
-        ]),
-        child: sprite,
-      );
-    }
-    if (style == 'ginger') {
-      return ColorFiltered(
-        colorFilter: const ColorFilter.matrix([
-          1.3, 0, 0, 0, 25,
-          0, .85, 0, 0, -5,
-          0, 0, .45, 0, -18,
-          0, 0, 0, 1, 0,
-        ]),
-        child: sprite,
-      );
-    }
-    if (style == 'siamese') {
-      return ColorFiltered(
-        colorFilter: const ColorFilter.matrix([
-          1.05, 0, 0, 0, 15,
-          0, 1.0, 0, 0, 8,
-          0, 0, .85, 0, 2,
-          0, 0, 0, 1, 0,
-        ]),
-        child: sprite,
-      );
-    }
-    if (style == 'calico') {
-      return ColorFiltered(
-        colorFilter: const ColorFilter.matrix([
-          1.2, 0, 0, 0, 18,
-          0, .95, 0, 0, 2,
-          0, 0, .6, 0, -8,
-          0, 0, 0, 1, 0,
-        ]),
-        child: sprite,
-      );
-    }
-    if (style == 'silver') {
-      return ColorFiltered(
-        colorFilter: const ColorFilter.matrix([
-          .7, 0, 0, 0, 22,
-          0, .75, 0, 0, 28,
-          0, 0, .85, 0, 42,
-          0, 0, 0, 1, 0,
-        ]),
-        child: sprite,
-      );
-    }
-    if (style == 'snow') {
-      return ColorFiltered(
-        colorFilter: const ColorFilter.matrix([
-          1.25, 0, 0, 0, 38,
-          0, 1.25, 0, 0, 38,
-          0, 0, 1.35, 0, 46,
-          0, 0, 0, 1, 0,
-        ]),
-        child: sprite,
-      );
+    final filter = PetSpeciesCatalog.get(style).colorFilter;
+    if (filter != null) {
+      return ColorFiltered(colorFilter: filter, child: sprite);
     }
     return sprite;
   }

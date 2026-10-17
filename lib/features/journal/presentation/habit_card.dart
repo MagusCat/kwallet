@@ -6,6 +6,7 @@ import '../../../core/mvvm/view_model_state.dart';
 import '../view_models/journal_actions_view_model.dart';
 import '../../../core/theme/kwall_theme.dart';
 import '../../../core/widgets/finance_widgets.dart';
+import '../../../core/widgets/pet_visual_toast.dart';
 import '../models/journal_models.dart';
 import 'journal_sheets.dart';
 
@@ -39,6 +40,13 @@ class _HabitCardState
   Future<void> _complete() async {
     if (await model.completeHabit(widget.habit, widget.day)) {
       HapticFeedback.lightImpact();
+      if (mounted) {
+        PetVisualToast.show(
+          context,
+          type: PetVisualToastType.habitDone,
+          badgeValue: '+10 XP',
+        );
+      }
     } else if (mounted) {
       showFailure(context, model.error ?? 'No se pudo marcar el hábito.');
     }

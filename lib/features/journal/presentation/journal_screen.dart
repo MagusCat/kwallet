@@ -11,6 +11,7 @@ import 'habit_check_in.dart';
 import 'journal_sheets.dart';
 
 import '../models/journal_models.dart';
+import '../../../core/widgets/pet_cameo_empty_state.dart';
 import 'widgets/habit_time_block_filter.dart';
 
 export 'journal_sheets.dart' show NoteSheet;
@@ -240,9 +241,9 @@ class _JournalScreenState
                     _dayPicker(),
                     const SizedBox(height: 16),
                     if (_habits.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 30),
-                        child: Text('Tu primer hábito empieza aquí.'),
+                      const PetCameoEmptyState(
+                        label: 'Tu primer hábito empieza aquí.',
+                        iconBadge: Icons.auto_awesome_rounded,
                       ),
                     HabitDaySummary(
                       habits: _habits,

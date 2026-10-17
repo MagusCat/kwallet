@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/kwall_theme.dart';
 import '../../../core/widgets/finance_widgets.dart';
 import '../../../core/widgets/juice_widgets.dart';
+import '../../../core/widgets/pet_cameo_empty_state.dart';
 import '../models/account.dart';
 import '../view_models/home_view_model.dart';
 import 'movements_screen.dart';
@@ -344,12 +345,9 @@ class FinancesScreen extends StatelessWidget {
                 ],
               ),
               if (controller.transactions.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Text(
-                    'No hay movimientos recientes.',
-                    style: TextStyle(color: KwallTheme.textSecondary),
-                  ),
+                const PetCameoEmptyState(
+                  label: 'No hay movimientos recientes.',
+                  iconBadge: Icons.monetization_on_outlined,
                 ),
               for (final tx in controller.transactions.take(10))
                 MovementTile(

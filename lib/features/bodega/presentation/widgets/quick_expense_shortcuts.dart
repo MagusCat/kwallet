@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../../core/theme/kwall_theme.dart';
 import '../../../../core/widgets/finance_widgets.dart';
+import '../../../../core/widgets/pet_visual_toast.dart';
 import '../../view_models/home_view_model.dart';
 
 class QuickExpenseShortcuts extends StatelessWidget {
@@ -35,6 +36,11 @@ class QuickExpenseShortcuts extends StatelessWidget {
 
     if (record != null && context.mounted) {
       final currency = controller.accounts.firstOrNull?.currency ?? controller.currency;
+      PetVisualToast.show(
+        context,
+        type: PetVisualToastType.expense,
+        badgeValue: '-${KwallTheme.formatCurrency(amount, currency)}',
+      );
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
