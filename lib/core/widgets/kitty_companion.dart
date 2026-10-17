@@ -285,13 +285,9 @@ class _AtlasPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (atlas == null) return;
-    final source = Rect.fromLTWH(frame * 32 + 4, row * 32 + 12, 24, 20);
-    final scale = math.min(size.width / 24, size.height / 20);
-    final target = Rect.fromCenter(
-      center: size.center(Offset.zero),
-      width: 24 * scale,
-      height: 20 * scale,
-    );
+    // Full 32x32 frame cell ensures no tails, ears, or snouts are clipped
+    final source = Rect.fromLTWH(frame * 32.0, row * 32.0, 32.0, 32.0);
+    final target = Rect.fromLTWH(0, 0, size.width, size.height);
     canvas.drawImageRect(
       atlas!,
       source,

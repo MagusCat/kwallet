@@ -251,8 +251,12 @@ class PetSpeciesCatalog {
 
   static String resolveAsset(String? styleKey, {int xp = 0}) {
     final def = get(styleKey);
-    if (def.species == PetSpecies.cat && xp < 200) {
-      return 'cat_baby.png';
+    if (xp < 200) {
+      return switch (def.species) {
+        PetSpecies.cat => 'cat_baby.png',
+        PetSpecies.rat => 'rat_baby.png',
+        PetSpecies.raccoon => 'raccoon_baby.png',
+      };
     }
     return def.asset;
   }

@@ -36,11 +36,13 @@ void main() {
       expect(PetGrowthStage.master.scale, equals(1.15));
     });
 
-    test('Asset resolution uses baby atlas for cats under 200 XP', () {
+    test('Asset resolution uses baby atlas for all species under 200 XP', () {
       expect(PetSpeciesCatalog.resolveAsset('classic', xp: 50), equals('cat_baby.png'));
       expect(PetSpeciesCatalog.resolveAsset('classic', xp: 250), equals('cat.png'));
-      expect(PetSpeciesCatalog.resolveAsset('rat_snow', xp: 50), equals('rat.png'));
-      expect(PetSpeciesCatalog.resolveAsset('raccoon_classic', xp: 50), equals('raccoon.png'));
+      expect(PetSpeciesCatalog.resolveAsset('rat_snow', xp: 50), equals('rat_baby.png'));
+      expect(PetSpeciesCatalog.resolveAsset('rat_snow', xp: 250), equals('rat.png'));
+      expect(PetSpeciesCatalog.resolveAsset('raccoon_classic', xp: 50), equals('raccoon_baby.png'));
+      expect(PetSpeciesCatalog.resolveAsset('raccoon_classic', xp: 250), equals('raccoon.png'));
     });
 
     test('Random pet selection returns valid style', () {
