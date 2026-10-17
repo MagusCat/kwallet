@@ -104,11 +104,17 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
 
             val now = System.currentTimeMillis()
             val lastTap = prefs.getLong(KEY_LAST_TAP_TIME, 0L)
-            // Reset mood & pose to idle after 6 seconds of inactivity
-            val effectiveMood = if (now - lastTap > 6000L) "normal" else storedMood
-            val effectivePose = if (now - lastTap > 6000L) "idle" else storedPose
+            val isRecentTap = (now - lastTap) <= 6000L
+
+            val (timeOfDayPose, timeOfDayMood, timeOfDayStatus) = resolveDaytimeState(totalHabits, pendingHabits)
+            val effectiveMood = if (isRecentTap) storedMood else timeOfDayMood
+            val effectivePose = if (isRecentTap) storedPose else timeOfDayPose
+            val effectiveStatus = if (isRecentTap) "kwall" else timeOfDayStatus
 
             val views = RemoteViews(context.packageName, R.layout.kwall_pet_widget)
+
+            // Update brand or status message depending on dynamic state
+            views.setTextViewText(R.id.widget_brand, effectiveStatus)
 
             // Apply background configuration (default card, transparent/no-bg, or custom color)
             when (bgMode) {
@@ -140,12 +146,12 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
             views.setImageViewResource(R.id.widget_cat_avatar, catDrawable)
 
             // Mood indicators (Pixel Art Red 'X' for annoyed, Heart for happy)
-            when (effectiveMood) {
-                "annoyed" -> {
+            when {
+                effectiveMood == "annoyed" -> {
                     views.setViewVisibility(R.id.widget_cat_anger_x, View.VISIBLE)
                     views.setViewVisibility(R.id.widget_cat_heart, View.GONE)
                 }
-                "happy" -> {
+                effectiveMood == "happy" && effectivePose != "sleep" -> {
                     views.setViewVisibility(R.id.widget_cat_anger_x, View.GONE)
                     views.setViewVisibility(R.id.widget_cat_heart, View.VISIBLE)
                 }
@@ -207,6 +213,27 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.widget_bottom_bar, pendingLaunch)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
+        }
+
+        private fun resolveDaytimeState(totalHabits: Int, pendingHabits: Int): Triple<String, String, String> {
+            val cal = java.util.Calendar.getInstance()
+            val hour = cal.get(java.util.Calendar.HOUR_OF_DAY)
+            val allHabitsDone = totalHabits > 0 && pendingHabits == 0
+
+            return when {
+                // Noche (22:00 - 06:59): Durmiendo plácidamente
+                hour >= 22 || hour < 7 -> Triple("sleep", "normal", "zZz kwall")
+                // Siesta de la tarde (14:00 - 15:59): Siesta del gato
+                hour in 14..15 -> Triple("sleep", "normal", "zZz siesta")
+                // Todos los hábitos completos: Celebrando y feliz
+                allHabitsDone -> Triple("celebrate", "happy", "kwall · ¡listo!")
+                // Mañana activa (07:00 - 11:59): Jugando
+                hour in 7..11 -> Triple("play", "happy", "kwall · jugando")
+                // Tarde activa (16:00 - 19:59): Jugando
+                hour in 16..19 -> Triple("play", "happy", "kwall · jugando")
+                // Mediodía (12:00 - 13:59) y Noche relajada (20:00 - 21:59): Feliz y relajado
+                else -> Triple("walk", "happy", "kwall · feliz")
+            }
         }
 
         private fun getCatDrawableRes(context: Context, style: String, pose: String): Int {

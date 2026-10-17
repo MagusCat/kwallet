@@ -251,7 +251,17 @@ class _PetHeroCardState extends State<PetHeroCard>
     final xpInCurrentLevel = controller.xp % 100;
     final xpProgress = (xpInCurrentLevel / 100).clamp(0.0, 1.0);
     final now = DateTime.now();
-    final isSleepingTime = now.hour >= 22 || now.hour < 6;
+    final hour = now.hour;
+    final allHabitsDone =
+        controller.totalHabitsToday > 0 && controller.pendingHabitsCount == 0;
+    final isSleepingTime = hour >= 22 || hour < 7 || (hour >= 14 && hour < 16);
+    final isPlayingTime = (hour >= 7 && hour < 12) || (hour >= 16 && hour < 20);
+
+    final defaultActivity = isSleepingTime
+        ? PetActivity.sleep
+        : (allHabitsDone
+            ? PetActivity.celebrate
+            : (isPlayingTime ? PetActivity.run : _currentActivity));
 
     final effectiveActivity = _isGrabbed
         ? PetActivity.grabbed
@@ -259,7 +269,7 @@ class _PetHeroCardState extends State<PetHeroCard>
             ? PetActivity.celebrate
             : (_isAnnoyed
                 ? PetActivity.curious
-                : (isSleepingTime ? PetActivity.sleep : _currentActivity)));
+                : defaultActivity));
 
     // Dynamic shadow: shrinks and fades when lifted
     final liftRatio = ((0.55 - _yPos) / 1.1).clamp(0.0, 1.0);
