@@ -7,6 +7,8 @@ import '../../../core/theme/kwall_theme.dart';
 import '../../../core/widgets/finance_widgets.dart';
 import '../../../core/widgets/kitty_companion.dart';
 import '../../../core/widgets/pet_picker.dart';
+import 'widgets/notifications_settings_tile.dart';
+import 'widgets/streaks_settings_tile.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String currentCurrency;
@@ -565,6 +567,21 @@ class _SettingsScreenState
                         ),
                       ],
                     ),
+                  ),
+                  const Divider(height: 40),
+                  Text(
+                    'Preferencias de la app',
+                    style: KwallTheme.fontTitle.copyWith(fontSize: 21),
+                  ),
+                  const SizedBox(height: 14),
+                  NotificationsSettingsTile(
+                    settings: model.settings,
+                    onToggle: (key, val) => _appearance(key, val),
+                  ),
+                  const SizedBox(height: 14),
+                  StreaksSettingsTile(
+                    settings: model.settings,
+                    onToggle: (key, val) => _appearance(key, val),
                   ),
                   const Divider(height: 40),
                   Text(

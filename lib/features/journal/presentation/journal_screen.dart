@@ -263,6 +263,7 @@ class _JournalScreenState
                         key: ValueKey(habit.id),
                         habit: habit,
                         day: _day,
+                        hideStreak: _settings['disable_streaks'] == 'true',
                         onEdit: () => _habit(habit),
                       ),
                   ],

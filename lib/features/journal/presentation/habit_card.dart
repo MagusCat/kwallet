@@ -17,12 +17,14 @@ class HabitCard extends StatefulWidget {
   final DateTime day;
   final VoidCallback? onEdit;
   final bool compact;
+  final bool hideStreak;
   const HabitCard({
     super.key,
     required this.habit,
     required this.day,
     this.onEdit,
     this.compact = false,
+    this.hideStreak = false,
   });
   @override
   State<HabitCard> createState() => _HabitCardState();
@@ -101,21 +103,23 @@ class _HabitCardState
                         widget.habit.title,
                         style: KwallTheme.fontTitle.copyWith(fontSize: 17),
                       ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.local_fire_department_outlined,
-                            size: 16,
-                            color: KwallTheme.accent,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${widget.habit.streak(widget.day)} días',
-                            style: TextStyle(color: KwallTheme.textSecondary),
-                          ),
-                        ],
-                      ),
+                      if (!widget.hideStreak) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.local_fire_department_outlined,
+                              size: 16,
+                              color: KwallTheme.accent,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${widget.habit.streak(widget.day)} días',
+                              style: TextStyle(color: KwallTheme.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
