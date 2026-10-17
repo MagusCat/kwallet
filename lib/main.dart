@@ -1,27 +1,66 @@
 import 'package:flutter/material.dart';
-import 'core/database/database_service.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
+import 'app/app_dependencies.dart';
+import 'app/app_scope.dart';
+import 'app/app_view_model.dart';
 import 'core/theme/kwall_theme.dart';
-import 'features/bodega/presentation/bodega_screen.dart';
+import 'features/welcome/presentation/launch_screen.dart';
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize SQLite database with desktop/mobile FFI
-  await DatabaseService.instance.database;
-
   runApp(const KwallApp());
 }
 
-class KwallApp extends StatelessWidget {
-  const KwallApp({super.key});
-
+class KwallApp extends StatefulWidget {
+  final AppDependencies? dependencies;
+  const KwallApp({super.key, this.dependencies});
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'kwall — Kitty Wallet',
-      debugShowCheckedModeBanner: false,
-      theme: KwallTheme.expressiveTheme,
-      home: const BodegaScreen(),
+  State<KwallApp> createState() => _KwallAppState();
+}
+
+class _KwallAppState extends State<KwallApp> with WidgetsBindingObserver {
+  late final _dependencies = widget.dependencies ?? AppDependencies.local();
+  late final AppViewModel _model = _dependencies.app();
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _model.addListener(_appearance);
+    _appearance();
+  }
+
+  void _appearance() {
+    KwallTheme.configure(
+      _model.settings,
+      WidgetsBinding.instance.platformDispatcher.platformBrightness,
     );
   }
+
+  @override
+  void didChangePlatformBrightness() => _appearance();
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _model.removeListener(_appearance);
+    _model.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<int>(
+    valueListenable: KwallTheme.revision,
+    builder: (_, value, child) => AppScope(
+      dependencies: _dependencies,
+      child: MaterialApp(
+        title: 'kwall',
+        debugShowCheckedModeBanner: false,
+        theme: KwallTheme.expressiveTheme,
+        locale: const Locale('es'),
+        supportedLocales: const [Locale('es'), Locale('en')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        home: const LaunchScreen(),
+      ),
+    ),
+  );
 }

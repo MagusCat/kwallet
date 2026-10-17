@@ -1,159 +1,203 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-/// Google Material 3 Expressive Design System
-/// 3 base neutral tones + 1 expressive accent
 class KwallTheme {
-  // 3 Base Neutral Colors
-  static const Color background = Color(0xFF0F1218);
-  static const Color surface = Color(0xFF181C24);
-  static const Color surfaceContainer = Color(0xFF222734);
-  static const Color surfaceElevated = Color(0xFF2A3142);
-  static const Color border = Color(0xFF2E3648);
+  static final revision = ValueNotifier<int>(0);
+  static String palette = 'forest';
+  static String mode = 'light';
+  static bool isDark = false;
+  static const palettes = {
+    'forest': 'Bosque',
+    'plum': 'Ciruela',
+    'rose': 'Rosa',
+    'gold': 'Miel',
+  };
 
-  // 1 Expressive Primary Accent
-  static const Color accent = Color(0xFF10B981); // Expressive Emerald Mint
-  static const Color accentLight = Color(0xFF34D399);
-
-  // Subtle Semantic Indicators
-  static const Color expenseRed = Color(0xFFF43F5E);
-  static const Color incomeGreen = Color(0xFF10B981);
-  static const Color infoBlue = Color(0xFF3B82F6);
-  static const Color warningAmber = Color(0xFFF59E0B);
-
-  // Clean Text Colors
-  static const Color textPrimary = Color(0xFFF1F5F9);
-  static const Color textSecondary = Color(0xFF94A3B8);
-  static const Color textMuted = Color(0xFF64748B);
-
-  static TextStyle get fontTitle {
-    try {
-      return GoogleFonts.plusJakartaSans(
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.2,
-      );
-    } catch (_) {
-      return const TextStyle(
-        fontWeight: FontWeight.w700,
-        letterSpacing: -0.2,
-      );
-    }
+  static void configure(Map<String, String> settings, Brightness brightness) {
+    final nextPalette = palettes.containsKey(settings['palette'])
+        ? settings['palette']!
+        : 'forest';
+    final nextMode =
+        ['light', 'dark', 'system'].contains(settings['theme_mode'])
+        ? settings['theme_mode']!
+        : 'light';
+    final dark =
+        nextMode == 'dark' ||
+        (nextMode == 'system' && brightness == Brightness.dark);
+    if (palette == nextPalette && mode == nextMode && isDark == dark) return;
+    palette = nextPalette;
+    mode = nextMode;
+    isDark = dark;
+    revision.value++;
   }
 
-  static TextStyle get fontBody {
-    try {
-      return GoogleFonts.plusJakartaSans(
-        fontWeight: FontWeight.w400,
-        letterSpacing: 0.1,
-      );
-    } catch (_) {
-      return const TextStyle(
-        fontWeight: FontWeight.w400,
-        letterSpacing: 0.1,
-      );
-    }
-  }
-
-  static TextStyle get fontDisplay {
-    try {
-      return GoogleFonts.plusJakartaSans(
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.5,
-      );
-    } catch (_) {
-      return const TextStyle(
-        fontWeight: FontWeight.w800,
-        letterSpacing: -0.5,
-      );
-    }
-  }
+  static Color get background => Color(isDark ? 0xFF1D211E : 0xFFF5F5EE);
+  static Color get surface => Color(isDark ? 0xFF272D28 : 0xFFFFFEF9);
+  static Color get surfaceContainer => Color(isDark ? 0xFF353E36 : 0xFFE9EBDF);
+  static Color get surfaceElevated => surfaceContainer;
+  static Color get border => Color(isDark ? 0xFF8D9C8F : 0xFF555E50);
+  static Color paletteColor(String name, {bool dark = false}) => switch (name) {
+    'plum' => Color(dark ? 0xFFD9B7ED : 0xFF735085),
+    'rose' => Color(dark ? 0xFFF1B3C7 : 0xFFA14665),
+    'gold' => Color(dark ? 0xFFE9CB81 : 0xFF806015),
+    _ => Color(dark ? 0xFFB2D39C : 0xFF466539),
+  };
+  static Color get accent => paletteColor(palette, dark: isDark);
+  static Color get accentLight =>
+      Color.alphaBlend(accent.withValues(alpha: isDark ? .2 : .14), surface);
+  static Color get onAccent => isDark ? const Color(0xFF20231E) : Colors.white;
+  static Color get expenseRed => Color(isDark ? 0xFFFFB4AC : 0xFFA42C39);
+  static Color get incomeGreen => Color(isDark ? 0xFFB5D49F : 0xFF39613E);
+  static Color get info => accent;
+  static Color get warningAmber => Color(isDark ? 0xFFE7C879 : 0xFF7C590A);
+  static Color get textPrimary => Color(isDark ? 0xFFF1F3E9 : 0xFF292E27);
+  static Color get textSecondary => Color(isDark ? 0xFFC4CDBF : 0xFF565F50);
+  static Color get textMuted => textSecondary;
+  static TextStyle get fontTitle =>
+      const TextStyle(fontFamily: 'Roboto', fontWeight: FontWeight.w700);
+  static TextStyle get fontBody => const TextStyle(fontFamily: 'Roboto');
+  static TextStyle get fontDisplay => const TextStyle(
+    fontFamily: 'Roboto',
+    fontWeight: FontWeight.w800,
+    letterSpacing: -.5,
+  );
 
   static ThemeData get expressiveTheme {
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: accent,
+          brightness: isDark ? Brightness.dark : Brightness.light,
+        ).copyWith(
+          primary: accent,
+          onPrimary: onAccent,
+          secondary: incomeGreen,
+          onSecondary: onAccent,
+          surface: surface,
+          onSurface: textPrimary,
+          surfaceContainer: surfaceContainer,
+          error: expenseRed,
+          onError: isDark ? Colors.black : Colors.white,
+          outline: border,
+          onSurfaceVariant: textSecondary,
+        );
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(18),
+      side: BorderSide(color: border),
+    );
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      colorScheme: scheme,
+      fontFamily: 'Roboto',
       scaffoldBackgroundColor: background,
-      primaryColor: accent,
-      colorScheme: const ColorScheme.dark(
-        primary: accent,
-        onPrimary: Colors.black,
-        secondary: accentLight,
-        surface: surface,
-        onSurface: textPrimary,
-        surfaceContainer: surfaceContainer,
-        error: expenseRed,
-      ),
-      cardTheme: CardThemeData(
-        color: surface,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: border, width: 1.0),
-          borderRadius: BorderRadius.circular(20),
-        ),
-      ),
-      dialogTheme: DialogThemeData(
-        backgroundColor: surface,
-        elevation: 6,
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(color: border, width: 1.0),
-          borderRadius: BorderRadius.circular(24),
-        ),
-      ),
-      bottomSheetTheme: const BottomSheetThemeData(
+      textTheme: (isDark ? ThemeData.dark() : ThemeData.light()).textTheme
+          .apply(
+            fontFamily: 'Roboto',
+            bodyColor: textPrimary,
+            displayColor: textPrimary,
+          ),
+      cardTheme: CardThemeData(color: surface, elevation: 0, shape: shape),
+      dialogTheme: DialogThemeData(backgroundColor: surface, shape: shape),
+      bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: surface,
         modalBackgroundColor: surface,
-        elevation: 8,
+        showDragHandle: true,
+        dragHandleColor: border,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          side: BorderSide(color: border),
         ),
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: background,
+        foregroundColor: textPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,
-        centerTitle: false,
-        titleTextStyle: fontTitle.copyWith(
-          color: textPrimary,
-          fontSize: 20,
-        ),
+        titleTextStyle: fontTitle.copyWith(fontSize: 23, color: textPrimary),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surfaceContainer,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        hintStyle: TextStyle(color: textMuted),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.transparent),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: border.withValues(alpha: .5)),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: accent, width: 1.5),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: accent, width: 2),
         ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(48, 50),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          side: BorderSide(color: border),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        labelStyle: TextStyle(fontFamily: 'Roboto', color: textPrimary),
+        secondaryLabelStyle: TextStyle(
+          fontFamily: 'Roboto',
+          color: textPrimary,
+        ),
+        checkmarkColor: accent,
+        iconTheme: IconThemeData(color: accent),
+        selectedColor: accentLight,
+        backgroundColor: surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        side: BorderSide.none,
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: surface,
-        indicatorColor: accent.withValues(alpha: 0.18),
-        labelTextStyle: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return fontBody.copyWith(fontSize: 12, fontWeight: FontWeight.w600, color: accent);
-          }
-          return fontBody.copyWith(fontSize: 12, fontWeight: FontWeight.w500, color: textSecondary);
-        }),
+        indicatorColor: accentLight,
+        iconTheme: WidgetStatePropertyAll(IconThemeData(color: textPrimary)),
+        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: accent,
+        foregroundColor: onAccent,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: textPrimary,
+        contentTextStyle: TextStyle(color: surface),
+        behavior: SnackBarBehavior.floating,
+      ),
+      dividerTheme: DividerThemeData(
+        color: border.withValues(alpha: .25),
+        thickness: 1,
       ),
     );
   }
 
+  static Color displayColor(int value) {
+    final hsl = HSLColor.fromColor(Color(value));
+    if (hsl.hue >= 170 && hsl.hue <= 270) return accent;
+    return hsl
+        .withLightness(isDark ? .75 : hsl.lightness.clamp(0, .36))
+        .toColor();
+  }
+
   static String formatCurrency(double amount, [String currency = '\$']) {
-    final formatter = NumberFormat('#,##0.00', 'en_US');
-    final formatted = formatter.format(amount.abs());
-    if (amount < 0) {
-      return '-$currency$formatted';
-    }
-    return '$currency$formatted';
+    return '${amount < 0 ? '-' : ''}$currency${NumberFormat('#,##0.00', 'en_US').format(amount.abs())}';
   }
 }

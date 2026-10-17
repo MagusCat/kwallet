@@ -1,5 +1,8 @@
+import '../theme/category_visuals.dart';
+
 import 'package:flutter/material.dart';
-import '../database/database_service.dart';
+
+import '../../features/bodega/models/spending_summary.dart';
 import '../theme/kwall_theme.dart';
 
 class SpendingChartWidget extends StatelessWidget {
@@ -16,15 +19,18 @@ class SpendingChartWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (dailySpends.isEmpty) return const SizedBox.shrink();
+    if (dailySpends.isEmpty) return SizedBox.shrink();
 
-    final maxSpend = dailySpends.fold<double>(0.0, (max, d) => d.amount > max ? d.amount : max);
+    final maxSpend = dailySpends.fold<double>(
+      0.0,
+      (max, d) => d.amount > max ? d.amount : max,
+    );
     final validMax = maxSpend <= 0 ? 50.0 : maxSpend;
     final totalWeek = dailySpends.fold<double>(0.0, (sum, d) => sum + d.amount);
     final dailyAvg = totalWeek / dailySpends.length;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: KwallTheme.surface,
         borderRadius: BorderRadius.circular(24),
@@ -47,7 +53,7 @@ class SpendingChartWidget extends StatelessWidget {
                       color: KwallTheme.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  SizedBox(height: 2),
                   Text(
                     'Promedio diario: ${KwallTheme.formatCurrency(dailyAvg, currency)}',
                     style: KwallTheme.fontBody.copyWith(
@@ -58,7 +64,7 @@ class SpendingChartWidget extends StatelessWidget {
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: KwallTheme.surfaceContainer,
                   borderRadius: BorderRadius.circular(12),
@@ -73,7 +79,7 @@ class SpendingChartWidget extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
 
           // Expressive 7-Day Bar Chart
           SizedBox(
@@ -86,13 +92,13 @@ class SpendingChartWidget extends StatelessWidget {
 
                 return Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: EdgeInsets.symmetric(horizontal: 4),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         if (day.amount > 0)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
+                            padding: EdgeInsets.only(bottom: 4),
                             child: Text(
                               day.amount >= 100
                                   ? '${day.amount.toInt()}'
@@ -100,34 +106,43 @@ class SpendingChartWidget extends StatelessWidget {
                               style: KwallTheme.fontBody.copyWith(
                                 fontSize: 9,
                                 fontWeight: FontWeight.bold,
-                                color: isToday ? KwallTheme.accent : KwallTheme.textMuted,
+                                color: isToday
+                                    ? KwallTheme.accent
+                                    : KwallTheme.textMuted,
                               ),
                             ),
                           ),
                         // Pill Bar
                         AnimatedContainer(
-                          duration: const Duration(milliseconds: 500),
+                          duration: Duration(milliseconds: 500),
                           curve: Curves.easeOutCubic,
                           height: (120 - 45) * ratio,
                           decoration: BoxDecoration(
                             color: isToday
                                 ? KwallTheme.accent
                                 : (day.amount > 0
-                                    ? KwallTheme.surfaceElevated
-                                    : KwallTheme.surfaceContainer),
+                                      ? KwallTheme.surfaceElevated
+                                      : KwallTheme.surfaceContainer),
                             borderRadius: BorderRadius.circular(8),
                             border: isToday
-                                ? Border.all(color: KwallTheme.accentLight, width: 1.0)
+                                ? Border.all(
+                                    color: KwallTheme.accentLight,
+                                    width: 1.0,
+                                  )
                                 : null,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         Text(
                           day.dayLabel,
                           style: KwallTheme.fontBody.copyWith(
                             fontSize: 11,
-                            fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-                            color: isToday ? KwallTheme.accent : KwallTheme.textSecondary,
+                            fontWeight: isToday
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                            color: isToday
+                                ? KwallTheme.accent
+                                : KwallTheme.textSecondary,
                           ),
                         ),
                       ],
@@ -140,9 +155,9 @@ class SpendingChartWidget extends StatelessWidget {
 
           // Category distribution breakdown if any
           if (categoryBreakdowns.isNotEmpty) ...[
-            const SizedBox(height: 18),
-            const Divider(color: KwallTheme.border, height: 1),
-            const SizedBox(height: 14),
+            SizedBox(height: 18),
+            Divider(color: KwallTheme.border, height: 1),
+            SizedBox(height: 14),
             Text(
               'Distribución del mes',
               style: KwallTheme.fontTitle.copyWith(
@@ -150,11 +165,11 @@ class SpendingChartWidget extends StatelessWidget {
                 color: KwallTheme.textSecondary,
               ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             Column(
               children: categoryBreakdowns.take(4).map((item) {
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: EdgeInsets.only(bottom: 8),
                   child: Column(
                     children: [
                       Row(
@@ -167,7 +182,7 @@ class SpendingChartWidget extends StatelessWidget {
                                 size: 14,
                                 color: Color(item.category.colorValue),
                               ),
-                              const SizedBox(width: 6),
+                              SizedBox(width: 6),
                               Text(
                                 item.category.name,
                                 style: KwallTheme.fontBody.copyWith(
@@ -187,7 +202,7 @@ class SpendingChartWidget extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 5),
+                      SizedBox(height: 5),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(6),
                         child: LinearProgressIndicator(
