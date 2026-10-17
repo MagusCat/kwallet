@@ -24,8 +24,9 @@ class _PetHeroCardState extends State<PetHeroCard>
   Timer? _annoyedTimer;
   Timer? _celebrateTimer;
 
+  static const double _groundY = 0.62;
   double _xPos = 0.0;
-  double _yPos = 0.55; // 0.55 is ground level
+  double _yPos = _groundY; // ground level
   double _targetX = 0.0;
   bool _movingRight = true;
   PetActivity _currentActivity = PetActivity.idle;
@@ -105,7 +106,7 @@ class _PetHeroCardState extends State<PetHeroCard>
 
   void _startAutonomousWalk() {
     final random = math.Random();
-    _targetX = (random.nextDouble() * 1.2) - 0.6; // between -0.6 and 0.6
+    _targetX = (random.nextDouble() * 1.7) - 0.85; // between -0.85 and 0.85
     final movingRight = _targetX > _xPos;
 
     setState(() {
@@ -131,7 +132,7 @@ class _PetHeroCardState extends State<PetHeroCard>
       } else {
         final step = diff > 0 ? 0.04 : -0.04;
         setState(() {
-          _xPos = (_xPos + step).clamp(-0.65, 0.65);
+          _xPos = (_xPos + step).clamp(-0.88, 0.88);
         });
       }
     });
@@ -194,7 +195,7 @@ class _PetHeroCardState extends State<PetHeroCard>
 
     setState(() {
       _isGrabbed = false;
-      _yPos = 0.55; // return to ground level
+      _yPos = _groundY; // return to ground level
       if (wasMoved) {
         _isAnnoyed = true;
         _isCelebrating = false;
@@ -271,11 +272,11 @@ class _PetHeroCardState extends State<PetHeroCard>
                 ? PetActivity.curious
                 : defaultActivity));
 
-    // Dynamic shadow: shrinks and fades when lifted
-    final liftRatio = ((0.55 - _yPos) / 1.1).clamp(0.0, 1.0);
-    final shadowWidth = 54.0 - (liftRatio * 28.0);
-    final shadowHeight = 8.0 - (liftRatio * 4.0);
-    final shadowOpacity = (0.28 - (liftRatio * 0.18)).clamp(0.06, 0.28);
+    // Dynamic shadow: shrinks and fades when lifted high towards the ceiling
+    final liftRatio = ((_groundY - _yPos) / 1.5).clamp(0.0, 1.0);
+    final shadowWidth = 56.0 - (liftRatio * 32.0);
+    final shadowHeight = 8.0 - (liftRatio * 4.5);
+    final shadowOpacity = (0.28 - (liftRatio * 0.20)).clamp(0.05, 0.28);
 
     return LedgerPanel(
       child: Column(
@@ -352,7 +353,7 @@ class _PetHeroCardState extends State<PetHeroCard>
           LayoutBuilder(
             builder: (context, constraints) {
               final stageWidth = constraints.maxWidth;
-              const stageHeight = 145.0;
+              const stageHeight = 185.0;
               return Container(
                 height: stageHeight,
                 decoration: BoxDecoration(
@@ -377,7 +378,7 @@ class _PetHeroCardState extends State<PetHeroCard>
                     Positioned(
                       left: 20,
                       right: 20,
-                      bottom: 18,
+                      bottom: 16,
                       child: Container(
                         height: 2,
                         decoration: BoxDecoration(
@@ -393,7 +394,7 @@ class _PetHeroCardState extends State<PetHeroCard>
                           ? Duration.zero
                           : const Duration(milliseconds: 320),
                       curve: Curves.easeOutCubic,
-                      alignment: Alignment(_xPos, 0.78),
+                      alignment: Alignment(_xPos, 0.84),
                       child: Container(
                         width: shadowWidth,
                         height: shadowHeight,
@@ -426,16 +427,16 @@ class _PetHeroCardState extends State<PetHeroCard>
                         onPanUpdate: (details) {
                           if (stageWidth <= 0) return;
                           final dx = details.delta.dx / (stageWidth * 0.45);
-                          final dy = details.delta.dy / 60.0;
+                          final dy = details.delta.dy / (stageHeight * 0.45);
                           setState(() {
-                            _xPos = (_xPos + dx).clamp(-0.72, 0.72);
-                            _yPos = (_yPos + dy).clamp(-0.65, 0.55);
+                            _xPos = (_xPos + dx).clamp(-0.92, 0.92);
+                            _yPos = (_yPos + dy).clamp(-0.95, _groundY);
                             if (details.delta.dx > 0.3) _movingRight = true;
                             if (details.delta.dx < -0.3) _movingRight = false;
                           });
                         },
                         onPanEnd: (details) {
-                          final wasLifted = _yPos < 0.35 || details.velocity.pixelsPerSecond.distance > 80;
+                          final wasLifted = _yPos < 0.40 || details.velocity.pixelsPerSecond.distance > 80;
                           _handlePetDropped(wasLifted);
                         },
                         onPanCancel: () {
