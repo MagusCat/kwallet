@@ -3,12 +3,17 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/kwall_theme.dart';
 import '../../view_models/home_view_model.dart';
 import '../../../../core/widgets/finance_widgets.dart';
+import '../../../journal/presentation/habit_actions.dart';
+import '../../../journal/presentation/journal_sheets.dart';
 import '../../models/account.dart';
 import '../movements_screen.dart';
 import 'home_overview.dart';
 import 'home_hub.dart';
 import 'budget_panel.dart';
 import 'movement_tile.dart';
+import 'habit_dot_tracker.dart';
+import 'home_tasks_panel.dart';
+import 'upcoming_dates_panel.dart';
 
 class HomeDashboard extends StatelessWidget {
   final HomeViewModel controller;
@@ -18,6 +23,7 @@ class HomeDashboard extends StatelessWidget {
   final VoidCallback onBudget;
   final VoidCallback onAgenda;
   final ValueChanged<int> onJournal;
+
   const HomeDashboard({
     super.key,
     required this.controller,
@@ -28,6 +34,7 @@ class HomeDashboard extends StatelessWidget {
     required this.onAgenda,
     required this.onJournal,
   });
+
   @override
   Widget build(BuildContext context) => SafeArea(
     bottom: false,
@@ -37,7 +44,11 @@ class HomeDashboard extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
           children: [
-            HomeOverview(controller: controller, onTransaction: onTransaction),
+            // 1. Hero Pet Companion & Resumen de Saldos y Acciones
+            HomeOverview(
+              controller: controller,
+              onTransaction: onTransaction,
+            ),
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Icon(
@@ -51,15 +62,48 @@ class HomeDashboard extends StatelessWidget {
               onTap: onAgenda,
             ),
             const SizedBox(height: 16),
+
+            // 2. Hub de Cuentas, Notas y Hábitos (Selector interactivo)
             HomeHub(
               controller: controller,
               onAddAccount: onAddAccount,
               onEditAccount: onEditAccount,
               onJournal: onJournal,
             ),
-            const SizedBox(height: 22),
+            const SizedBox(height: 16),
+
+            // 3. Hábitos con gráfico de 7 puntos y marcado directo
+            HabitDotTracker(
+              controller: controller,
+              onAddHabit: () => editHabit(context),
+              onOpenHabits: () => onJournal(1),
+            ),
+            const SizedBox(height: 16),
+
+            // 4. Tareas pendientes de listas
+            HomeTasksPanel(
+              controller: controller,
+              onNewTask: () => showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => const NoteSheet(initialKind: 'list'),
+              ),
+              onOpenNotes: () => onJournal(0),
+            ),
+            const SizedBox(height: 16),
+
+            // 5. Fechas importantes y compromisos
+            UpcomingDatesPanel(
+              controller: controller,
+              onOpenAgenda: onAgenda,
+            ),
+            const SizedBox(height: 16),
+
+            // 6. Presupuesto flexible
             BudgetPanel(controller: controller, onEdit: onBudget),
             const SizedBox(height: 26),
+
+            // 7. Movimientos recientes
             Text(
               'Movimientos',
               style: KwallTheme.fontTitle.copyWith(fontSize: 21),

@@ -103,8 +103,57 @@ class HomeViewModel extends ViewModel {
     return reward;
   }
 
+  int get completedHabitsToday =>
+      _habits.where((h) => h.logFor(DateTime.now())?.completed == true).length;
+  int get totalHabitsToday => _habits.length;
+  int get pendingHabitsCount => _habits
+      .where((h) => h.logFor(DateTime.now())?.completed != true)
+      .length;
+
+  List<({PersonalNote note, int index, NoteItem item})> get pendingTasks {
+    final result = <({PersonalNote note, int index, NoteItem item})>[];
+    for (final note in _notes) {
+      if (note.kind == 'list') {
+        for (var i = 0; i < note.items.length; i++) {
+          if (!note.items[i].done) {
+            result.add((note: note, index: i, item: note.items[i]));
+          }
+        }
+      }
+    }
+    return result;
+  }
+
+  List<PlannedExpense> get upcomingPlans {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final limit = today.add(const Duration(days: 30));
+    return _plans
+        .where((p) => !p.dueDate.isBefore(today) && !p.dueDate.isAfter(limit))
+        .toList()
+      ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
+  }
+
   Future<bool> voidMovement(TransactionRecord tx) =>
       perform(() => finance.deleteTransaction(tx));
+
+  Future<bool> completeHabit(Habit habit, [DateTime? day]) => perform(
+    () => journal.logHabitDays(
+      [habit.id],
+      [day ?? DateTime.now()],
+      completed: true,
+      mood: 'happy',
+    ),
+  );
+
+  Future<bool> checkNote(PersonalNote note, int index, bool done) => perform(
+    () => journal.setNoteItem(
+      note.id,
+      index,
+      done,
+      expectedText: note.items[index].text,
+    ),
+  );
 
   Future<void> load() async {
     final version = beginRequest();

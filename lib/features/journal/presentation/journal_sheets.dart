@@ -10,7 +10,8 @@ import '../models/journal_models.dart';
 
 class NoteSheet extends StatefulWidget {
   final PersonalNote? note;
-  const NoteSheet({super.key, this.note});
+  final String? initialKind;
+  const NoteSheet({super.key, this.note, this.initialKind});
   @override
   State<NoteSheet> createState() => _NoteSheetState();
 }
@@ -29,7 +30,7 @@ class _NoteSheetState
       dependencies.journalActions();
   late final _title = TextEditingController(text: widget.note?.title ?? '');
   late final _body = TextEditingController(text: widget.note?.body ?? '');
-  late String _kind = widget.note?.kind ?? 'note';
+  late String _kind = widget.note?.kind ?? widget.initialKind ?? 'note';
   late final _items = [
     for (final item in widget.note?.items ?? <NoteItem>[])
       _EditableItem(item.text, item.done),
