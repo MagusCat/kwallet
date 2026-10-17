@@ -16,6 +16,8 @@ class WidgetSyncService {
     String? statusMessage,
     String? petStyle,
     String? themePalette,
+    String? widgetBgMode,
+    int? widgetBgColor,
   }) async {
     // Solo se ejecuta en Android real / emulador
     if (kIsWeb || !Platform.isAndroid) {
@@ -34,9 +36,11 @@ class WidgetSyncService {
         'completed_habits': completedHabits,
         'total_habits': totalHabits,
         'pending_habits': pendingHabits,
-        'status_message': ?statusMessage,
+        'status_message': statusMessage,
         'pet_style': petStyle ?? 'classic',
         'theme_palette': themePalette ?? 'forest',
+        'widget_bg_mode': widgetBgMode ?? 'default',
+        'widget_bg_color': ?widgetBgColor,
       });
       return result ?? true;
     } on MissingPluginException {

@@ -6,6 +6,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
@@ -42,6 +43,8 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
         const val KEY_STATUS_MESSAGE = "status_message"
         const val KEY_PET_STYLE = "pet_style"
         const val KEY_THEME_PALETTE = "theme_palette"
+        const val KEY_WIDGET_BG_MODE = "widget_bg_mode"
+        const val KEY_WIDGET_BG_COLOR = "widget_bg_color"
         const val KEY_PET_POSE = "pet_pose"
         const val KEY_PET_MOOD = "pet_mood"
         const val KEY_LAST_TAP_TIME = "last_tap_time"
@@ -96,6 +99,8 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
             val themePalette = (prefs.getString(KEY_THEME_PALETTE, "forest") ?: "forest").lowercase()
             val storedPose = (prefs.getString(KEY_PET_POSE, "idle") ?: "idle").lowercase()
             val storedMood = (prefs.getString(KEY_PET_MOOD, "normal") ?: "normal").lowercase()
+            val bgMode = (prefs.getString(KEY_WIDGET_BG_MODE, "default") ?: "default").lowercase()
+            val customBgColor = prefs.getInt(KEY_WIDGET_BG_COLOR, 0)
 
             val now = System.currentTimeMillis()
             val lastTap = prefs.getLong(KEY_LAST_TAP_TIME, 0L)
@@ -104,6 +109,31 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
             val effectivePose = if (now - lastTap > 6000L) "idle" else storedPose
 
             val views = RemoteViews(context.packageName, R.layout.kwall_pet_widget)
+
+            // Apply background configuration (default card, transparent/no-bg, or custom color)
+            when (bgMode) {
+                "transparent" -> {
+                    views.setInt(R.id.widget_root, "setBackgroundColor", Color.TRANSPARENT)
+                    views.setInt(R.id.widget_cat_stage, "setBackgroundColor", Color.TRANSPARENT)
+                    views.setInt(R.id.widget_bottom_bar, "setBackgroundResource", R.drawable.widget_bottom_bar_bg_translucent)
+                }
+                "color" -> {
+                    val effectiveColor = if (customBgColor != 0) customBgColor else when (themePalette) {
+                        "plum" -> 0xFF281F2C.toInt()
+                        "rose" -> 0xFF2C1E23.toInt()
+                        "gold" -> 0xFF2C261A.toInt()
+                        else -> 0xFF212722.toInt()
+                    }
+                    views.setInt(R.id.widget_root, "setBackgroundColor", effectiveColor)
+                    views.setInt(R.id.widget_cat_stage, "setBackgroundColor", Color.TRANSPARENT)
+                    views.setInt(R.id.widget_bottom_bar, "setBackgroundResource", R.drawable.widget_bottom_bar_bg)
+                }
+                else -> {
+                    views.setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_card_bg)
+                    views.setInt(R.id.widget_cat_stage, "setBackgroundResource", R.drawable.widget_cat_stage_bg)
+                    views.setInt(R.id.widget_bottom_bar, "setBackgroundResource", R.drawable.widget_bottom_bar_bg)
+                }
+            }
 
             // Resolve cat avatar sprite dynamically
             val catDrawable = getCatDrawableRes(context, petStyle, effectivePose)

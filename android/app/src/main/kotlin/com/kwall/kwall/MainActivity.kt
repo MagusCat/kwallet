@@ -30,6 +30,8 @@ class MainActivity : FlutterActivity() {
                         (args["status_message"] as? String)?.let { editor.putString(KwallPetWidgetProvider.KEY_STATUS_MESSAGE, it) }
                         (args["pet_style"] as? String)?.let { editor.putString(KwallPetWidgetProvider.KEY_PET_STYLE, it) }
                         (args["theme_palette"] as? String)?.let { editor.putString(KwallPetWidgetProvider.KEY_THEME_PALETTE, it) }
+                        (args["widget_bg_mode"] as? String)?.let { editor.putString(KwallPetWidgetProvider.KEY_WIDGET_BG_MODE, it) }
+                        (args["widget_bg_color"] as? Number)?.let { editor.putInt(KwallPetWidgetProvider.KEY_WIDGET_BG_COLOR, it.toInt()) }
 
                         editor.apply()
                         KwallPetWidgetProvider.updateAllWidgets(applicationContext)
