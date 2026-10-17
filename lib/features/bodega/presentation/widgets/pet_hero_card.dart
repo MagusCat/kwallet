@@ -7,6 +7,7 @@ import '../../../../core/theme/kwall_theme.dart';
 import '../../../../core/widgets/finance_widgets.dart';
 import '../../../../core/widgets/kitty_companion.dart';
 import '../../view_models/home_view_model.dart';
+import 'pet_dialogue_bubble.dart';
 
 class PetHeroCard extends StatefulWidget {
   final HomeViewModel controller;
@@ -352,7 +353,12 @@ class _PetHeroCardState extends State<PetHeroCard>
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
+          PetDialogueBubble(
+            controller: controller,
+            isPurring: _isCelebrating,
+          ),
+          const SizedBox(height: 10),
 
           // Escenario interactivo: caminar, agarrar 2D, mover fluido y soltar
           LayoutBuilder(
