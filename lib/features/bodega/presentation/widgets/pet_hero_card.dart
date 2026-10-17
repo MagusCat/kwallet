@@ -18,12 +18,11 @@ class PetHeroCard extends StatefulWidget {
 }
 
 class _PetHeroCardState extends State<PetHeroCard>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   Timer? _roamTimer;
   Timer? _walkStepTimer;
-  Timer? _resumeRoamTimer;
-  Timer? _affectionTimer;
   Timer? _annoyedTimer;
+  Timer? _celebrateTimer;
 
   double _xPos = 0.0;
   double _yPos = 0.55; // 0.55 is ground level
@@ -33,21 +32,28 @@ class _PetHeroCardState extends State<PetHeroCard>
   bool _isCelebrating = false;
   bool _isGrabbed = false;
   bool _isAnnoyed = false;
-  String? _customAffectionMessage;
+  bool _earnedXpThisPet = false;
 
-  // Floating hearts for affection
-  late final AnimationController _heartAnim;
-  final List<({double x, double delay, double scale, Color color})> _hearts = [];
+  // Particle animations
+  late final AnimationController _particleAnim;
+  late final AnimationController _annoyedWobbleAnim;
+  final List<({double x, double delay, double scale, Color color, IconData icon})> _particles = [];
 
   @override
   void initState() {
     super.initState();
-    _heartAnim = AnimationController(
+    _particleAnim = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     )..addListener(() {
         if (mounted) setState(() {});
       });
+
+    _annoyedWobbleAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+
     _scheduleNextRoam();
   }
 
@@ -74,22 +80,18 @@ class _PetHeroCardState extends State<PetHeroCard>
       // Pick next activity: walk, idle, curious (play), sleep, relax
       final choice = random.nextDouble();
       if (choice < 0.45) {
-        // Walk across the area
         _startAutonomousWalk();
       } else if (choice < 0.70) {
-        // Curious / Play
         setState(() {
           _currentActivity = PetActivity.curious;
         });
         _scheduleNextRoam();
       } else if (choice < 0.88) {
-        // Relax / rest
         setState(() {
           _currentActivity = PetActivity.relax;
         });
         _scheduleNextRoam();
       } else {
-        // Sit idle
         setState(() {
           _currentActivity = PetActivity.idle;
         });
@@ -134,56 +136,47 @@ class _PetHeroCardState extends State<PetHeroCard>
 
   Future<void> _giveAffection() async {
     HapticFeedback.lightImpact();
-    _affectionTimer?.cancel();
     _annoyedTimer?.cancel();
+    _celebrateTimer?.cancel();
 
-    // Floating hearts
-    _hearts.clear();
+    final awarded = await widget.controller.petCompanion(2);
+
+    // Generate affection particles: hearts and sparkles
+    _particles.clear();
     final random = math.Random();
     final colors = [
       const Color(0xFFF1B3C7),
       const Color(0xFFFFA726),
+      const Color(0xFFB2D39C),
       const Color(0xFFFFCC80),
       const Color(0xFFE57373),
     ];
-    for (int i = 0; i < 5; i++) {
-      _hearts.add((
-        x: (random.nextDouble() - 0.5) * 60,
-        delay: i * 0.12,
-        scale: 0.7 + random.nextDouble() * 0.5,
+
+    final particleCount = awarded ? 7 : 4;
+    for (int i = 0; i < particleCount; i++) {
+      _particles.add((
+        x: (random.nextDouble() - 0.5) * 65,
+        delay: i * 0.10,
+        scale: 0.65 + random.nextDouble() * 0.5,
         color: colors[i % colors.length],
+        icon: (awarded && i.isEven)
+            ? Icons.auto_awesome_rounded
+            : Icons.favorite_rounded,
       ));
     }
-    _heartAnim.forward(from: 0.0);
-
-    final petName = widget.controller.settings['pet_name'] ?? 'Mishi';
-    final awarded = await widget.controller.petCompanion(2);
-
-    final messagesEarned = [
-      '¡Miau! A $petName le encantan tus mimos (+2 XP)',
-      'Purrr... $petName ronronea muy feliz a tu lado (+2 XP)',
-      '¡Le diste cariño a $petName! Energía al máximo (+2 XP)',
-    ];
-
-    final messagesAlreadyClaimed = [
-      'Purrr... A $petName le gustan tus caricias. (Mimos de hoy completados)',
-      '$petName ronronea contento a tu lado. (Vuelve mañana por más XP)',
-      'A $petName le agrada mucho tu compañía hoy.',
-    ];
+    _particleAnim.forward(from: 0.0);
 
     setState(() {
       _isCelebrating = true;
       _isAnnoyed = false;
-      _customAffectionMessage = awarded
-          ? messagesEarned[random.nextInt(messagesEarned.length)]
-          : messagesAlreadyClaimed[random.nextInt(messagesAlreadyClaimed.length)];
+      _earnedXpThisPet = awarded;
     });
 
-    _affectionTimer = Timer(const Duration(milliseconds: 2800), () {
+    _celebrateTimer = Timer(const Duration(milliseconds: 2200), () {
       if (mounted) {
         setState(() {
           _isCelebrating = false;
-          _customAffectionMessage = null;
+          _earnedXpThisPet = false;
         });
         _scheduleNextRoam();
       }
@@ -194,7 +187,6 @@ class _PetHeroCardState extends State<PetHeroCard>
     HapticFeedback.mediumImpact();
     _roamTimer?.cancel();
     _walkStepTimer?.cancel();
-    _resumeRoamTimer?.cancel();
     _annoyedTimer?.cancel();
 
     setState(() {
@@ -203,24 +195,17 @@ class _PetHeroCardState extends State<PetHeroCard>
       if (wasMoved) {
         _isAnnoyed = true;
         _isCelebrating = false;
-        final petName = widget.controller.settings['pet_name'] ?? 'Mishi';
-        final annoyedMessages = [
-          '¡Miau! No sueltes a $petName así de golpe...',
-          '¿Por qué tiras a $petName? ¡Bájame con cuidado!',
-          '¡Hmph! A un gato se le baja con delicadeza.',
-          '¡Oye! Casi caigo de panza. Ten más cuidado.',
-        ];
-        final random = math.Random();
-        _customAffectionMessage =
-            annoyedMessages[random.nextInt(annoyedMessages.length)];
       }
     });
 
-    _annoyedTimer = Timer(const Duration(milliseconds: 2500), () {
+    if (wasMoved) {
+      _annoyedWobbleAnim.forward(from: 0.0);
+    }
+
+    _annoyedTimer = Timer(const Duration(milliseconds: 2400), () {
       if (mounted) {
         setState(() {
           _isAnnoyed = false;
-          _customAffectionMessage = null;
         });
         _scheduleNextRoam();
       }
@@ -231,31 +216,11 @@ class _PetHeroCardState extends State<PetHeroCard>
   void dispose() {
     _roamTimer?.cancel();
     _walkStepTimer?.cancel();
-    _resumeRoamTimer?.cancel();
-    _affectionTimer?.cancel();
     _annoyedTimer?.cancel();
-    _heartAnim.dispose();
+    _celebrateTimer?.cancel();
+    _particleAnim.dispose();
+    _annoyedWobbleAnim.dispose();
     super.dispose();
-  }
-
-  String _getContextualMessage() {
-    if (_customAffectionMessage != null) {
-      return _customAffectionMessage!;
-    }
-    final now = DateTime.now();
-    if (now.hour >= 22 || now.hour < 6) {
-      return 'Zzz... Hora de descansar y recargar energías.';
-    }
-    final pendingHabits = widget.controller.pendingHabitsCount;
-    final pendingTasks = widget.controller.pendingTasks.length;
-
-    if (pendingHabits > 0) {
-      return 'Tienes $pendingHabits ${pendingHabits == 1 ? "hábito pendiente" : "hábitos pendientes"} hoy.';
-    }
-    if (pendingTasks > 0) {
-      return 'Tienes $pendingTasks ${pendingTasks == 1 ? "tarea pendiente" : "tareas pendientes"} en tus listas.';
-    }
-    return '¡Todo al día y organizado! Sigue a tu propio ritmo.';
   }
 
   @override
@@ -276,7 +241,7 @@ class _PetHeroCardState extends State<PetHeroCard>
                 ? PetActivity.curious
                 : (isSleepingTime ? PetActivity.sleep : _currentActivity)));
 
-    // Shadow dynamics: shrink and fade when lifted above ground
+    // Dynamic shadow: shrinks and fades when lifted
     final liftRatio = ((0.55 - _yPos) / 1.1).clamp(0.0, 1.0);
     final shadowWidth = 54.0 - (liftRatio * 28.0);
     final shadowHeight = 8.0 - (liftRatio * 4.0);
@@ -357,7 +322,7 @@ class _PetHeroCardState extends State<PetHeroCard>
           LayoutBuilder(
             builder: (context, constraints) {
               final stageWidth = constraints.maxWidth;
-              const stageHeight = 140.0;
+              const stageHeight = 145.0;
               return Container(
                 height: stageHeight,
                 decoration: BoxDecoration(
@@ -392,7 +357,7 @@ class _PetHeroCardState extends State<PetHeroCard>
                       ),
                     ),
 
-                    // Sombra dinámica bajo la mascota (refleja posición X e intensidad de elevación)
+                    // Sombra dinámica bajo la mascota
                     AnimatedAlign(
                       duration: _isGrabbed
                           ? Duration.zero
@@ -422,7 +387,6 @@ class _PetHeroCardState extends State<PetHeroCard>
                           HapticFeedback.lightImpact();
                           _roamTimer?.cancel();
                           _walkStepTimer?.cancel();
-                          _resumeRoamTimer?.cancel();
                           _annoyedTimer?.cancel();
                           setState(() {
                             _isGrabbed = true;
@@ -465,23 +429,40 @@ class _PetHeroCardState extends State<PetHeroCard>
                                 ),
                               ),
 
-                              // Indicador de enojo al ser soltado bruscamente (sin emojis)
+                              // Partícula visual de molestia al soltar (sin emojis, pura animación)
                               if (_isAnnoyed)
                                 Positioned(
-                                  top: -8,
+                                  top: -10,
                                   right: _movingRight ? -6 : null,
                                   left: _movingRight ? null : -6,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: KwallTheme.expenseRed.withValues(alpha: 0.9),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.priority_high_rounded,
-                                      size: 13,
-                                      color: Colors.white,
-                                    ),
+                                  child: TweenAnimationBuilder<double>(
+                                    tween: Tween(begin: 0.0, end: 1.0),
+                                    duration: const Duration(milliseconds: 250),
+                                    curve: Curves.elasticOut,
+                                    builder: (context, val, child) {
+                                      return Transform.scale(
+                                        scale: val,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: KwallTheme.expenseRed.withValues(alpha: 0.9),
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: KwallTheme.expenseRed.withValues(alpha: 0.35),
+                                                blurRadius: 6,
+                                                spreadRadius: 1,
+                                              ),
+                                            ],
+                                          ),
+                                          child: const Icon(
+                                            Icons.priority_high_rounded,
+                                            size: 13,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ),
                             ],
@@ -490,35 +471,74 @@ class _PetHeroCardState extends State<PetHeroCard>
                       ),
                     ),
 
-                    // Partículas de corazón flotantes al darle cariño
-                    if (_heartAnim.isAnimating && _hearts.isNotEmpty)
+                    // Partículas de afecto (corazones y destellos flotantes)
+                    if (_particleAnim.isAnimating && _particles.isNotEmpty)
                       AnimatedAlign(
                         duration: Duration.zero,
                         alignment: Alignment(_xPos, _yPos - 0.2),
                         child: SizedBox(
-                          width: 100,
-                          height: 120,
+                          width: 110,
+                          height: 130,
                           child: Stack(
                             alignment: Alignment.center,
+                            clipBehavior: Clip.none,
                             children: [
-                              for (final h in _hearts)
+                              for (final p in _particles)
                                 Builder(
                                   builder: (context) {
-                                    final t = (_heartAnim.value - h.delay).clamp(0.0, 1.0);
+                                    final t = (_particleAnim.value - p.delay).clamp(0.0, 1.0);
                                     if (t <= 0.0) return const SizedBox.shrink();
                                     final yProgress = Curves.easeOutCubic.transform(t);
                                     final opacity = (1.0 - t).clamp(0.0, 1.0);
                                     return Positioned(
                                       bottom: yProgress * 65 + 30,
-                                      left: 50 + h.x - 10,
+                                      left: 55 + p.x - 10,
                                       child: Opacity(
                                         opacity: opacity,
                                         child: Transform.scale(
-                                          scale: h.scale * (0.8 + 0.4 * yProgress),
+                                          scale: p.scale * (0.8 + 0.4 * yProgress),
                                           child: Icon(
-                                            Icons.favorite_rounded,
-                                            size: 18,
-                                            color: h.color,
+                                            p.icon,
+                                            size: 17,
+                                            color: p.color,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+
+                              // Insignia flotante animada "+2 XP" cuando se gana XP
+                              if (_earnedXpThisPet)
+                                Builder(
+                                  builder: (context) {
+                                    final t = _particleAnim.value.clamp(0.0, 1.0);
+                                    final yProgress = Curves.easeOutCubic.transform(t);
+                                    final opacity = (1.0 - t * 0.9).clamp(0.0, 1.0);
+                                    return Positioned(
+                                      top: 15 - (yProgress * 25),
+                                      child: Opacity(
+                                        opacity: opacity,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: KwallTheme.accent,
+                                            borderRadius: BorderRadius.circular(12),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: KwallTheme.accent.withValues(alpha: 0.4),
+                                                blurRadius: 8,
+                                                spreadRadius: 1,
+                                              ),
+                                            ],
+                                          ),
+                                          child: Text(
+                                            '+2 XP',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w900,
+                                              color: KwallTheme.onAccent,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -536,43 +556,6 @@ class _PetHeroCardState extends State<PetHeroCard>
           ),
           const SizedBox(height: 12),
 
-          // Diálogo contextual de la mascota (sin emojis)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            decoration: BoxDecoration(
-              color: KwallTheme.surfaceContainer.withValues(alpha: 0.45),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: _isAnnoyed
-                    ? KwallTheme.expenseRed.withValues(alpha: 0.4)
-                    : KwallTheme.border.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  _isAnnoyed
-                      ? Icons.announcement_rounded
-                      : Icons.chat_bubble_outline_rounded,
-                  size: 15,
-                  color: _isAnnoyed ? KwallTheme.expenseRed : KwallTheme.accent,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _getContextualMessage(),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: KwallTheme.textPrimary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-
           // Barra de progreso XP hacia el siguiente nivel
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
@@ -583,7 +566,7 @@ class _PetHeroCardState extends State<PetHeroCard>
               valueColor: AlwaysStoppedAnimation<Color>(KwallTheme.accent),
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

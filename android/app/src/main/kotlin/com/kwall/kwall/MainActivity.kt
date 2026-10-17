@@ -44,12 +44,7 @@ class MainActivity : FlutterActivity() {
                     result.success(route)
                 }
                 "consumePendingAffection" -> {
-                    val prefs = getSharedPreferences(KwallPetWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE)
-                    val pending = prefs.getInt(KwallPetWidgetProvider.KEY_PENDING_AFFECTION_XP, 0)
-                    if (pending > 0) {
-                        prefs.edit().putInt(KwallPetWidgetProvider.KEY_PENDING_AFFECTION_XP, 0).apply()
-                    }
-                    result.success(pending)
+                    result.success(0)
                 }
                 else -> result.notImplemented()
             }
