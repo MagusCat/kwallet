@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kwall/core/services/widget_sync_service.dart';
 import 'package:kwall/core/theme/kwall_theme.dart';
 import 'package:kwall/features/bodega/models/account.dart';
 import 'package:kwall/features/bodega/models/planned_expense.dart';
@@ -62,4 +63,20 @@ void main() {
     final restored = CategoryModel.fromMap(map);
     expect(restored.name, 'Gimnasio');
   });
+
+  test('WidgetSyncService handles platform checks and calls gracefully', () async {
+    final synced = await WidgetSyncService.syncWidget(
+      petName: 'Mishi',
+      xp: 150,
+      completedHabits: 2,
+      totalHabits: 3,
+      pendingHabits: 1,
+    );
+    // In unit test environment (running on host OS, not Android emulator), returns false gracefully
+    expect(synced, isFalse);
+
+    final route = await WidgetSyncService.getLaunchRoute();
+    expect(route, isNull);
+  });
 }
+

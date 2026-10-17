@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import '../../../core/mvvm/view_model.dart';
 
 import '../../../core/contracts/app_repositories.dart';
+import '../../../core/services/widget_sync_service.dart';
 import '../../journal/models/journal_models.dart';
 import '../models/account.dart';
 import '../models/budget_model.dart';
@@ -137,14 +138,20 @@ class HomeViewModel extends ViewModel {
   Future<bool> voidMovement(TransactionRecord tx) =>
       perform(() => finance.deleteTransaction(tx));
 
-  Future<bool> completeHabit(Habit habit, [DateTime? day]) => perform(
-    () => journal.logHabitDays(
-      [habit.id],
-      [day ?? DateTime.now()],
-      completed: true,
-      mood: 'happy',
-    ),
-  );
+  Future<bool> completeHabit(Habit habit, [DateTime? day]) async {
+    final ok = await perform(
+      () => journal.logHabitDays(
+        [habit.id],
+        [day ?? DateTime.now()],
+        completed: true,
+        mood: 'happy',
+      ),
+    );
+    if (ok) {
+      _syncWidget();
+    }
+    return ok;
+  }
 
   Future<bool> checkNote(PersonalNote note, int index, bool done) => perform(
     () => journal.setNoteItem(
@@ -154,6 +161,21 @@ class HomeViewModel extends ViewModel {
       expectedText: note.items[index].text,
     ),
   );
+
+  void _syncWidget() {
+    WidgetSyncService.syncWidget(
+      petName: _settings['pet_name'] ?? 'Mishi',
+      xp: _xp,
+      completedHabits: completedHabitsToday,
+      totalHabits: totalHabitsToday,
+      pendingHabits: pendingHabitsCount,
+      statusMessage: pendingHabitsCount > 0
+          ? 'Tienes $pendingHabitsCount ${pendingHabitsCount == 1 ? "hábito pendiente" : "hábitos pendientes"} hoy 🐾'
+          : (totalHabitsToday > 0
+              ? '¡Todos los hábitos completados! ✨'
+              : '¡Todo al día y organizado! 🐾'),
+    );
+  }
 
   Future<void> load() async {
     final version = beginRequest();
@@ -191,6 +213,7 @@ class HomeViewModel extends ViewModel {
       _loaded = true;
       error = null;
       changed();
+      _syncWidget();
     } catch (_) {
       if (isCurrent(version)) {
         _reward = 0;

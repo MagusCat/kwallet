@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../../../app/app_dependencies.dart';
 import '../../../core/mvvm/view_model_state.dart';
+import '../../../core/services/widget_sync_service.dart';
 import '../../../core/theme/kwall_theme.dart';
 import '../../../core/widgets/kitty_companion.dart';
 import '../../../core/widgets/finance_widgets.dart';
@@ -47,6 +48,9 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkWidgetLaunch();
+    });
   }
 
   @override
@@ -58,7 +62,18 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _home.load();
+    if (state == AppLifecycleState.resumed) {
+      _home.load();
+      _checkWidgetLaunch();
+    }
+  }
+
+  Future<void> _checkWidgetLaunch() async {
+    final route = await WidgetSyncService.getLaunchRoute();
+    if (!mounted || route == null) return;
+    if (route == 'habits') {
+      _openJournal(1);
+    }
   }
 
   @override
