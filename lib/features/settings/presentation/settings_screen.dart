@@ -138,6 +138,145 @@ class _SettingsScreenState
     }
   }
 
+  Future<void> _connectGitHubDialog() async {
+    final tokenController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Conectar con GitHub'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Ingresa tu Personal Access Token con permiso "gist". Tus respaldos se guardarán en un Gist secreto y privado.',
+              style: TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: tokenController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'GitHub Token (ghp_...)',
+                hintText: 'ghp_xxxxxxxxxxxx',
+                prefixIcon: Icon(Icons.key_rounded),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Conectar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final ok = await model.connectGitHub(tokenController.text);
+      if (ok && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            content: Text('Conectado a GitHub como @${model.githubUsername}'),
+          ),
+        );
+      }
+    }
+    tokenController.dispose();
+  }
+
+  Future<void> _disconnectGitHub() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Desconectar GitHub'),
+        content: const Text(
+          '¿Deseas desvincular tu cuenta de GitHub de este dispositivo?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Desconectar'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && mounted) {
+      await model.disconnectGitHub();
+    }
+  }
+
+  Future<void> _syncToGitHub() async {
+    final ok = await model.syncToGitHub();
+    if (ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          content: const Row(
+            children: [
+              Icon(Icons.cloud_done_rounded, color: Colors.white, size: 20),
+              SizedBox(width: 10),
+              Text('Respaldo sincronizado en GitHub'),
+            ],
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _restoreFromGitHub() async {
+    final summary = await model.prepareGitHubRestore();
+    if (summary == null || !mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Restaurar desde GitHub'),
+        content: Text(
+          '${summary.accounts} cuentas · ${summary.movements} movimientos\n${summary.notes} notas · ${summary.habits} hábitos\n\nReemplazará los datos actuales con la copia de GitHub. Antes se guardará una copia local de recuperación.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Restaurar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) {
+      model.discardRestore();
+      return;
+    }
+    if (await model.restore() && mounted) {
+      setState(_syncFields);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('Listo, datos restaurados desde GitHub.'),
+        ),
+      );
+    }
+  }
+
   Future<void> _recoveries() async {
     if (!await model.loadRecoveries() || !mounted) return;
     final selected = await showDialog<String>(
@@ -445,16 +584,122 @@ class _SettingsScreenState
                     icon: const Icon(Icons.restore_rounded),
                     label: const Text('Importar respaldo'),
                   ),
-                  if (_backupBusy)
-                    KittyCompanionWidget(
-                      size: 64,
-                      settings: _petSettings,
-                      activity: PetActivity.run,
+                  const SizedBox(height: 12),
+                  const Divider(height: 32),
+                  Row(
+                    children: [
+                      Icon(Icons.cloud_sync_outlined, color: KwallTheme.accent),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Copia en la nube (GitHub)',
+                        style: KwallTheme.fontTitle.copyWith(fontSize: 18),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Guarda tus datos de forma privada en un Gist secreto de tu cuenta de GitHub con control de versiones.',
+                    style: TextStyle(color: KwallTheme.textSecondary, fontSize: 13),
+                  ),
+                  const SizedBox(height: 14),
+                  if (!model.isGitHubConnected) ...[
+                    OutlinedButton.icon(
+                      onPressed: _backupBusy ? null : _connectGitHubDialog,
+                      icon: const Icon(Icons.link_rounded),
+                      label: const Text('Conectar cuenta de GitHub'),
                     ),
+                  ] else ...[
+                    Card(
+                      elevation: 0,
+                      color: KwallTheme.surfaceContainer.withValues(alpha: 0.6),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: KwallTheme.incomeGreen.withValues(alpha: 0.2),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.check_circle_rounded,
+                                    size: 18,
+                                    color: KwallTheme.incomeGreen,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '@${model.githubUsername}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                      Text(
+                                        model.githubLastSync.isNotEmpty
+                                            ? 'Última copia: ${model.githubLastSync}'
+                                            : 'Sin copias en la nube aún',
+                                        style: TextStyle(
+                                          color: KwallTheme.textSecondary,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  tooltip: 'Desconectar GitHub',
+                                  icon: const Icon(Icons.link_off_rounded),
+                                  onPressed: _backupBusy ? null : _disconnectGitHub,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                FilledButton.tonalIcon(
+                                  onPressed: _backupBusy ? null : _syncToGitHub,
+                                  icon: const Icon(Icons.cloud_upload_outlined, size: 18),
+                                  label: const Text('Sincronizar ahora'),
+                                ),
+                                OutlinedButton.icon(
+                                  onPressed: _backupBusy ? null : _restoreFromGitHub,
+                                  icon: const Icon(Icons.cloud_download_outlined, size: 18),
+                                  label: const Text('Restaurar desde GitHub'),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (_backupBusy)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Center(
+                        child: KittyCompanionWidget(
+                          size: 64,
+                          settings: _petSettings,
+                          activity: PetActivity.run,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
                   TextButton.icon(
                     onPressed: _backupBusy ? null : _recoveries,
                     icon: const Icon(Icons.history_rounded),
-                    label: const Text('Copias de recuperación'),
+                    label: const Text('Copias de recuperación locales'),
                   ),
                 ],
               ),

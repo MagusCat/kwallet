@@ -4,17 +4,30 @@ import '../../../core/models/backup_preview.dart';
 import '../../../core/models/recovery_copy.dart';
 import '../../../core/mvvm/view_model.dart';
 import '../../../core/services/device_files.dart';
+import '../../../core/services/github_cloud_service.dart';
 
 class SettingsViewModel extends ViewModel {
   final SettingsRepository repository;
   final DeviceFiles files;
+  final GitHubCloudService cloud;
   Map<String, String> settings = const {};
   List<RecoveryCopy> recoveries = const [];
   bool loading = true;
   bool _backupOperation = false;
-  bool get backupBusy => busy && _backupOperation;
+  bool _githubBusy = false;
+  bool get backupBusy => (busy && _backupOperation) || _githubBusy;
+  bool get githubBusy => _githubBusy;
+  bool get isGitHubConnected => (settings['github_token'] ?? '').isNotEmpty;
+  String get githubUsername => settings['github_username'] ?? '';
+  String get githubGistId => settings['github_gist_id'] ?? '';
+  String get githubLastSync => settings['github_last_sync'] ?? '';
   String? _pendingRestore;
-  SettingsViewModel(this.repository, this.files);
+
+  SettingsViewModel(
+    this.repository,
+    this.files, [
+    GitHubCloudService? cloud,
+  ]) : cloud = cloud ?? GitHubCloudService();
   Future<void> load() async {
     final request = beginRequest();
     try {
@@ -133,6 +146,111 @@ class SettingsViewModel extends ViewModel {
       await load();
     }
     return restored;
+  }
+
+  Future<bool> connectGitHub(String token) async {
+    final cleanToken = token.trim();
+    if (cleanToken.isEmpty) {
+      fail('Ingresa tu Personal Access Token de GitHub.');
+      return false;
+    }
+    _githubBusy = true;
+    error = null;
+    changed();
+    try {
+      final user = await cloud.verifyToken(cleanToken);
+      final existingGistId = await cloud.findBackupGist(cleanToken);
+      await _write({
+        'github_token': cleanToken,
+        'github_username': user.login,
+        'github_gist_id': existingGistId ?? '',
+      });
+      return true;
+    } catch (_) {
+      fail('No pudimos validar tu token de GitHub. Revisa que tenga permiso "gist".');
+      return false;
+    } finally {
+      _githubBusy = false;
+      changed();
+    }
+  }
+
+  Future<bool> disconnectGitHub() async {
+    _githubBusy = true;
+    error = null;
+    changed();
+    try {
+      await _write({
+        'github_token': '',
+        'github_username': '',
+        'github_gist_id': '',
+        'github_last_sync': '',
+      });
+      return true;
+    } finally {
+      _githubBusy = false;
+      changed();
+    }
+  }
+
+  Future<bool> syncToGitHub() async {
+    final token = settings['github_token'];
+    if (token == null || token.isEmpty) {
+      fail('Conecta tu cuenta de GitHub antes de sincronizar.');
+      return false;
+    }
+    _githubBusy = true;
+    error = null;
+    changed();
+    try {
+      final content = await repository.exportFullDataAsJson();
+      final result = await cloud.syncBackup(
+        token: token,
+        backupJson: content,
+        gistId: settings['github_gist_id'],
+      );
+      final nowFormatted = DateTime.now()
+          .toIso8601String()
+          .substring(0, 19)
+          .replaceAll('T', ' ');
+      await _write({
+        'github_gist_id': result.gistId,
+        'github_last_sync': nowFormatted,
+      });
+      return true;
+    } catch (e) {
+      fail('Error al sincronizar con GitHub. Reintenta.');
+      return false;
+    } finally {
+      _githubBusy = false;
+      changed();
+    }
+  }
+
+  Future<BackupPreview?> prepareGitHubRestore() async {
+    final token = settings['github_token'];
+    final gistId = settings['github_gist_id'];
+    if (token == null || token.isEmpty || gistId == null || gistId.isEmpty) {
+      fail('No se encontró un respaldo vinculado en tu cuenta de GitHub.');
+      return null;
+    }
+    _githubBusy = true;
+    error = null;
+    changed();
+    try {
+      final content = await cloud.fetchBackup(token: token, gistId: gistId);
+      final preview = BackupPreview.fromCounts(
+        await repository.inspectBackup(content),
+      );
+      _pendingRestore = content;
+      return preview;
+    } catch (_) {
+      fail('No pudimos descargar el respaldo desde GitHub.');
+      return null;
+    } finally {
+      _githubBusy = false;
+      changed();
+    }
   }
 
   Future<bool> loadRecoveries() => _backup(() async {
