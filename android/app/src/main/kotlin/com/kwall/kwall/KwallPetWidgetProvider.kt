@@ -109,7 +109,7 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_habits_summary, habitsSummary)
 
             // Flags for PendingIntents
-            val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             } else {
                 PendingIntent.FLAG_UPDATE_CURRENT
@@ -119,10 +119,10 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
             val launchIntent = Intent(context, MainActivity::class.java).apply {
                 action = Intent.ACTION_MAIN
                 addCategory(Intent.CATEGORY_LAUNCHER)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 putExtra("route", "habits")
             }
-            val pendingLaunch = PendingIntent.getActivity(context, 0, launchIntent, flags)
+            val pendingLaunch = PendingIntent.getActivity(context, 0, launchIntent, pendingIntentFlags)
             views.setOnClickPendingIntent(R.id.widget_root, pendingLaunch)
             views.setOnClickPendingIntent(R.id.widget_habits_container, pendingLaunch)
 
@@ -130,7 +130,7 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
             val affectionIntent = Intent(context, KwallPetWidgetProvider::class.java).apply {
                 action = ACTION_PET_AFFECTION
             }
-            val pendingAffection = PendingIntent.getBroadcast(context, 101, affectionIntent, flags)
+            val pendingAffection = PendingIntent.getBroadcast(context, 101, affectionIntent, pendingIntentFlags)
             views.setOnClickPendingIntent(R.id.widget_pet_affection_btn, pendingAffection)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
