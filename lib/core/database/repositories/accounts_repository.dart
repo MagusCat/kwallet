@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../features/bodega/models/account.dart';
 import '../../../features/bodega/models/category_model.dart';
@@ -23,11 +25,73 @@ mixin AccountsRepository on DatabaseContext {
       throw ArgumentError('Saldo inválido');
     }
     await db.insert('accounts', account.toMap());
+
+    // Registrar historial de moneda base y secundarias con conversión 1 a 1
+    final now = DateTime.now().toIso8601String();
+    for (final c in account.currencies) {
+      await db.insert('account_currency_history', {
+        'id': const Uuid().v4(),
+        'account_id': account.id,
+        'base_currency': account.currency,
+        'currency': c,
+        'conversion_rate': 1.0,
+        'previous_rate': null,
+        'change_type': c == account.currency ? 'initial_base' : 'initial_secondary',
+        'notes': c == account.currency
+            ? 'Moneda base configurada'
+            : 'Moneda secundaria añadida con conversión 1 a 1',
+        'created_at': now,
+      });
+    }
     notifyChanged();
   }
 
   Future<void> updateAccount(Account account) async {
     final db = await database;
+    final oldRows = await db.query(
+      'accounts',
+      where: 'id = ?',
+      whereArgs: [account.id],
+    );
+
+    if (oldRows.isNotEmpty) {
+      final oldAcc = Account.fromMap(oldRows.first);
+      if (oldAcc.currency != account.currency) {
+        await recordCurrencyChange(
+          accountId: account.id,
+          baseCurrency: account.currency,
+          currency: account.currency,
+          rate: 1.0,
+          changeType: 'base_changed',
+          notes: 'Moneda base cambiada de ${oldAcc.currency} a ${account.currency}',
+        );
+      }
+      for (final c in account.currencies) {
+        if (!oldAcc.currencies.contains(c)) {
+          await recordCurrencyChange(
+            accountId: account.id,
+            baseCurrency: account.currency,
+            currency: c,
+            rate: 1.0,
+            changeType: 'currency_added',
+            notes: 'Moneda añadida con conversión 1 a 1',
+          );
+        }
+      }
+      for (final c in oldAcc.currencies) {
+        if (!account.currencies.contains(c)) {
+          await recordCurrencyChange(
+            accountId: account.id,
+            baseCurrency: account.currency,
+            currency: c,
+            rate: 1.0,
+            changeType: 'currency_removed',
+            notes: 'Moneda removida de la cuenta',
+          );
+        }
+      }
+    }
+
     await db.update(
       'accounts',
       {
@@ -36,10 +100,46 @@ mixin AccountsRepository on DatabaseContext {
         'minimum_balance': account.minimumBalance,
         'color_value': account.colorValue,
         'icon_key': account.iconKey,
+        'currency': account.currency,
+        'currencies': jsonEncode(account.currencies),
       },
       where: 'id = ?',
       whereArgs: [account.id],
     );
+    notifyChanged();
+  }
+
+  Future<List<Map<String, dynamic>>> getAccountCurrencyHistory(String accountId) async {
+    final db = await database;
+    return await db.query(
+      'account_currency_history',
+      where: 'account_id = ?',
+      whereArgs: [accountId],
+      orderBy: 'created_at DESC',
+    );
+  }
+
+  Future<void> recordCurrencyChange({
+    required String accountId,
+    required String baseCurrency,
+    required String currency,
+    required double rate,
+    double? previousRate,
+    required String changeType,
+    String notes = '',
+  }) async {
+    final db = await database;
+    await db.insert('account_currency_history', {
+      'id': const Uuid().v4(),
+      'account_id': accountId,
+      'base_currency': baseCurrency,
+      'currency': currency,
+      'conversion_rate': rate,
+      'previous_rate': previousRate,
+      'change_type': changeType,
+      'notes': notes,
+      'created_at': DateTime.now().toIso8601String(),
+    });
     notifyChanged();
   }
 

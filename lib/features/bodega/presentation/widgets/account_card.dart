@@ -80,13 +80,38 @@ class AccountCard extends StatelessWidget {
               FittedBox(
                 fit: BoxFit.scaleDown,
                 child: Text(
-                  KwallTheme.formatCurrency(account.balance, currency),
+                  KwallTheme.formatCurrency(account.balance, account.currency),
                   style: KwallTheme.fontDisplay.copyWith(fontSize: 20),
                 ),
               ),
+              if (account.currencies.length > 1) ...[
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: [
+                    for (final c in account.currencies.where((c) => c != account.currency))
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: KwallTheme.surfaceContainer.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '≈ $c ${account.balance.toStringAsFixed(2)} (1:1)',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: KwallTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 8),
               Text(
-                'Mín. ${KwallTheme.formatCurrency(account.minimumBalance, currency)}',
+                'Mín. ${KwallTheme.formatCurrency(account.minimumBalance, account.currency)}',
                 style: TextStyle(fontSize: 12, color: KwallTheme.textSecondary),
               ),
               if (below)

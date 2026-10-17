@@ -15,6 +15,7 @@ class AccountEditorViewModel extends ViewModel {
     required String minimumText,
     required String type,
     required String currency,
+    List<String>? currencies,
     required int color,
   }) {
     final balance = parseAmount(balanceText);
@@ -25,11 +26,17 @@ class AccountEditorViewModel extends ViewModel {
         minimum < 0) {
       return Future.value(fail('Completa el nombre, saldo y mínimo válido.'));
     }
+    final effectiveCurrencies = currencies != null && currencies.isNotEmpty
+        ? (currencies.contains(currency) ? currencies : [currency, ...currencies])
+        : [currency];
+
     final account =
         original?.copyWith(
           name: name.trim(),
           type: type,
           minimumBalance: minimum,
+          currency: currency,
+          currencies: effectiveCurrencies,
         ) ??
         Account(
           id: const Uuid().v4(),
@@ -38,6 +45,7 @@ class AccountEditorViewModel extends ViewModel {
           balance: balance,
           minimumBalance: minimum,
           currency: currency,
+          currencies: effectiveCurrencies,
           colorValue: color,
           createdAt: DateTime.now(),
         );
@@ -47,4 +55,7 @@ class AccountEditorViewModel extends ViewModel {
           : repository.updateAccount(account),
     );
   }
+
+  Future<List<Map<String, dynamic>>> loadCurrencyHistory(String accountId) =>
+      repository.getAccountCurrencyHistory(accountId);
 }
