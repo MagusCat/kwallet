@@ -7,9 +7,17 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.view.View
 import android.widget.RemoteViews
 
 class KwallPetWidgetProvider : AppWidgetProvider() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.action == ACTION_PET_TAP) {
+            handlePetTap(context)
+        }
+    }
 
     override fun onUpdate(
         context: Context,
@@ -22,6 +30,7 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
+        const val ACTION_PET_TAP = "com.kwall.kwall.ACTION_PET_TAP"
         const val PREFS_NAME = "kwall_widget_data"
         const val KEY_PET_NAME = "pet_name"
         const val KEY_PET_LEVEL = "pet_level"
@@ -33,6 +42,43 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
         const val KEY_STATUS_MESSAGE = "status_message"
         const val KEY_PET_STYLE = "pet_style"
         const val KEY_THEME_PALETTE = "theme_palette"
+        const val KEY_PET_POSE = "pet_pose"
+        const val KEY_PET_MOOD = "pet_mood"
+        const val KEY_LAST_TAP_TIME = "last_tap_time"
+        const val KEY_TAP_COUNT = "tap_count"
+
+        private fun handlePetTap(context: Context) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val now = System.currentTimeMillis()
+            val lastTap = prefs.getLong(KEY_LAST_TAP_TIME, 0L)
+            val tapCount = prefs.getInt(KEY_TAP_COUNT, 0)
+            val isQuickTap = (now - lastTap) < 1400L
+            val newCount = if (isQuickTap) tapCount + 1 else 1
+
+            val editor = prefs.edit()
+                .putLong(KEY_LAST_TAP_TIME, now)
+                .putInt(KEY_TAP_COUNT, newCount)
+
+            if (newCount >= 4) {
+                // Rapid taps trigger annoyance reaction with pixel-art red 'X'
+                editor.putString(KEY_PET_MOOD, "annoyed")
+                editor.putString(KEY_PET_POSE, "idle")
+                editor.putInt(KEY_TAP_COUNT, 0)
+            } else {
+                // Interactive cycle: idle -> celebrate -> play -> walk
+                val currentPose = prefs.getString(KEY_PET_POSE, "idle") ?: "idle"
+                val nextPose = when (currentPose) {
+                    "idle" -> "celebrate"
+                    "celebrate" -> "play"
+                    "play" -> "walk"
+                    else -> "idle"
+                }
+                editor.putString(KEY_PET_MOOD, "happy")
+                editor.putString(KEY_PET_POSE, nextPose)
+            }
+            editor.apply()
+            updateAllWidgets(context)
+        }
 
         fun updateAppWidget(
             context: Context,
@@ -46,36 +92,40 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
             val completedHabits = prefs.getInt(KEY_COMPLETED_HABITS, 0)
             val totalHabits = prefs.getInt(KEY_TOTAL_HABITS, 0)
             val pendingHabits = prefs.getInt(KEY_PENDING_HABITS, 0)
-            val customMessage = prefs.getString(KEY_STATUS_MESSAGE, null)
             val petStyle = (prefs.getString(KEY_PET_STYLE, "classic") ?: "classic").lowercase()
             val themePalette = (prefs.getString(KEY_THEME_PALETTE, "forest") ?: "forest").lowercase()
+            val storedPose = (prefs.getString(KEY_PET_POSE, "idle") ?: "idle").lowercase()
+            val storedMood = (prefs.getString(KEY_PET_MOOD, "normal") ?: "normal").lowercase()
 
-            val statusMessage = if (!customMessage.isNullOrBlank()) {
-                customMessage
-            } else if (pendingHabits > 0) {
-                "Tienes $pendingHabits ${if (pendingHabits == 1) "habito pendiente" else "habitos pendientes"} hoy."
-            } else if (totalHabits > 0) {
-                "Todos tus habitos completados hoy."
-            } else {
-                "Todo al dia y organizado."
-            }
+            val now = System.currentTimeMillis()
+            val lastTap = prefs.getLong(KEY_LAST_TAP_TIME, 0L)
+            // Reset mood & pose to idle after 6 seconds of inactivity
+            val effectiveMood = if (now - lastTap > 6000L) "normal" else storedMood
+            val effectivePose = if (now - lastTap > 6000L) "idle" else storedPose
 
             val views = RemoteViews(context.packageName, R.layout.kwall_pet_widget)
 
-            // Cat Avatar Sprite based on pet style
-            val catDrawable = when (petStyle) {
-                "ginger" -> R.drawable.ic_widget_cat_ginger
-                "siamese" -> R.drawable.ic_widget_cat_siamese
-                "calico" -> R.drawable.ic_widget_cat_calico
-                "silver" -> R.drawable.ic_widget_cat_silver
-                "snow" -> R.drawable.ic_widget_cat_snow
-                "cream" -> R.drawable.ic_widget_cat_cream
-                "ink" -> R.drawable.ic_widget_cat_ink
-                else -> R.drawable.ic_widget_cat
-            }
+            // Resolve cat avatar sprite dynamically
+            val catDrawable = getCatDrawableRes(context, petStyle, effectivePose)
             views.setImageViewResource(R.id.widget_cat_avatar, catDrawable)
 
-            // Dynamic theme colors and drawables
+            // Mood indicators (Pixel Art Red 'X' for annoyed, Heart for happy)
+            when (effectiveMood) {
+                "annoyed" -> {
+                    views.setViewVisibility(R.id.widget_cat_anger_x, View.VISIBLE)
+                    views.setViewVisibility(R.id.widget_cat_heart, View.GONE)
+                }
+                "happy" -> {
+                    views.setViewVisibility(R.id.widget_cat_anger_x, View.GONE)
+                    views.setViewVisibility(R.id.widget_cat_heart, View.VISIBLE)
+                }
+                else -> {
+                    views.setViewVisibility(R.id.widget_cat_anger_x, View.GONE)
+                    views.setViewVisibility(R.id.widget_cat_heart, View.GONE)
+                }
+            }
+
+            // Theme colors
             val (accentColor, chipBgRes) = when (themePalette) {
                 "plum" -> Pair(0xFFD9B7ED.toInt(), R.drawable.widget_chip_accent_plum)
                 "rose" -> Pair(0xFFF1B3C7.toInt(), R.drawable.widget_chip_accent_rose)
@@ -88,28 +138,35 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
             views.setTextColor(R.id.widget_pet_level, accentColor)
             views.setInt(R.id.widget_pet_level, "setBackgroundResource", chipBgRes)
 
-            views.setTextViewText(R.id.widget_pet_status, statusMessage)
             views.setProgressBar(R.id.widget_pet_xp_progress, 100, xpInLevel.coerceIn(0, 100), false)
             views.setTextViewText(R.id.widget_pet_xp_text, "$xpInLevel / 100 XP")
 
             val habitsSummary = if (totalHabits == 0) {
-                "Sin habitos asignados"
+                "Sin habitos"
             } else if (pendingHabits == 0) {
-                "$completedHabits de $totalHabits listos"
+                "$completedHabits/$totalHabits listos"
             } else {
-                "$completedHabits de $totalHabits ($pendingHabits pend.)"
+                "$pendingHabits pend. ($completedHabits/$totalHabits)"
             }
             views.setTextViewText(R.id.widget_habits_summary, habitsSummary)
             views.setInt(R.id.widget_habit_icon, "setColorFilter", accentColor)
 
-            // Flags for PendingIntents
+            // PendingIntent flags
             val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             } else {
                 PendingIntent.FLAG_UPDATE_CURRENT
             }
 
-            // Launch App PendingIntent
+            // 1. Interactive Pet Tap PendingIntent (on stage and avatar)
+            val tapIntent = Intent(context, KwallPetWidgetProvider::class.java).apply {
+                action = ACTION_PET_TAP
+            }
+            val pendingTap = PendingIntent.getBroadcast(context, 201, tapIntent, pendingIntentFlags)
+            views.setOnClickPendingIntent(R.id.widget_cat_stage, pendingTap)
+            views.setOnClickPendingIntent(R.id.widget_cat_avatar, pendingTap)
+
+            // 2. Launch App PendingIntent (on bottom bar for tasks/habits)
             val launchIntent = Intent(context, MainActivity::class.java).apply {
                 action = Intent.ACTION_MAIN
                 addCategory(Intent.CATEGORY_LAUNCHER)
@@ -117,11 +174,27 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
                 putExtra("route", "habits")
             }
             val pendingLaunch = PendingIntent.getActivity(context, 0, launchIntent, pendingIntentFlags)
-            views.setOnClickPendingIntent(R.id.widget_root, pendingLaunch)
-            views.setOnClickPendingIntent(R.id.widget_cat_stage, pendingLaunch)
-            views.setOnClickPendingIntent(R.id.widget_habits_container, pendingLaunch)
+            views.setOnClickPendingIntent(R.id.widget_bottom_bar, pendingLaunch)
 
             appWidgetManager.updateAppWidget(appWidgetId, views)
+        }
+
+        private fun getCatDrawableRes(context: Context, style: String, pose: String): Int {
+            val candidateName = when {
+                style == "classic" && pose == "idle" -> "ic_widget_cat"
+                style == "classic" -> "ic_widget_cat_$pose"
+                pose == "idle" -> "ic_widget_cat_$style"
+                else -> "ic_widget_cat_${style}_$pose"
+            }
+            val resId = context.resources.getIdentifier(candidateName, "drawable", context.packageName)
+            if (resId != 0) return resId
+
+            // Fallback to idle of style
+            val fallbackStyle = "ic_widget_cat_$style"
+            val fallbackStyleId = context.resources.getIdentifier(fallbackStyle, "drawable", context.packageName)
+            if (fallbackStyleId != 0) return fallbackStyleId
+
+            return R.drawable.ic_widget_cat
         }
 
         fun updateAllWidgets(context: Context) {
