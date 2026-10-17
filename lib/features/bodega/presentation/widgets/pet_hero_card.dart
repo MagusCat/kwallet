@@ -36,8 +36,9 @@ class _PetHeroCardState extends State<PetHeroCard>
 
   // Particle animations
   late final AnimationController _particleAnim;
-  late final AnimationController _annoyedWobbleAnim;
+  late final AnimationController _annoyedAnim;
   final List<({double x, double delay, double scale, Color color, IconData icon})> _particles = [];
+  final List<({double x, double delay, double scale, double rotation, Color color})> _annoyedParticles = [];
 
   @override
   void initState() {
@@ -49,10 +50,12 @@ class _PetHeroCardState extends State<PetHeroCard>
         if (mounted) setState(() {});
       });
 
-    _annoyedWobbleAnim = AnimationController(
+    _annoyedAnim = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
+      duration: const Duration(milliseconds: 1300),
+    )..addListener(() {
+        if (mounted) setState(() {});
+      });
 
     _scheduleNextRoam();
   }
@@ -199,7 +202,24 @@ class _PetHeroCardState extends State<PetHeroCard>
     });
 
     if (wasMoved) {
-      _annoyedWobbleAnim.forward(from: 0.0);
+      _annoyedParticles.clear();
+      final random = math.Random();
+      final redShades = [
+        const Color(0xFFEF4444),
+        const Color(0xFFE53935),
+        const Color(0xFFFF5252),
+        const Color(0xFFDC2626),
+      ];
+      for (int i = 0; i < 5; i++) {
+        _annoyedParticles.add((
+          x: (random.nextDouble() - 0.5) * 60,
+          delay: i * 0.10,
+          scale: 0.7 + random.nextDouble() * 0.45,
+          rotation: (random.nextDouble() - 0.5) * 0.4,
+          color: redShades[i % redShades.length],
+        ));
+      }
+      _annoyedAnim.forward(from: 0.0);
     }
 
     _annoyedTimer = Timer(const Duration(milliseconds: 2400), () {
@@ -219,7 +239,7 @@ class _PetHeroCardState extends State<PetHeroCard>
     _annoyedTimer?.cancel();
     _celebrateTimer?.cancel();
     _particleAnim.dispose();
-    _annoyedWobbleAnim.dispose();
+    _annoyedAnim.dispose();
     super.dispose();
   }
 
@@ -429,50 +449,6 @@ class _PetHeroCardState extends State<PetHeroCard>
                                 ),
                               ),
 
-                              // Partículas pixel art rojas tipo 'X' de molestia al soltar
-                              if (_isAnnoyed)
-                                Positioned(
-                                  top: -16,
-                                  right: _movingRight ? -10 : null,
-                                  left: _movingRight ? null : -10,
-                                  child: TweenAnimationBuilder<double>(
-                                    tween: Tween(begin: 0.0, end: 1.0),
-                                    duration: const Duration(milliseconds: 350),
-                                    curve: Curves.elasticOut,
-                                    builder: (context, val, child) {
-                                      return Transform.scale(
-                                        scale: val,
-                                        child: const SizedBox(
-                                          width: 36,
-                                          height: 32,
-                                          child: Stack(
-                                            clipBehavior: Clip.none,
-                                            children: [
-                                              // Partícula principal pixel art X
-                                              Positioned(
-                                                left: 8,
-                                                top: 6,
-                                                child: PixelArtAngerX(size: 18),
-                                              ),
-                                              // Partícula secundaria pixel art X (arriba a la derecha)
-                                              Positioned(
-                                                right: 0,
-                                                top: 0,
-                                                child: PixelArtAngerX(size: 11),
-                                              ),
-                                              // Partícula menor pixel art X (abajo a la izquierda)
-                                              Positioned(
-                                                left: 0,
-                                                bottom: 0,
-                                                child: PixelArtAngerX(size: 8),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
                             ],
                           ),
                         ),
@@ -557,6 +533,49 @@ class _PetHeroCardState extends State<PetHeroCard>
                           ),
                         ),
                       ),
+                    // Partículas de enojo rojas tipo 'X' flotantes en movimiento
+                    if (_annoyedAnim.isAnimating && _annoyedParticles.isNotEmpty)
+                      AnimatedAlign(
+                        duration: Duration.zero,
+                        alignment: Alignment(_xPos, _yPos - 0.2),
+                        child: SizedBox(
+                          width: 110,
+                          height: 130,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            clipBehavior: Clip.none,
+                            children: [
+                              for (final p in _annoyedParticles)
+                                Builder(
+                                  builder: (context) {
+                                    final t = (_annoyedAnim.value - p.delay).clamp(0.0, 1.0);
+                                    if (t <= 0.0) return const SizedBox.shrink();
+                                    final yProgress = Curves.easeOutCubic.transform(t);
+                                    final opacity = (1.0 - t).clamp(0.0, 1.0);
+                                    return Positioned(
+                                      bottom: yProgress * 65 + 30,
+                                      left: 55 + p.x - 10,
+                                      child: Opacity(
+                                        opacity: opacity,
+                                        child: Transform.rotate(
+                                          angle: p.rotation,
+                                          child: Transform.scale(
+                                            scale: p.scale * (0.8 + 0.4 * yProgress),
+                                            child: Icon(
+                                              Icons.close_rounded,
+                                              size: 20,
+                                              color: p.color,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               );
@@ -599,63 +618,4 @@ class _PetHeroCardState extends State<PetHeroCard>
       ),
     );
   }
-}
-
-class PixelArtAngerX extends StatelessWidget {
-  final double size;
-  const PixelArtAngerX({super.key, this.size = 16});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(
-        painter: _PixelArtXPainter(),
-      ),
-    );
-  }
-}
-
-class _PixelArtXPainter extends CustomPainter {
-  static const List<String> _pattern = [
-    'XX....XX',
-    'XXX..XXX',
-    '.XXXXXX.',
-    '..XXXX..',
-    '..XXXX..',
-    '.XXXXXX.',
-    'XXX..XXX',
-    'XX....XX',
-  ];
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cellSize = size.width / 8.0;
-    final fillPaint = Paint()..color = const Color(0xFFEF4444);
-    final borderPaint = Paint()..color = const Color(0xFF991B1B);
-
-    for (int y = 0; y < 8; y++) {
-      final row = _pattern[y];
-      for (int x = 0; x < 8; x++) {
-        if (row[x] == 'X') {
-          final isEdge = x == 0 ||
-              x == 7 ||
-              y == 0 ||
-              y == 7 ||
-              (x > 0 && row[x - 1] == '.') ||
-              (x < 7 && row[x + 1] == '.') ||
-              (y > 0 && _pattern[y - 1][x] == '.') ||
-              (y < 7 && _pattern[y + 1][x] == '.');
-          canvas.drawRect(
-            Rect.fromLTWH(x * cellSize, y * cellSize, cellSize, cellSize),
-            isEdge ? borderPaint : fillPaint,
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
