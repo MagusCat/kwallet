@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/kwall_theme.dart';
 
-/// Selector modular para elegir el bloque horario de un hábito.
 class HabitTimeBlockSelector extends StatelessWidget {
   final String selected;
   final ValueChanged<String> onChanged;

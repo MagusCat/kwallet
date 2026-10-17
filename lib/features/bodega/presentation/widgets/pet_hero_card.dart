@@ -357,6 +357,7 @@ class _PetHeroCardState extends State<PetHeroCard>
           PetDialogueBubble(
             controller: controller,
             isPurring: _isCelebrating,
+            isAnnoyed: _isAnnoyed,
           ),
           const SizedBox(height: 10),
 

@@ -3,17 +3,17 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/kwall_theme.dart';
 import '../../view_models/home_view_model.dart';
 
-/// Burbuja de expresión visual para la mascota de Kwall.
-/// No utiliza textos ni iconos emoji; se comunica exclusivamente con caritas felinas y gestos.
 class PetDialogueBubble extends StatefulWidget {
   final HomeViewModel controller;
   final bool isPurring;
+  final bool isAnnoyed;
   final VoidCallback? onTap;
 
   const PetDialogueBubble({
     super.key,
     required this.controller,
     this.isPurring = false,
+    this.isAnnoyed = false,
     this.onTap,
   });
 
@@ -24,70 +24,57 @@ class PetDialogueBubble extends StatefulWidget {
 class _PetDialogueBubbleState extends State<PetDialogueBubble> {
   int _manualCycleIndex = 0;
 
-  static const _playfulFaces = [
-    '(=^･ω･^=)',
-    '(=^-ω-^=)',
-    '(=^‥^=)',
-    '(=`･ω･´=)',
-    '( =①ω①= )',
-    '(=^･ｪ･^=)',
+  static const _cycleIcons = [
+    (Icons.favorite_rounded, Color(0xFFF43F5E)),
+    (Icons.auto_awesome_rounded, Color(0xFFF59E0B)),
+    (Icons.pets_rounded, Color(0xFF466539)),
+    (Icons.music_note_rounded, Color(0xFF8B5CF6)),
+    (Icons.savings_rounded, Color(0xFF10B981)),
   ];
 
-  String _computeContextualExpression() {
+  ({IconData icon, Color color}) _computeEmotion() {
+    if (widget.isAnnoyed) {
+      return (icon: Icons.close_rounded, color: const Color(0xFFEF4444));
+    }
+
     if (widget.isPurring) {
-      return '(=^-ω-^=) ♡';
+      return (icon: Icons.favorite_rounded, color: const Color(0xFFF43F5E));
     }
 
     if (_manualCycleIndex > 0) {
-      return _playfulFaces[(_manualCycleIndex - 1) % _playfulFaces.length];
+      final item = _cycleIcons[(_manualCycleIndex - 1) % _cycleIcons.length];
+      return (icon: item.$1, color: item.$2);
     }
 
     final controller = widget.controller;
-    final now = DateTime.now();
-    final hour = now.hour;
+    final hour = DateTime.now().hour;
     final allHabitsDone = controller.totalHabitsToday > 0 &&
         controller.pendingHabitsCount == 0;
-    final completedHabits = controller.completedHabitsToday;
 
-    // Horario nocturno de descanso
     if (hour >= 22 || hour < 6) {
-      return '(=-ω-=) zZ';
+      return (icon: Icons.bedtime_rounded, color: const Color(0xFF818CF8));
     }
 
-    // Alerta de presupuesto
     if (controller.limit > 0 && controller.spent > controller.limit) {
-      return '( =①ω①= ) !';
+      return (icon: Icons.priority_high_rounded, color: const Color(0xFFF97316));
     }
 
-    // Todos los hábitos completados
     if (allHabitsDone) {
-      return '(=^o^=) /';
+      return (icon: Icons.auto_awesome_rounded, color: const Color(0xFFF59E0B));
     }
 
-    // Mañana
     if (hour >= 6 && hour < 12) {
-      if (completedHabits > 0) {
-        return '(=`･ω･´=)';
-      }
-      return '(=^‥^=)';
+      return (icon: Icons.wb_sunny_rounded, color: const Color(0xFFFBBF24));
     }
 
-    // Tarde
-    if (hour >= 12 && hour < 19) {
-      if (completedHabits > 0) {
-        return '(=^･ω･^=)';
-      }
-      return '(=^･ｪ･^=)';
+    if (controller.completedHabitsToday > 0) {
+      return (icon: Icons.pets_rounded, color: KwallTheme.accent);
     }
 
-    // Noche temprana
-    if (controller.pendingHabitsCount > 0) {
-      return '(=^･_･^=)';
-    }
-    return '(=^-ω-^=)';
+    return (icon: Icons.music_note_rounded, color: const Color(0xFF10B981));
   }
 
-  void _cycleFace() {
+  void _cycleEmotion() {
     setState(() {
       _manualCycleIndex++;
     });
@@ -96,38 +83,39 @@ class _PetDialogueBubbleState extends State<PetDialogueBubble> {
 
   @override
   Widget build(BuildContext context) {
-    final face = _computeContextualExpression();
+    final emotion = _computeEmotion();
 
     return Center(
       child: GestureDetector(
-        onTap: _cycleFace,
+        onTap: _cycleEmotion,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+          duration: const Duration(milliseconds: 240),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
-            color: KwallTheme.surfaceContainer.withValues(alpha: 0.90),
-            borderRadius: BorderRadius.circular(14),
+            color: KwallTheme.surfaceContainer.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: KwallTheme.accent.withValues(alpha: 0.35),
-              width: 1.2,
+              color: emotion.color.withValues(alpha: 0.45),
+              width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 5,
+                color: emotion.color.withValues(alpha: 0.15),
+                blurRadius: 8,
+                spreadRadius: 1,
                 offset: const Offset(0, 2),
               ),
             ],
           ),
-          child: Text(
-            face,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'monospace',
-              letterSpacing: 0.8,
-              color: KwallTheme.textPrimary,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                emotion.icon,
+                size: 18,
+                color: emotion.color,
+              ),
+            ],
           ),
         ),
       ),

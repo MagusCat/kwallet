@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/kwall_theme.dart';
 import '../../models/journal_models.dart';
 
-/// Barra de filtro rápido por momento del día (Mañana / Tarde / Noche / Todos).
 class HabitTimeBlockFilter extends StatelessWidget {
   final String activeBlock;
   final ValueChanged<String> onChanged;
