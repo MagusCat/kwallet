@@ -5,4 +5,6 @@ abstract class DatabaseContext {
   Future<Database> get database;
   void notifyChanged();
   CredentialStore get credentials;
+  Future<String> resolveDatabasePath();
+  Future<void> closeAndReset();
 }

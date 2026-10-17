@@ -9,22 +9,30 @@ import '../database_schema.dart';
 import '../database_context.dart';
 
 mixin BackupRepository on DatabaseContext {
-  Future<List<File>> getRecoveryFiles() async {
-    final db = await database;
-    if (db.path == inMemoryDatabasePath) return [];
-    final directory = Directory(p.dirname(db.path));
+  Future<List<File>> getRecoveryFiles() => findRecoveryFiles();
+
+  Future<List<File>> findRecoveryFiles() async {
+    final dbPath = await resolveDatabasePath();
+    if (dbPath == inMemoryDatabasePath) return [];
+    final directory = Directory(p.dirname(dbPath));
+    if (!await directory.exists()) return [];
     final files = await directory
         .list()
         .where(
           (file) =>
               file is File &&
-              file.path.startsWith('${db.path}.before-') &&
+              file.path.startsWith('$dbPath.before-') &&
               file.path.endsWith('.json'),
         )
         .cast<File>()
         .toList();
     files.sort((a, b) => b.path.compareTo(a.path));
     return files;
+  }
+
+  Future<bool> hasRecoveryCopies() async {
+    final files = await findRecoveryFiles();
+    return files.isNotEmpty;
   }
 
   Future<List<RecoveryCopy>> getRecoveryCopies() async => [
@@ -102,5 +110,52 @@ mixin BackupRepository on DatabaseContext {
       }
     });
     notifyChanged();
+  }
+
+  Future<void> repairOrResetDatabase() async {
+    await closeAndReset();
+    final dbPath = await resolveDatabasePath();
+    if (dbPath != inMemoryDatabasePath) {
+      final dbFile = File(dbPath);
+      if (await dbFile.exists()) {
+        final corrupted =
+            '$dbPath.corrupted-${DateTime.now().millisecondsSinceEpoch}';
+        try {
+          await dbFile.rename(corrupted);
+        } catch (_) {
+          await dbFile.copy(corrupted);
+          await dbFile.delete();
+        }
+        for (final suffix in ['-wal', '-shm', '-journal']) {
+          final extra = File('$dbPath$suffix');
+          if (await extra.exists()) {
+            try {
+              await extra.delete();
+            } catch (_) {}
+          }
+        }
+      }
+    }
+    await database;
+    notifyChanged();
+  }
+
+  Future<bool> restoreLatestRecoveryCopy() async {
+    final files = await findRecoveryFiles();
+    if (files.isEmpty) return false;
+    final content = await files.first.readAsString();
+    await repairOrResetDatabase();
+    await importFullDataFromJson(content);
+    return true;
+  }
+
+  Future<String> checkDatabaseIntegrity() async {
+    try {
+      final db = await database;
+      final result = await db.rawQuery('PRAGMA integrity_check');
+      return result.firstOrNull?.values.firstOrNull?.toString() ?? 'ok';
+    } catch (e) {
+      return 'Error: $e';
+    }
   }
 }

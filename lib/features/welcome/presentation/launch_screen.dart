@@ -116,6 +116,10 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
         settings: _settings,
         failed: _failed,
         onRetry: _open,
+        hasRecovery: model.hasRecovery,
+        onRestoreRecovery: () => model.restoreRecovery(),
+        onRepairDatabase: () => model.repairDatabase(),
+        diagnosticInfo: model.diagnosticInfo,
       );
     }
 

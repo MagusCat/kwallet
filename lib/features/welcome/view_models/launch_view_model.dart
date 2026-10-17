@@ -1,15 +1,22 @@
 import '../../../core/contracts/app_repositories.dart';
 import '../../../core/mvvm/view_model.dart';
+import '../../../core/services/device_files.dart';
 
 class LaunchViewModel extends ViewModel {
   final SettingsRepository repository;
+  final DeviceFiles? files;
   Map<String, String> settings = const {};
   bool ready = false;
   bool returning = false;
-  LaunchViewModel(this.repository);
+  bool hasRecovery = false;
+  String? diagnosticInfo;
+
+  LaunchViewModel(this.repository, {this.files});
+
   Future<void> load() async {
     final request = beginRequest();
     error = null;
+    diagnosticInfo = null;
     changed();
     try {
       final data = await repository.getSettings();
@@ -18,10 +25,29 @@ class LaunchViewModel extends ViewModel {
       ready = true;
       returning = data['welcome_seen'] == '1';
       changed();
-    } catch (_) {
-      if (isCurrent(request)) fail('No pudimos abrir tus datos.');
+    } catch (e) {
+      if (isCurrent(request)) {
+        diagnosticInfo = e.toString();
+        try {
+          hasRecovery = await repository.hasRecoveryCopies();
+        } catch (_) {
+          hasRecovery = false;
+        }
+        fail('No pudimos abrir tus datos.');
+      }
     }
   }
+
+  Future<bool> restoreRecovery() => perform(() async {
+        final ok = await repository.restoreLatestRecoveryCopy();
+        if (!ok) throw StateError('No hay copia disponible para restaurar.');
+        await load();
+      });
+
+  Future<bool> repairDatabase() => perform(() async {
+        await repository.repairOrResetDatabase();
+        await load();
+      });
 
   Future<bool> enter({
     String? petStyle,

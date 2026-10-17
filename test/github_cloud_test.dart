@@ -159,6 +159,18 @@ class FakeSettingsRepo implements SettingsRepository {
 
   @override
   Future<List<Map<String, dynamic>>> getCurrencyRateHistory({String? currency}) async => [];
+
+  @override
+  Future<bool> hasRecoveryCopies() async => false;
+
+  @override
+  Future<bool> restoreLatestRecoveryCopy() async => true;
+
+  @override
+  Future<void> repairOrResetDatabase() async {}
+
+  @override
+  Future<String> checkDatabaseIntegrity() async => 'ok';
 }
 
 class FakeDeviceFiles implements DeviceFiles {

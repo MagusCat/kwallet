@@ -69,18 +69,45 @@ class DatabaseService extends DatabaseContext
     }
   }
 
+  @override
+  Future<String> resolveDatabasePath() async {
+    if (_path != null) return _path;
+    return p.join(
+      (await getApplicationDocumentsDirectory()).path,
+      'kwall',
+      'kwall.db',
+    );
+  }
+
+  @override
+  Future<void> closeAndReset() async {
+    if (_database != null) {
+      try {
+        await _database!.close();
+      } catch (_) {}
+      _database = null;
+    }
+    _opening = null;
+  }
+
+  static Future<void> _safePragma(Database db, String sql) async {
+    try {
+      await db.rawQuery(sql);
+    } catch (_) {
+      try {
+        await db.execute(sql);
+      } catch (e) {
+        debugPrint('Safe SQLite PRAGMA skipped ($sql): $e');
+      }
+    }
+  }
+
   Future<Database> _initDatabase() async {
     if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
       sqfliteFfiInit();
     }
 
-    final dbPath =
-        _path ??
-        p.join(
-          (await getApplicationDocumentsDirectory()).path,
-          'kwall',
-          'kwall.db',
-        );
+    final dbPath = await resolveDatabasePath();
     final dir = Directory(p.dirname(dbPath));
     if (!await dir.exists()) {
       await dir.create(recursive: true);
@@ -92,27 +119,32 @@ class DatabaseService extends DatabaseContext
             ? databaseFactoryFfi
             : mobile.databaseFactorySqflitePlugin);
     if (dbPath != inMemoryDatabasePath && await File(dbPath).exists()) {
-      final previous = await dbFactory.openDatabase(
-        dbPath,
-        options: OpenDatabaseOptions(readOnly: true),
-      );
       try {
-        final version = await previous.getVersion();
-        if (version > DatabaseBackup.version) {
-          throw StateError('Actualiza kwall para abrir esta base de datos.');
+        final previous = await dbFactory.openDatabase(
+          dbPath,
+          options: OpenDatabaseOptions(readOnly: true),
+        );
+        try {
+          final version = await previous.getVersion();
+          if (version > DatabaseBackup.version) {
+            throw StateError('Actualiza kwall para abrir esta base de datos.');
+          }
+          if (version < DatabaseBackup.version) {
+            final backup = await previous.transaction(
+              (txn) => DatabaseBackup.encode(txn, version),
+            );
+            await DatabaseBackup.writeRecovery(
+              dbPath,
+              backup,
+              'before-v${DatabaseBackup.version}',
+            );
+          }
+        } finally {
+          await previous.close();
         }
-        if (version < DatabaseBackup.version) {
-          final backup = await previous.transaction(
-            (txn) => DatabaseBackup.encode(txn, version),
-          );
-          await DatabaseBackup.writeRecovery(
-            dbPath,
-            backup,
-            'before-v${DatabaseBackup.version}',
-          );
-        }
-      } finally {
-        await previous.close();
+      } catch (e) {
+        if (e is StateError) rethrow;
+        debugPrint('Pre-migration check skipped: $e');
       }
     }
     return dbFactory.openDatabase(
@@ -120,17 +152,16 @@ class DatabaseService extends DatabaseContext
       options: OpenDatabaseOptions(
         version: DatabaseBackup.version,
         onConfigure: (db) async {
-          await db.execute('PRAGMA foreign_keys = ON');
-          await db.execute('PRAGMA synchronous = FULL');
-          await db.rawQuery('PRAGMA secure_delete = ON');
-          await db.execute('PRAGMA busy_timeout = 5000');
+          await _safePragma(db, 'PRAGMA foreign_keys = ON');
+          await _safePragma(db, 'PRAGMA synchronous = FULL');
+          await _safePragma(db, 'PRAGMA secure_delete = ON');
+          await _safePragma(db, 'PRAGMA busy_timeout = 5000');
           if (dbPath != inMemoryDatabasePath) {
-            await db.rawQuery('PRAGMA journal_mode = WAL');
+            await _safePragma(db, 'PRAGMA journal_mode = WAL');
           }
         },
         onCreate: DatabaseSchema.create,
         onUpgrade: DatabaseSchema.upgrade,
-
       ),
     );
   }

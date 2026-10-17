@@ -55,6 +55,18 @@ class FakeSettingsRepository implements SettingsRepository {
 
   @override
   Future<List<Map<String, dynamic>>> getCurrencyRateHistory({String? currency}) async => [];
+
+  @override
+  Future<bool> hasRecoveryCopies() async => false;
+
+  @override
+  Future<bool> restoreLatestRecoveryCopy() async => true;
+
+  @override
+  Future<void> repairOrResetDatabase() async {}
+
+  @override
+  Future<String> checkDatabaseIntegrity() async => 'ok';
 }
 
 void main() {
@@ -89,5 +101,82 @@ void main() {
       expect(entered, true);
       expect(repo.data['welcome_seen'], '1');
     });
+
+    test('load failure sets error, diagnosticInfo, and checks recovery copies', () async {
+      final repo = FailingSettingsRepository();
+      final vm = LaunchViewModel(repo);
+
+      await vm.load();
+      expect(vm.ready, isFalse);
+      expect(vm.error, 'No pudimos abrir tus datos.');
+      expect(vm.diagnosticInfo, contains('Simulated database disk failure'));
+      expect(vm.hasRecovery, isTrue);
+    });
+
+    test('restoreRecovery calls repository.restoreLatestRecoveryCopy and reloads', () async {
+      final repo = RecoverableSettingsRepository();
+      final vm = LaunchViewModel(repo);
+
+      await vm.load();
+      expect(vm.ready, isFalse);
+
+      final restored = await vm.restoreRecovery();
+      expect(restored, isTrue);
+      expect(vm.ready, isTrue);
+      expect(repo.restoredCalled, isTrue);
+    });
+
+    test('repairDatabase calls repository.repairOrResetDatabase and reloads', () async {
+      final repo = RecoverableSettingsRepository();
+      final vm = LaunchViewModel(repo);
+
+      await vm.load();
+      expect(vm.ready, isFalse);
+
+      final repaired = await vm.repairDatabase();
+      expect(repaired, isTrue);
+      expect(vm.ready, isTrue);
+      expect(repo.repairCalled, isTrue);
+    });
   });
+}
+
+class FailingSettingsRepository extends FakeSettingsRepository {
+  @override
+  Future<Map<String, String>> getSettings() async {
+    throw StateError('Simulated database disk failure');
+  }
+
+  @override
+  Future<bool> hasRecoveryCopies() async => true;
+}
+
+class RecoverableSettingsRepository extends FakeSettingsRepository {
+  bool failNext = true;
+  bool restoredCalled = false;
+  bool repairCalled = false;
+
+  @override
+  Future<Map<String, String>> getSettings() async {
+    if (failNext) {
+      throw StateError('Database opening failed');
+    }
+    return {'welcome_seen': '1'};
+  }
+
+  @override
+  Future<bool> hasRecoveryCopies() async => true;
+
+  @override
+  Future<bool> restoreLatestRecoveryCopy() async {
+    restoredCalled = true;
+    failNext = false;
+    return true;
+  }
+
+  @override
+  Future<void> repairOrResetDatabase() async {
+    repairCalled = true;
+    failNext = false;
+  }
 }

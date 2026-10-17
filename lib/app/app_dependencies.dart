@@ -38,7 +38,7 @@ class AppDependencies {
   }
   AppViewModel app() => AppViewModel(settings)..load();
   HomeViewModel home() => HomeViewModel(finance, journal, settings)..load();
-  LaunchViewModel launch() => LaunchViewModel(settings)..load();
+  LaunchViewModel launch() => LaunchViewModel(settings, files: files)..load();
   JournalViewModel journalScreen() =>
       JournalViewModel(journal, settings)..load();
   JournalActionsViewModel journalActions() => JournalActionsViewModel(journal);
