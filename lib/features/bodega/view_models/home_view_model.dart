@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import '../../../core/mvvm/view_model.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../../core/contracts/app_repositories.dart';
 import '../../../core/services/widget_sync_service.dart';
@@ -150,6 +151,32 @@ class HomeViewModel extends ViewModel {
 
   Future<bool> voidMovement(TransactionRecord tx) =>
       perform(() => finance.deleteTransaction(tx));
+
+  Future<TransactionRecord?> logQuickExpense({
+    required String title,
+    required double amount,
+    required String categoryId,
+    String? accountId,
+  }) async {
+    final targetAccount = accountId != null
+        ? _accounts.where((a) => a.id == accountId).firstOrNull ?? _accounts.firstOrNull
+        : _accounts.firstOrNull;
+    if (targetAccount == null) return null;
+
+    final record = TransactionRecord(
+      id: const Uuid().v4(),
+      accountId: targetAccount.id,
+      categoryId: categoryId,
+      amount: amount,
+      type: 'expense',
+      note: title,
+      date: DateTime.now(),
+      createdAt: DateTime.now(),
+    );
+
+    final ok = await perform(() => finance.addTransactions([record]));
+    return ok ? record : null;
+  }
 
   Future<bool> completeHabit(Habit habit, [DateTime? day]) async {
     final ok = await perform(

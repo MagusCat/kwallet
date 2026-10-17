@@ -13,6 +13,7 @@ import 'budget_panel.dart';
 import 'movement_tile.dart';
 import 'habit_dot_tracker.dart';
 import 'home_tasks_panel.dart';
+import 'quick_expense_shortcuts.dart';
 import 'upcoming_dates_panel.dart';
 
 class HomeDashboard extends StatefulWidget {
@@ -121,11 +122,10 @@ class _HomeDashboardState extends State<HomeDashboard> {
             ),
             const SizedBox(height: 16),
 
-            // 6. Presupuesto flexible
             BudgetPanel(controller: widget.controller, onEdit: widget.onBudget),
+            const SizedBox(height: 16),
+            QuickExpenseShortcuts(controller: widget.controller),
             const SizedBox(height: 26),
-
-            // 7. Movimientos recientes
             Text(
               'Movimientos',
               style: KwallTheme.fontTitle.copyWith(fontSize: 21),
