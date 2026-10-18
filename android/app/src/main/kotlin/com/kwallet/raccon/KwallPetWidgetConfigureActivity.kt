@@ -1,4 +1,4 @@
-package com.kwall.kwall
+package com.kwallet.raccon
 
 import android.app.Activity
 import android.appwidget.AppWidgetManager

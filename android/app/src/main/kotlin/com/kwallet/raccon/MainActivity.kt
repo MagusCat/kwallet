@@ -1,4 +1,4 @@
-package com.kwall.kwall
+package com.kwallet.raccon
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -15,15 +15,15 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val WIDGET_CHANNEL = "com.kwall.kwall/widget"
-    private val NOTIFICATION_CHANNEL = "com.kwall.kwall/notifications"
+    private val WIDGET_CHANNEL = "com.kwallet.raccon/widget"
+    private val NOTIFICATION_CHANNEL = "com.kwallet.raccon/notifications"
     private var pendingNotificationResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
         val vault = CredentialVault(applicationContext)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.kwall.kwall/credentials").setMethodCallHandler { call, result ->
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.kwallet.raccon/credentials").setMethodCallHandler { call, result ->
             try {
                 when (call.method) {
                     "read" -> result.success(vault.read())

@@ -8,7 +8,7 @@
     android:description="@string/widget_pet_habits_desc"
     android:initialLayout="@layout/kwall_pet_widget"
     android:resizeMode="horizontal|vertical"
-    android:configure="com.kwall.kwall.KwallPetWidgetConfigureActivity"
+    android:configure="com.kwallet.raccon.KwallPetWidgetConfigureActivity"
     android:widgetFeatures="reconfigurable|configuration_optional"
     android:widgetCategory="home_screen">
 </appwidget-provider>

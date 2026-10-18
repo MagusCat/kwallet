@@ -11,7 +11,7 @@ abstract interface class CredentialStore {
 /// Android Keystore / Linux Secret Service. No plaintext fallback.
 class SecureCredentialStore implements CredentialStore {
   const SecureCredentialStore();
-  static const _channel = MethodChannel('com.kwall.kwall/credentials');
+  static const _channel = MethodChannel('com.kwallet.raccon/credentials');
   static const _attributes = ['application', 'kwall', 'credential', 'github'];
 
   Future<String?> _linux(String operation, [String? token]) async {

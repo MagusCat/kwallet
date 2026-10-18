@@ -1,4 +1,4 @@
-package com.kwall.kwall
+package com.kwallet.raccon
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -31,7 +31,7 @@ class KwallPetWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
-        const val ACTION_PET_TAP = "com.kwall.kwall.ACTION_PET_TAP"
+        const val ACTION_PET_TAP = "com.kwallet.raccon.ACTION_PET_TAP"
         const val PREFS_NAME = "kwall_widget_data"
         const val KEY_PET_NAME = "pet_name"
         const val KEY_PET_LEVEL = "pet_level"

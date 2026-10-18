@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class NotificationService {
-  static const MethodChannel _channel = MethodChannel('com.kwall.kwall/notifications');
+  static const MethodChannel _channel = MethodChannel('com.kwallet.raccon/notifications');
 
   static bool _isAllowed(String type, Map<String, String>? settings) {
     if (settings == null) return false;

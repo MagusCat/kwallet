@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 class WidgetSyncService {
-  static const MethodChannel _channel = MethodChannel('com.kwall.kwall/widget');
+  static const MethodChannel _channel = MethodChannel('com.kwallet.raccon/widget');
 
   static Future<bool> syncWidget({
     required String petName,
