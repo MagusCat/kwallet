@@ -1,5 +1,5 @@
 name: kwall
-description: "A new Flutter project."
+description: "Local-first finances, habits, notes, and a growing pixel companion."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -69,18 +69,18 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
-    - cat.png
-    - cat_baby.png
-    - rat.png
-    - rat_baby.png
-    - raccoon.png
-    - raccoon_baby.png
-    - opossum.png
-    - opossum_baby.png
-    - rock.png
-    - rock_baby.png
-    - plant.png
-    - plant_baby.png
+    - assets/pets/cat.png
+    - assets/pets/cat_baby.png
+    - assets/pets/rat.png
+    - assets/pets/rat_baby.png
+    - assets/pets/raccoon.png
+    - assets/pets/raccoon_baby.png
+    - assets/pets/opossum.png
+    - assets/pets/opossum_baby.png
+    - assets/pets/rock.png
+    - assets/pets/rock_baby.png
+    - assets/pets/plant.png
+    - assets/pets/plant_baby.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

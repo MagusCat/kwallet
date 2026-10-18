@@ -49,3 +49,7 @@ app.*.map.json
 
 # Local UI review captures (synthetic data)
 .impeccable/review/
+
+# Internal AI plans, prompts, references, and review documents
+/docs-ia/
+/tool/

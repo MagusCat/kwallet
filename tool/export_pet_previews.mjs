@@ -4,19 +4,20 @@ import { copyFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
+mkdirSync(root + 'docs-ia/art', { recursive: true });
 function magick(args) {
   const result = spawnSync('magick', args, { cwd: root, encoding: 'utf8' });
   if (result.status !== 0) throw new Error(result.stderr);
 }
 const originalPets = [
-  ['Gato original', 'cat.png'], ['Gato bebé', 'cat_baby.png'],
-  ['Rata', 'rat.png'], ['Rata bebé', 'rat_baby.png'],
-  ['Mapache', 'raccoon.png'], ['Mapache bebé', 'raccoon_baby.png'],
+  ['Gato original', 'assets/pets/cat.png'], ['Gato bebé', 'assets/pets/cat_baby.png'],
+  ['Rata', 'assets/pets/rat.png'], ['Rata bebé', 'assets/pets/rat_baby.png'],
+  ['Mapache', 'assets/pets/raccoon.png'], ['Mapache bebé', 'assets/pets/raccoon_baby.png'],
 ];
 const newPets = [
- ['Zarigüeya', 'opossum.png'], ['Zarigüeya bebé', 'opossum_baby.png'],
- ['Roca', 'rock.png'], ['Piedrita', 'rock_baby.png'],
- ['Planta', 'plant.png'], ['Brote', 'plant_baby.png'],
+ ['Zarigüeya', 'assets/pets/opossum.png'], ['Zarigüeya bebé', 'assets/pets/opossum_baby.png'],
+ ['Roca', 'assets/pets/rock.png'], ['Piedrita', 'assets/pets/rock_baby.png'],
+ ['Planta', 'assets/pets/plant.png'], ['Brote', 'assets/pets/plant_baby.png'],
 ];
 for (const [suffix, pets] of [['', originalPets], ['-new', newPets]]) {
 for (const dark of [true, false]) {
@@ -34,10 +35,10 @@ for (const dark of [true, false]) {
         '-draw', `text ${x + 42 + state * 146},${y + 179} "${label}"`);
     });
   });
-  args.push(`docs/art/pet-atlas-mobile${suffix}${dark ? '' : '-light'}.png`);
+  args.push(`docs-ia/art/pet-atlas-mobile${suffix}${dark ? '' : '-light'}.png`);
   magick(args);
 }
-copyFileSync(root + 'docs/art/pet-atlas-mobile-light.png', root + 'docs/art/pet-atlas-comparison.png');
+copyFileSync(root + 'docs-ia/art/pet-atlas-mobile-light.png', root + 'docs-ia/art/pet-atlas-comparison.png');
 // An animated alternative to the local HTML page, using the app's sequences.
 const temp = '/tmp/kwall-pet-gif' + suffix;
 mkdirSync(temp, { recursive: true });
@@ -61,6 +62,6 @@ for (const [row, count, delay, label] of timeline) {
     output.push('-delay', String(delay), path);
   }
 }
-magick([...output, '-layers', 'Optimize', `docs/art/pet-atlas-mobile${suffix}.gif`]);
+magick([...output, '-layers', 'Optimize', `docs-ia/art/pet-atlas-mobile${suffix}.gif`]);
 }
 console.log('Exported dark/light PNG comparisons and animated GIF.');

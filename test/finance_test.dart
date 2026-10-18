@@ -208,7 +208,7 @@ void main() {
       await legacy.close();
       final service = DatabaseService.atPath(path);
       final db = await service.database;
-    await service.setCurrencyRate(currency: 'NIO', rate: 1);
+      await service.setCurrencyRate(currency: 'NIO', rate: 1);
       addTearDown(db.close);
       expect(
         (await db.query(
@@ -259,7 +259,9 @@ void main() {
       'palette': 'plum',
       'currency': 'C\$',
       'pet_style': 'custom',
-      'pet_image_data': base64Encode(await File('cat.png').readAsBytes()),
+      'pet_image_data': base64Encode(
+        await File('assets/pets/cat.png').readAsBytes(),
+      ),
     });
     final day = DateTime.now();
     await service.allocateBudget(
@@ -345,7 +347,7 @@ void main() {
     expect((await service.getSettings())['palette'], 'plum');
     expect(
       (await service.getSettings())['pet_image_data'],
-      base64Encode(await File('cat.png').readAsBytes()),
+      base64Encode(await File('assets/pets/cat.png').readAsBytes()),
     );
     await service.verifyDataIntegrity();
     expect(await service.getRecoveryFiles(), isNotEmpty);
@@ -443,9 +445,15 @@ void main() {
     );
     await service.addPlannedExpense(expense);
 
-    await service.payPlannedExpense('pe1', 'acc1', expectedDueDate: DateTime(2026, 10, 20));
+    await service.payPlannedExpense(
+      'pe1',
+      'acc1',
+      expectedDueDate: DateTime(2026, 10, 20),
+    );
 
-    final payments = await service.getPlannedExpensePayments(plannedExpenseId: 'pe1');
+    final payments = await service.getPlannedExpensePayments(
+      plannedExpenseId: 'pe1',
+    );
     expect(payments, hasLength(1));
     expect(payments.first['planned_expense_id'], 'pe1');
     expect(payments.first['amount'], 45.0);
@@ -469,7 +477,7 @@ void main() {
         factory: databaseFactoryFfiNoIsolate,
       );
       final db = await service.database;
-    await service.setCurrencyRate(currency: 'NIO', rate: 1);
+      await service.setCurrencyRate(currency: 'NIO', rate: 1);
       addTearDown(db.close);
       await service.createAccount(
         Account(
@@ -580,7 +588,7 @@ void main() {
     DatabaseService.instance = service;
     await tester.runAsync(() async {
       final db = await service.database;
-    await service.setCurrencyRate(currency: 'NIO', rate: 1);
+      await service.setCurrencyRate(currency: 'NIO', rate: 1);
       final now = DateTime.now();
       await db.insert('accounts', {
         'id': 'cash',

@@ -7,17 +7,17 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   const assets = [
-    'cat_baby.png',
-    'rat.png',
-    'rat_baby.png',
-    'raccoon.png',
-    'raccoon_baby.png',
-    'opossum.png',
-    'opossum_baby.png',
-    'rock.png',
-    'rock_baby.png',
-    'plant.png',
-    'plant_baby.png',
+    'assets/pets/cat_baby.png',
+    'assets/pets/rat.png',
+    'assets/pets/rat_baby.png',
+    'assets/pets/raccoon.png',
+    'assets/pets/raccoon_baby.png',
+    'assets/pets/opossum.png',
+    'assets/pets/opossum_baby.png',
+    'assets/pets/rock.png',
+    'assets/pets/rock_baby.png',
+    'assets/pets/plant.png',
+    'assets/pets/plant_baby.png',
   ];
   for (final asset in assets) {
     test('$asset has complete frames with clean transparency', () async {
@@ -95,7 +95,7 @@ void main() {
   }
 
   test('species and growth stages use distinct artwork', () async {
-    final files = ['cat.png', ...assets];
+    final files = ['assets/pets/cat.png', ...assets];
     final contents = await Future.wait(
       files.map((asset) => File(asset).readAsBytes()),
     );

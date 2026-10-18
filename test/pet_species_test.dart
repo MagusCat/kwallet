@@ -54,27 +54,27 @@ void main() {
     test('Asset resolution uses baby atlas for all species under 200 XP', () {
       expect(
         PetSpeciesCatalog.resolveAsset('classic', xp: 50),
-        equals('cat_baby.png'),
+        equals('assets/pets/cat_baby.png'),
       );
       expect(
         PetSpeciesCatalog.resolveAsset('classic', xp: 250),
-        equals('cat.png'),
+        equals('assets/pets/cat.png'),
       );
       expect(
         PetSpeciesCatalog.resolveAsset('rat_snow', xp: 50),
-        equals('rat_baby.png'),
+        equals('assets/pets/rat_baby.png'),
       );
       expect(
         PetSpeciesCatalog.resolveAsset('rat_snow', xp: 250),
-        equals('rat.png'),
+        equals('assets/pets/rat.png'),
       );
       expect(
         PetSpeciesCatalog.resolveAsset('raccoon_classic', xp: 50),
-        equals('raccoon_baby.png'),
+        equals('assets/pets/raccoon_baby.png'),
       );
       expect(
         PetSpeciesCatalog.resolveAsset('raccoon_classic', xp: 250),
-        equals('raccoon.png'),
+        equals('assets/pets/raccoon.png'),
       );
     });
 
@@ -100,10 +100,16 @@ void main() {
         expect(PetSpeciesCatalog.get(key).key, key);
         expect(
           PetSpeciesCatalog.resolveAsset(key, xp: 199),
-          '${species}_baby.png',
+          'assets/pets/${species}_baby.png',
         );
-        expect(PetSpeciesCatalog.resolveAsset(key, xp: 200), '$species.png');
-        expect(PetSpeciesCatalog.resolveAsset(key, xp: 600), '$species.png');
+        expect(
+          PetSpeciesCatalog.resolveAsset(key, xp: 200),
+          'assets/pets/$species.png',
+        );
+        expect(
+          PetSpeciesCatalog.resolveAsset(key, xp: 600),
+          'assets/pets/$species.png',
+        );
       }
     });
   });
