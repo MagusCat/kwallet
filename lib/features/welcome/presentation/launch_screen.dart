@@ -93,8 +93,24 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
     super.dispose();
   }
 
+  void _commitPendingRefCurrency() {
+    final sym = _newRefSymbol.text.trim();
+    final name = _newRefName.text.trim();
+    if (sym.isNotEmpty && !_referenceCurrencies.contains(sym)) {
+      setState(() {
+        _referenceCurrencies.add(sym);
+        if (name.isNotEmpty) {
+          _customCurrencyNames[sym] = name;
+        }
+        _newRefSymbol.clear();
+        _newRefName.clear();
+      });
+    }
+  }
+
   Future<void> _enter(int page) async {
     HapticFeedback.mediumImpact();
+    _commitPendingRefCurrency();
     final petName =
         _petName.text.trim().isEmpty ? 'Mishi' : _petName.text.trim();
     final cur = _currency.text.trim().isEmpty ? '\$' : _currency.text.trim();
@@ -122,6 +138,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
 
   void _goToStep(int step) {
     HapticFeedback.lightImpact();
+    _commitPendingRefCurrency();
     _pageController.animateToPage(
       step,
       duration: const Duration(milliseconds: 360),
@@ -180,16 +197,26 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
             child: Center(
               child: ContentWidth(
                 width: 480,
-                child: PageView(
-                  controller: _pageController,
-                  physics: const BouncingScrollPhysics(),
-                  onPageChanged: (page) => setState(() => _currentStep = page),
+                child: Column(
                   children: [
-                    _buildIntroStep(currentPetSettings),
-                    _buildPetStep(currentPetSettings),
-                    _buildCurrencyStep(currentPetSettings),
-                    _buildNotificationsStep(currentPetSettings),
-                    _buildPrivacyStep(currentPetSettings),
+                    Expanded(
+                      child: PageView(
+                        controller: _pageController,
+                        physics: const BouncingScrollPhysics(),
+                        onPageChanged: (page) {
+                          _commitPendingRefCurrency();
+                          setState(() => _currentStep = page);
+                        },
+                        children: [
+                          _buildIntroStep(currentPetSettings),
+                          _buildPetStep(currentPetSettings),
+                          _buildCurrencyStep(currentPetSettings),
+                          _buildNotificationsStep(currentPetSettings),
+                          _buildPrivacyStep(currentPetSettings),
+                        ],
+                      ),
+                    ),
+                    _buildFixedBottomBar(),
                   ],
                 ),
               ),
@@ -232,6 +259,21 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
             alignment: Alignment.center,
             clipBehavior: Clip.none,
             children: [
+              // Halo ambiental suave detrás de la mascota
+              Container(
+                width: size * 1.05,
+                height: size * 1.05,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      KwallTheme.accent.withValues(alpha: 0.14),
+                      KwallTheme.accent.withValues(alpha: 0.03),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
               // Sombra / pedestal suave bajo la mascota
               Positioned(
                 bottom: 4,
@@ -294,65 +336,65 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
     );
   }
 
+  Widget _decorBadge(IconData icon, String label) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: KwallTheme.surfaceContainer.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: KwallTheme.border.withValues(alpha: 0.25),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: KwallTheme.accent),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: KwallTheme.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      );
+
   /// Paso 0: Bienvenida e introducción a kwall
   Widget _buildIntroStep(Map<String, String> petSettings) => SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: KwallTheme.surfaceContainer.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: KwallTheme.border.withValues(alpha: 0.35),
-                  ),
-                ),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.shield_outlined,
-                        size: 13,
-                        color: KwallTheme.accent,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'BÓVEDA FINANCIERA · 100% LOCAL',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.6,
-                          color: KwallTheme.accent,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _decorBadge(Icons.lock_outline, '100% Local'),
+                const SizedBox(width: 8),
+                _decorBadge(Icons.shield_outlined, 'Sin registro'),
+                const SizedBox(width: 8),
+                _decorBadge(Icons.pets_outlined, 'Tu compañero'),
+              ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Text(
               'kwall',
               textAlign: TextAlign.center,
               style: KwallTheme.fontTitle.copyWith(fontSize: 28),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             _petHeroStage(
               petSettings: petSettings,
               activity: PetActivity.curious,
-              size: 140,
-              caption: '¡Hola! Soy tu compañero',
+              size: 136,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Text(
               'Tu dinero.\nTu ritmo.',
               textAlign: TextAlign.center,
-              style: KwallTheme.fontDisplay.copyWith(fontSize: 34, height: 1.15),
+              style: KwallTheme.fontDisplay.copyWith(fontSize: 32, height: 1.15),
             ),
             const SizedBox(height: 8),
             Text(
@@ -364,7 +406,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                 height: 1.35,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             Row(
               children: [
                 _featureChip(Icons.account_balance_wallet_outlined, 'Cuentas'),
@@ -374,31 +416,32 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                 _featureChip(Icons.spa_outlined, 'Hábitos'),
               ],
             ),
-            const SizedBox(height: 24),
-            _stepIndicator(),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: () => _goToStep(1),
-              icon: const Icon(Icons.arrow_forward_rounded),
-              label: const Text('Configurar mi compañero'),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              alignment: WrapAlignment.center,
-              children: [
-                TextButton(
-                  onPressed: _entering ? null : () => _enter(0),
-                  child: const Text('Empezar directo'),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: KwallTheme.surfaceContainer.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: KwallTheme.border.withValues(alpha: 0.25),
                 ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-                  child: Text('·', style: TextStyle(color: Colors.grey)),
-                ),
-                TextButton(
-                  onPressed: _entering ? null : () => _enter(3),
-                  child: const Text('Tengo un respaldo'),
-                ),
-              ],
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.auto_awesome, color: KwallTheme.accent, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Tus finanzas personales, notas rápidas y hábitos en perfecta sincronía local.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: KwallTheme.textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -454,11 +497,22 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               textAlign: TextAlign.center,
               style: TextStyle(color: KwallTheme.textSecondary, fontSize: 13),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             _petHeroStage(
               petSettings: petSettings,
               activity: PetActivity.celebrate,
               size: 116,
+            ),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _decorBadge(Icons.bolt, '+10 XP por hábito'),
+                const SizedBox(width: 8),
+                _decorBadge(Icons.military_tech_outlined, 'Nivel 1'),
+                const SizedBox(width: 8),
+                _decorBadge(Icons.mood, 'Reacciones vivas'),
+              ],
             ),
             const SizedBox(height: 16),
             TextField(
@@ -491,33 +545,12 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                 });
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             _infoCard(
               icon: Icons.favorite_border_rounded,
               title: 'Compromiso con tu compañero',
               description:
                   'Tu mascota virtual se alimenta de tu constancia. Cada hábito completado le otorga +10 XP para subir de nivel y desbloquear nuevas reacciones dinámicas.',
-            ),
-            const SizedBox(height: 24),
-            _stepIndicator(),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _goToStep(0),
-                    child: const Text('Atrás'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => _goToStep(2),
-                    icon: const Icon(Icons.arrow_forward_rounded),
-                    label: const Text('Configurar monedas'),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -540,14 +573,14 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               textAlign: TextAlign.center,
               style: TextStyle(color: KwallTheme.textSecondary, fontSize: 13),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             _petHeroStage(
               petSettings: petSettings,
               activity: PetActivity.walk,
               size: 104,
               caption: 'Moneda activa: ${_currency.text.trim().isEmpty ? '\$' : _currency.text.trim()}',
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             Text(
               'Moneda principal',
               style: KwallTheme.fontTitle.copyWith(fontSize: 14),
@@ -566,7 +599,10 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                       prefixIcon: Icon(Icons.payments_outlined),
                     ),
                     textCapitalization: TextCapitalization.characters,
-                    onChanged: (_) => setState(() {}),
+                    onChanged: (val) {
+                      _customCurrencyNames[val.trim()] = _currencyName.text.trim();
+                      setState(() {});
+                    },
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -586,7 +622,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             Text(
               'Monedas de referencia',
               style: KwallTheme.fontTitle.copyWith(fontSize: 14),
@@ -628,6 +664,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                       hintText: 'Ej. EUR, C\$',
                     ),
                     textCapitalization: TextCapitalization.characters,
+                    onSubmitted: (_) => _commitPendingRefCurrency(),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -640,49 +677,23 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                       hintText: 'Ej. Euro, Peso',
                     ),
                     textCapitalization: TextCapitalization.sentences,
+                    onSubmitted: (_) => _commitPendingRefCurrency(),
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton.filledTonal(
                   tooltip: 'Añadir moneda',
-                  onPressed: () {
-                    final sym = _newRefSymbol.text.trim();
-                    final name = _newRefName.text.trim();
-                    if (sym.isNotEmpty && !_referenceCurrencies.contains(sym)) {
-                      setState(() {
-                        _referenceCurrencies.add(sym);
-                        if (name.isNotEmpty) {
-                          _customCurrencyNames[sym] = name;
-                        }
-                        _newRefSymbol.clear();
-                        _newRefName.clear();
-                      });
-                    }
-                  },
+                  onPressed: _commitPendingRefCurrency,
                   icon: const Icon(Icons.add_rounded),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            _stepIndicator(),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _goToStep(1),
-                    child: const Text('Atrás'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => _goToStep(3),
-                    icon: const Icon(Icons.arrow_forward_rounded),
-                    label: const Text('Continuar'),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 16),
+            _infoCard(
+              icon: Icons.currency_exchange_rounded,
+              title: 'Multidivisa y tipos de cambio',
+              description:
+                  'Todas las cuentas mantendrán su saldo en su moneda original. En los Ajustes podrás definir tasas para ver tu patrimonio neto total.',
             ),
           ],
         ),
@@ -705,7 +716,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               textAlign: TextAlign.center,
               style: TextStyle(color: KwallTheme.textSecondary, fontSize: 13),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             _petHeroStage(
               petSettings: petSettings,
               activity: _notificationsEnabled ? PetActivity.celebrate : PetActivity.curious,
@@ -726,17 +737,17 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                     )
                   : null,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             _infoCard(
               icon: Icons.wb_sunny_outlined,
-              title: 'Inicio de día (Flow Start)',
+              title: 'Inicio de día',
               description:
                   'Motivación matutina para trazar tu presupuesto, revisar tus compromisos y arrancar tus hábitos del día.',
             ),
             const SizedBox(height: 10),
             _infoCard(
               icon: Icons.nightlight_outlined,
-              title: 'Finalización de jornada (Cierre)',
+              title: 'Finalización de jornada',
               description:
                   'Aviso nocturno para registrar tus movimientos, repasar tus hábitos cumplidos y cerrar el día en calma.',
             ),
@@ -794,26 +805,32 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                 ),
               ),
             ],
-            const SizedBox(height: 24),
-            _stepIndicator(),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _goToStep(2),
-                    child: const Text('Atrás'),
-                  ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: KwallTheme.surfaceContainer.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: KwallTheme.border.withValues(alpha: 0.2),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () => _goToStep(4),
-                    icon: const Icon(Icons.arrow_forward_rounded),
-                    label: const Text('Continuar'),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.schedule_rounded, color: KwallTheme.accent, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Diseñadas para acompañarte, nunca para saturarte. Podrás ajustar los horarios en Ajustes.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: KwallTheme.textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -836,7 +853,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               textAlign: TextAlign.center,
               style: TextStyle(color: KwallTheme.textSecondary, fontSize: 13),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             _petHeroStage(
               petSettings: petSettings,
               activity: PetActivity.celebrate,
@@ -854,39 +871,28 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             _infoCard(
               icon: Icons.shield_outlined,
               title: '100% Local y privado',
               description:
                   'Tus cuentas, gastos, notas y hábitos se almacenan exclusivamente en la base de datos de tu dispositivo. No requiere registro ni cuenta obligatoria.',
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             _infoCard(
               icon: Icons.cloud_outlined,
               title: 'Copia en la nube opcional',
               description:
                   'Si deseas respaldar en la nube o sincronizar tus datos, puedes vincular tu cuenta de GitHub (Secret Gist) desde los Ajustes cuando quieras. Es 100% opcional.',
             ),
-            const SizedBox(height: 24),
-            _stepIndicator(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
             Row(
               children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _goToStep(3),
-                    child: const Text('Atrás'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: _entering ? null : () => _enter(0),
-                    icon: const Icon(Icons.rocket_launch_rounded),
-                    label: Text(_entering ? 'Guardando…' : '¡Comenzar!'),
-                  ),
-                ),
+                _featureChip(Icons.phonelink_lock_rounded, 'Sin rastreo'),
+                const SizedBox(width: 8),
+                _featureChip(Icons.code_rounded, 'Abierto'),
+                const SizedBox(width: 8),
+                _featureChip(Icons.key_rounded, 'Tus llaves'),
               ],
             ),
           ],
@@ -962,4 +968,86 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
             ),
         ],
       );
+
+  Widget _buildFixedBottomBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+      decoration: BoxDecoration(
+        color: KwallTheme.background,
+        border: Border(
+          top: BorderSide(
+            color: KwallTheme.border.withValues(alpha: 0.15),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _stepIndicator(),
+          const SizedBox(height: 14),
+          if (_currentStep == 0) ...[
+            FilledButton.icon(
+              onPressed: () => _goToStep(1),
+              icon: const Icon(Icons.arrow_forward_rounded),
+              label: const Text('Configurar mi compañero'),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              alignment: WrapAlignment.center,
+              children: [
+                TextButton(
+                  onPressed: _entering ? null : () => _enter(0),
+                  child: const Text('Empezar directo'),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                  child: Text('·', style: TextStyle(color: Colors.grey)),
+                ),
+                TextButton(
+                  onPressed: _entering ? null : () => _enter(3),
+                  child: const Text('Tengo un respaldo'),
+                ),
+              ],
+            ),
+          ] else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      _commitPendingRefCurrency();
+                      _goToStep(_currentStep - 1);
+                    },
+                    child: const Text('Atrás'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: _currentStep == 4
+                        ? (_entering ? null : () => _enter(0))
+                        : () {
+                            _commitPendingRefCurrency();
+                            _goToStep(_currentStep + 1);
+                          },
+                    icon: Icon(_currentStep == 4
+                        ? Icons.rocket_launch_rounded
+                        : Icons.arrow_forward_rounded),
+                    label: Text(
+                      _currentStep == 4
+                          ? (_entering ? 'Guardando…' : '¡Comenzar!')
+                          : (_currentStep == 1
+                              ? 'Configurar monedas'
+                              : 'Continuar'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

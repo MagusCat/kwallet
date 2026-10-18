@@ -55,11 +55,15 @@ class _SettingsScreenState
   void _syncFields() {
     _currency.text = model.settings['currency'] ?? widget.currentCurrency;
     final rawRefs = model.settings['reference_currencies'] ?? '';
-    _referenceCurrencies = rawRefs
+    final parsedRefs = rawRefs
         .split(',')
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
         .toList();
+    _referenceCurrencies = {
+      ...parsedRefs,
+      ...model.currencyNames.keys.where((k) => k != _currency.text.trim()),
+    }.toList();
     _petName.text = model.settings['pet_name'] ?? 'Mishi';
   }
 

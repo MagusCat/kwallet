@@ -22,8 +22,13 @@ class AccountEditorViewModel extends ViewModel {
       if (disposed) return;
       currencyNames = Map.unmodifiable(userCurrencies);
       final mainCur = (settings['currency'] ?? '\$').trim();
+      final refCurrencies = (settings['reference_currencies'] ?? '')
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty);
       currencyOptions = {
         mainCur,
+        ...refCurrencies,
         ...userCurrencies.keys,
         ...rates.keys,
       }.where((s) => s.trim().isNotEmpty).toList()..sort();

@@ -111,7 +111,7 @@ class _AddAccountDialogState
               value: _baseCurrency.text,
               options: {widget.currency, ...model.currencyOptions},
               currencyNames: model.currencyNames,
-              onChanged: widget.account != null || _saving ? null : (value) => setState(() => _baseCurrency.text = value),
+              onChanged: _saving ? null : (value) => setState(() => _baseCurrency.text = value),
             ),
             const SizedBox(height: 12),
             TextField(

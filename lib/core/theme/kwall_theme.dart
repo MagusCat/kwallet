@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 class KwallTheme {
   static final revision = ValueNotifier<int>(0);
   static String palette = 'forest';
-  static String mode = 'light';
+  static String mode = 'system';
   static bool isDark = false;
   static const palettes = {
     'forest': 'Bosque',
@@ -20,7 +20,7 @@ class KwallTheme {
     final nextMode =
         ['light', 'dark', 'system'].contains(settings['theme_mode'])
         ? settings['theme_mode']!
-        : 'light';
+        : 'system';
     final dark =
         nextMode == 'dark' ||
         (nextMode == 'system' && brightness == Brightness.dark);

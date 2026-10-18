@@ -55,10 +55,28 @@ mixin AccountsRepository on DatabaseContext {
     await db.transaction((txn) async {
     final oldRows = await txn.query('accounts', where: 'id = ?', whereArgs: [account.id]);
     if (oldRows.isEmpty) throw StateError('La cuenta ya no existe');
-    if (CurrencyConversion.code(oldRows.single['currency'] as String) != CurrencyConversion.code(account.currency)) {
-      throw StateError('Crea otra cuenta para usar otra moneda');
-    }
     final oldAccount = Account.fromMap(oldRows.single);
+    if (CurrencyConversion.code(oldAccount.currency) != CurrencyConversion.code(account.currency)) {
+      final txCountRows = await txn.rawQuery(
+        'SELECT COUNT(*) as cnt FROM transactions WHERE account_id = ?',
+        [account.id],
+      );
+      final txCount = (txCountRows.firstOrNull?['cnt'] as num?)?.toInt() ?? 0;
+      if (oldAccount.balance != 0 || txCount > 0) {
+        throw StateError('Crea otra cuenta para usar otra moneda');
+      }
+      await txn.insert('account_currency_history', {
+        'id': const Uuid().v4(),
+        'account_id': account.id,
+        'base_currency': account.currency,
+        'currency': account.currency,
+        'conversion_rate': 1.0,
+        'previous_rate': null,
+        'change_type': 'base_currency_changed',
+        'notes': 'Moneda base cambiada a ${account.currency}',
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    }
     for (final currency in {...oldAccount.currencies, ...account.currencies}) {
       if (oldAccount.currencies.contains(currency) == account.currencies.contains(currency)) continue;
       await txn.insert('account_currency_history', {

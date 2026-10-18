@@ -103,5 +103,14 @@ class LaunchViewModel extends ViewModel {
         } else if (currency != null && currency.trim().isNotEmpty) {
           await repository.saveUserCurrency(currency.trim(), currencyName ?? '');
         }
+
+        if (referenceCurrencies != null && referenceCurrencies.trim().isNotEmpty) {
+          for (final c in referenceCurrencies.split(',')) {
+            final code = c.trim();
+            if (code.isNotEmpty) {
+              await repository.saveUserCurrency(code, userCurrencies?[code] ?? '');
+            }
+          }
+        }
       });
 }

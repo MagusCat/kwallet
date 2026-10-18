@@ -12,6 +12,8 @@ import 'package:kwall/core/theme/kwall_theme.dart';
 import 'package:kwall/core/services/device_files.dart';
 import 'package:kwall/core/widgets/currency_selector.dart';
 import 'package:kwall/features/bodega/presentation/add_account_dialog.dart';
+import 'package:kwall/features/bodega/view_models/account_editor_view_model.dart';
+import 'package:kwall/features/welcome/view_models/launch_view_model.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
@@ -137,5 +139,47 @@ void main() {
     final afterDelete = await service.getUserCurrencies();
     expect(afterDelete.containsKey('L'), isFalse);
     expect(afterDelete.containsKey('EUR'), isTrue);
+  });
+
+  test('Auto theme (system) is default in KwallTheme', () {
+    KwallTheme.configure({}, Brightness.light);
+    expect(KwallTheme.mode, 'system');
+    expect(KwallTheme.isDark, isFalse);
+
+    KwallTheme.configure({}, Brightness.dark);
+    expect(KwallTheme.mode, 'system');
+    expect(KwallTheme.isDark, isTrue);
+  });
+
+  test('LaunchViewModel saves primary and secondary currencies to user_currencies', () async {
+    sqfliteFfiInit();
+    final service = DatabaseService.atPath(inMemoryDatabasePath, factory: databaseFactoryFfiNoIsolate);
+    addTearDown(() async => (await service.database).close());
+
+    final launchModel = LaunchViewModel(service);
+    final ok = await launchModel.enter(
+      petStyle: 'classic',
+      petName: 'Mishi',
+      currency: 'USD',
+      currencyName: 'Dólar',
+      referenceCurrencies: 'EUR,CAD',
+      userCurrencies: {
+        'USD': 'Dólar',
+        'EUR': 'Euro',
+        'CAD': 'Dólar Canadiense',
+      },
+    );
+    expect(ok, isTrue);
+
+    final currencies = await service.getUserCurrencies();
+    expect(currencies['USD'], 'Dólar');
+    expect(currencies['EUR'], 'Euro');
+    expect(currencies['CAD'], 'Dólar Canadiense');
+
+    // AccountEditorViewModel loads all these currencies into currencyOptions
+    final editorModel = AccountEditorViewModel(service, service);
+    await editorModel.loadCurrencies();
+    expect(editorModel.currencyOptions, containsAll(['USD', 'EUR', 'CAD']));
+    expect(editorModel.currencyNames['EUR'], 'Euro');
   });
 }
