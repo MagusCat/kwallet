@@ -151,11 +151,11 @@ void main() {
         ),
       );
 
-      expect(find.text('Base de datos no compatible'), findsOneWidget);
-      expect(find.textContaining('no es compatible con tu versión actual de kwall'), findsOneWidget);
+      expect(find.text('Versión no compatible'), findsOneWidget);
+      expect(find.textContaining('requiere una versión más reciente de kwall'), findsOneWidget);
       expect(find.byIcon(Icons.sentiment_dissatisfied_rounded), findsOneWidget);
       expect(find.text('Reintentar conexión'), findsNothing);
-      expect(find.text('Crear nueva vault'), findsOneWidget);
+      expect(find.text('Crear nueva bóveda'), findsOneWidget);
       expect(find.text('Importar otra copia'), findsOneWidget);
       expect(find.text('Restaurar copia local previa'), findsOneWidget);
       expect(find.text('Ver detalle técnico'), findsOneWidget);
@@ -181,11 +181,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(restoreCalled, isTrue);
 
-      // Tap Crear nueva vault -> opens confirmation dialog
-      await tester.tap(find.text('Crear nueva vault'));
+      // Tap Crear nueva bóveda -> opens confirmation dialog
+      await tester.tap(find.text('Crear nueva bóveda'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Se guardará tu base de datos actual incompatible'), findsOneWidget);
-      await tester.tap(find.widgetWithText(FilledButton, 'Crear nueva vault').last);
+      expect(find.textContaining('Se guardará tu archivo actual como copia segura'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Crear nueva bóveda').last);
       await tester.pumpAndSettle();
       expect(newVaultCalled, isTrue);
     });

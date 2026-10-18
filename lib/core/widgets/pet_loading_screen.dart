@@ -134,9 +134,9 @@ class _PetLoadingScreenState extends State<PetLoadingScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Crear nueva vault limpia'),
+        title: const Text('Crear nueva bóveda limpia'),
         content: const Text(
-          'Se guardará tu base de datos actual incompatible como copia segura (.corrupted) y se inicializará una nueva bóveda limpia para empezar de cero.\n\n¿Deseas continuar?',
+          'Se guardará tu archivo actual como copia segura (.corrupted) y se iniciará una nueva bóveda limpia para empezar de cero.\n\n¿Deseas continuar?',
         ),
         actions: [
           TextButton(
@@ -148,16 +148,54 @@ class _PetLoadingScreenState extends State<PetLoadingScreen> {
               Navigator.of(ctx).pop();
               widget.onRepairDatabase?.call();
             },
-            child: const Text('Crear nueva vault'),
+            child: const Text('Crear nueva bóveda'),
           ),
         ],
       ),
     );
   }
 
+  (String title, String description, IconData icon) _resolveErrorDetails() {
+    final msg = (widget.errorMessage ?? '').toLowerCase();
+    final diag = (widget.diagnosticInfo ?? '').toLowerCase();
+    final combined = '$msg $diag';
+
+    if (combined.contains('no es compatible') ||
+        combined.contains('incompatible') ||
+        combined.contains('version')) {
+      return (
+        'Versión no compatible',
+        widget.errorMessage ??
+            'Esta bóveda o copia requiere una versión más reciente de kwall para abrirse sin riesgo. Actualiza kwall o crea una nueva bóveda para empezar.',
+        Icons.auto_mode_rounded,
+      );
+    } else if (combined.contains('corrupt') ||
+        combined.contains('malformed') ||
+        combined.contains('disk') ||
+        combined.contains('lock') ||
+        combined.contains('databaseexception') ||
+        combined.contains('lectura') ||
+        combined.contains('problemas de lectura')) {
+      return (
+        'Problema al leer tu bóveda',
+        widget.errorMessage ??
+            'No se pudo leer el archivo local de tu bóveda en este dispositivo. Puedes crear una nueva bóveda limpia o restaurar una copia previa.',
+        Icons.folder_off_outlined,
+      );
+    } else {
+      return (
+        'No se pudieron cargar tus datos',
+        widget.errorMessage ??
+            'Ocurrió un contratiempo al abrir tu información local. Puedes crear una nueva bóveda limpia o importar una copia previa.',
+        Icons.warning_amber_rounded,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final (errTitle, errDesc, errIcon) = _resolveErrorDetails();
 
     return Scaffold(
       body: SafeArea(
@@ -256,7 +294,7 @@ class _PetLoadingScreenState extends State<PetLoadingScreen> {
 
                   if (widget.failed) ...[
                     Text(
-                      'Base de datos no compatible',
+                      errTitle,
                       style: KwallTheme.fontTitle.copyWith(fontSize: 19),
                       textAlign: TextAlign.center,
                     ),
@@ -276,15 +314,14 @@ class _PetLoadingScreenState extends State<PetLoadingScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
-                            Icons.warning_amber_rounded,
+                            errIcon,
                             color: theme.colorScheme.error,
                             size: 22,
                           ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              widget.errorMessage ??
-                                  'Esta base de datos no es compatible con tu versión actual de kwall. No se puede restaurar automáticamente.',
+                              errDesc,
                               style: TextStyle(
                                 color: theme.colorScheme.onErrorContainer,
                                 fontSize: 13,
@@ -302,7 +339,7 @@ class _PetLoadingScreenState extends State<PetLoadingScreen> {
                         child: FilledButton.icon(
                           onPressed: () => _confirmNewVault(context),
                           icon: const Icon(Icons.shield_outlined),
-                          label: const Text('Crear nueva vault'),
+                          label: const Text('Crear nueva bóveda'),
                         ),
                       ),
                     if (widget.onImportBackup != null) ...[

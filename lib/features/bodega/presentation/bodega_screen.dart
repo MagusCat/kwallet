@@ -233,6 +233,11 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
         settings: _home.settings,
         failed: _home.error != null,
         errorMessage: _home.error,
+        hasRecovery: _home.hasRecovery,
+        diagnosticInfo: _home.diagnosticInfo,
+        onRepairDatabase: () => _home.repairDatabase(),
+        onImportBackup: () => _home.importBackup(),
+        onRestoreRecovery: () => _home.restoreRecovery(),
       );
     }
     final pages = [

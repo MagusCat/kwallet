@@ -5,6 +5,7 @@ import '../../../core/mvvm/view_model.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../core/contracts/app_repositories.dart';
+import '../../../core/services/device_files.dart';
 import '../../../core/services/widget_sync_service.dart';
 import '../../journal/models/journal_models.dart';
 import '../models/account.dart';
@@ -19,7 +20,11 @@ class HomeViewModel extends ViewModel {
   final FinanceRepository finance;
   final JournalRepository journal;
   final SettingsRepository preferences;
-  HomeViewModel(this.finance, this.journal, this.preferences) {
+  final DeviceFiles? files;
+  bool hasRecovery = false;
+  String? diagnosticInfo;
+
+  HomeViewModel(this.finance, this.journal, this.preferences, {this.files}) {
     for (final source in {
       finance.changes,
       journal.changes,
@@ -310,11 +315,51 @@ class HomeViewModel extends ViewModel {
     } catch (e) {
       if (isCurrent(version)) {
         _reward = 0;
-        error = e is StateError ? e.message.toString() : 'No se pudieron cargar tus datos.';
+        diagnosticInfo = e.toString();
+        try {
+          hasRecovery = await preferences.hasRecoveryCopies();
+        } catch (_) {
+          hasRecovery = false;
+        }
+
+        final errStr = e.toString().toLowerCase();
+        if (errStr.contains('no es compatible') || errStr.contains('incompatible')) {
+          error = 'Versión no compatible con tu app actual. Requiere una versión más reciente de kwall.';
+        } else if (errStr.contains('corrupt') ||
+            errStr.contains('databaseexception') ||
+            errStr.contains('malformed') ||
+            errStr.contains('disk') ||
+            errStr.contains('lock')) {
+          error = 'El archivo de tu bóveda tiene problemas de lectura en este dispositivo.';
+        } else {
+          error = 'No se pudieron cargar tus datos en este momento.';
+        }
         changed();
       }
     }
   }
+
+  Future<bool> restoreRecovery() => perform(() async {
+        final ok = await preferences.restoreLatestRecoveryCopy();
+        if (!ok) throw StateError('No hay copia disponible para restaurar.');
+        await load();
+      });
+
+  Future<bool> repairDatabase() => perform(() async {
+        await preferences.repairOrResetDatabase();
+        await load();
+      });
+
+  Future<bool> createNewVault() => repairDatabase();
+
+  Future<bool> importBackup() => perform(() async {
+        final picker = files ?? NativeDeviceFiles();
+        final content = await picker.pickBackup();
+        if (content == null || content.trim().isEmpty) return;
+        await preferences.repairOrResetDatabase();
+        await preferences.importFullDataFromJson(content);
+        await load();
+      });
 
   Future<void> saveSetting(String key, String value) async {
     _settings = Map.unmodifiable({..._settings, key: value});
