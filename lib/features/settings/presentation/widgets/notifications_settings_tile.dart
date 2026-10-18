@@ -39,7 +39,7 @@ class NotificationsSettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final enabled = settings['notifications_enabled'] != 'false';
+    final enabled = settings['notifications_enabled'] == 'true';
     final notifyStart = settings['notify_day_start'] != 'false';
     final notifyEnd = settings['notify_day_end'] != 'false';
     final startTime = settings['day_start_time'] ?? '08:00';
@@ -50,6 +50,33 @@ class NotificationsSettingsTile extends StatelessWidget {
     final notifyPet = settings['notify_pet'] != 'false';
 
     final petName = settings['pet_name'] ?? 'Mishi';
+
+    Future<void> handleSwitch(bool val) async {
+      if (val) {
+        final granted = await NotificationService.requestNotificationPermission();
+        if (granted) {
+          await onToggle('notifications_enabled', 'true');
+        } else {
+          await onToggle('notifications_enabled', 'false');
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                behavior: SnackBarBehavior.floating,
+                content: const Text(
+                  'No se pudieron activar las notificaciones. Los permisos están desactivados en tu dispositivo.',
+                ),
+                action: SnackBarAction(
+                  label: 'Entendido',
+                  onPressed: () {},
+                ),
+              ),
+            );
+          }
+        }
+      } else {
+        await onToggle('notifications_enabled', 'false');
+      }
+    }
 
     return LedgerPanel(
       child: Column(
@@ -93,7 +120,7 @@ class NotificationsSettingsTile extends StatelessWidget {
               Switch(
                 value: enabled,
                 activeThumbColor: KwallTheme.accent,
-                onChanged: (val) => onToggle('notifications_enabled', val.toString()),
+                onChanged: handleSwitch,
               ),
             ],
           ),

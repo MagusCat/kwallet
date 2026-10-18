@@ -71,8 +71,12 @@ class LaunchViewModel extends ViewModel {
     String? petName,
     String? currency,
     String? referenceCurrencies,
+    bool notificationsEnabled = false,
   }) => perform(() async {
-        final updates = <String, String>{'welcome_seen': '1'};
+        final updates = <String, String>{
+          'welcome_seen': '1',
+          'notifications_enabled': notificationsEnabled ? 'true' : 'false',
+        };
         if (petStyle != null && petStyle.isNotEmpty) {
           updates['pet_style'] = petStyle;
         }

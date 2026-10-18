@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../app/app_dependencies.dart';
 import '../../../core/mvvm/view_model_state.dart';
 import '../view_models/settings_view_model.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/theme/kwall_theme.dart';
 import '../../../core/widgets/finance_widgets.dart';
 import '../../../core/widgets/kitty_companion.dart';
 import '../../../core/widgets/pet_picker.dart';
+import 'github_cloud_screen.dart';
 import 'widgets/notifications_settings_tile.dart';
 import 'widgets/streaks_settings_tile.dart';
 import 'widgets/currencies_settings_section.dart';
@@ -607,6 +610,17 @@ class _SettingsScreenState
                     style: TextStyle(color: KwallTheme.textSecondary, fontSize: 13),
                   ),
                   const SizedBox(height: 14),
+                  FilledButton.tonalIcon(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => GitHubCloudScreen(model: model),
+                      ),
+                    ),
+                    icon: const Icon(Icons.cloud_sync_rounded),
+                    label: const Text('Gestionar Nube Personal'),
+                  ),
+                  const SizedBox(height: 10),
                   if (!model.isGitHubConnected) ...[
                     OutlinedButton.icon(
                       onPressed: _backupBusy ? null : _connectGitHubDialog,
@@ -705,6 +719,89 @@ class _SettingsScreenState
                     onPressed: _backupBusy ? null : _recoveries,
                     icon: const Icon(Icons.history_rounded),
                     label: const Text('Copias de recuperación locales'),
+                  ),
+                  const Divider(height: 48),
+                  Center(
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          width: 110,
+                          height: 100,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Positioned(
+                                bottom: 2,
+                                child: Container(
+                                  width: 76,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    borderRadius: const BorderRadius.all(
+                                      Radius.elliptical(76, 16),
+                                    ),
+                                    gradient: RadialGradient(
+                                      colors: [
+                                        KwallTheme.accent.withValues(alpha: 0.28),
+                                        Colors.transparent,
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const Positioned(
+                                bottom: 6,
+                                child: KittyCompanionWidget(
+                                  settings: {
+                                    'pet_species': 'cat',
+                                    'pet_stage': 'adult',
+                                    'pet_color': 'shadow',
+                                  },
+                                  size: 84,
+                                  activity: PetActivity.walk,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'kwalla',
+                          style: KwallTheme.fontTitle.copyWith(fontSize: 18),
+                        ),
+                        Text(
+                          'kwall v1.1.0 · Creado con amor para tus finanzas',
+                          style: TextStyle(
+                            color: KwallTheme.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        FilledButton.tonalIcon(
+                          onPressed: () async {
+                            final profileUser = model.githubUsername.isNotEmpty
+                                ? model.githubUsername
+                                : 'MagusCat';
+                            final profileUrl = 'https://github.com/$profileUser';
+                            final opened = await NotificationService.openUrl(profileUrl);
+                            if (!opened) {
+                              await Clipboard.setData(ClipboardData(text: profileUrl));
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  behavior: SnackBarBehavior.floating,
+                                  content: Text('Enlace copiado al portapapeles: $profileUrl'),
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.code_rounded, size: 18),
+                          label: Text(
+                            'GitHub @${model.githubUsername.isNotEmpty ? model.githubUsername : 'MagusCat'}',
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
                   ),
                 ],
               ),

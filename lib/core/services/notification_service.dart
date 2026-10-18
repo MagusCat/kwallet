@@ -6,8 +6,8 @@ class NotificationService {
   static const MethodChannel _channel = MethodChannel('com.kwall.kwall/notifications');
 
   static bool _isAllowed(String type, Map<String, String>? settings) {
-    if (settings == null) return true;
-    if (settings['notifications_enabled'] == 'false') return false;
+    if (settings == null) return false;
+    if (settings['notifications_enabled'] != 'true') return false;
 
     return switch (type) {
       'habits' => settings['notify_habits'] != 'false',
@@ -17,6 +17,52 @@ class NotificationService {
       'day_end' => settings['notify_day_end'] != 'false',
       _ => true,
     };
+  }
+
+  static Future<bool> areNotificationsEnabled() async {
+    if (kIsWeb || !Platform.isAndroid) return true;
+    try {
+      final ok = await _channel.invokeMethod<bool>('areNotificationsEnabled');
+      return ok ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static Future<bool> requestNotificationPermission() async {
+    if (kIsWeb || !Platform.isAndroid) return true;
+    try {
+      final ok = await _channel.invokeMethod<bool>('requestNotificationPermission');
+      return ok ?? true;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static Future<bool> openUrl(String url) async {
+    if (kIsWeb || !Platform.isAndroid) {
+      if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
+        try {
+          if (Platform.isLinux) {
+            await Process.run('xdg-open', [url]);
+            return true;
+          } else if (Platform.isMacOS) {
+            await Process.run('open', [url]);
+            return true;
+          } else if (Platform.isWindows) {
+            await Process.run('cmd', ['/c', 'start', '', url]);
+            return true;
+          }
+        } catch (_) {}
+      }
+      return false;
+    }
+    try {
+      final ok = await _channel.invokeMethod<bool>('openUrl', {'url': url});
+      return ok ?? false;
+    } catch (_) {
+      return false;
+    }
   }
 
   static String _resolveChannel(String type) => switch (type) {
@@ -101,7 +147,7 @@ class NotificationService {
     DateTime? now,
   }) async {
     final current = now ?? DateTime.now();
-    final enabled = settings['notifications_enabled'] != 'false';
+    final enabled = settings['notifications_enabled'] == 'true';
     if (!enabled) return false;
 
     final todayStr = '${current.year}-${current.month.toString().padLeft(2, '0')}-${current.day.toString().padLeft(2, '0')}';

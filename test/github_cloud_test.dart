@@ -2,12 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kwall/core/contracts/app_repositories.dart';
 import 'package:kwall/core/models/recovery_copy.dart';
 import 'package:kwall/core/services/device_files.dart';
 import 'package:kwall/core/services/github_cloud_service.dart';
+import 'package:kwall/features/settings/presentation/github_cloud_screen.dart';
 import 'package:kwall/features/settings/view_models/settings_view_model.dart';
 
 class MockHttpClient implements HttpClient {
@@ -331,6 +333,57 @@ void main() {
       expect(disconnected, true);
       expect(vm.isGitHubConnected, false);
       expect(vm.githubUsername, '');
+    });
+
+    testWidgets('GitHubCloudScreen renders detailed explanations, status, and input when disconnected', (tester) async {
+      final repo = FakeSettingsRepo();
+      final files = FakeDeviceFiles();
+      final vm = SettingsViewModel(repo, files, GitHubCloudService());
+      await vm.load();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GitHubCloudScreen(model: vm),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nube Personal (GitHub)'), findsOneWidget);
+      expect(find.text('Tu Nube Personal'), findsOneWidget);
+      expect(find.text('No conectado'), findsOneWidget);
+      expect(find.text('¿Cómo funciona tu Nube Personal?'), findsOneWidget);
+      expect(find.text('100% Privado y sin intermediarios'), findsOneWidget);
+      expect(find.text('Secret Gist personal'), findsOneWidget);
+      expect(find.text('Historial de revisiones (Commits)'), findsOneWidget);
+      expect(find.text('¿Cómo obtener tu Token?'), findsOneWidget);
+      expect(find.text('Conectar cuenta'), findsOneWidget);
+    });
+
+    testWidgets('GitHubCloudScreen renders sync status and action buttons when connected', (tester) async {
+      final repo = FakeSettingsRepo();
+      repo.data.addAll({
+        'github_connected': 'true',
+        'github_username': 'MagusCat',
+        'github_gist_id': 'gist1234567890abcdef',
+        'github_last_sync': '2026-10-17 20:00:00',
+      });
+      final files = FakeDeviceFiles();
+      final vm = SettingsViewModel(repo, files, GitHubCloudService());
+      await vm.load();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GitHubCloudScreen(model: vm),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Conectado a GitHub'), findsOneWidget);
+      expect(find.text('@MagusCat'), findsWidgets);
+      expect(find.textContaining('Última sincronización: 2026-10-17 20:00:00'), findsOneWidget);
+      expect(find.text('Sincronizar ahora'), findsOneWidget);
+      expect(find.text('Restaurar desde GitHub'), findsOneWidget);
+      expect(find.text('Desconectar'), findsOneWidget);
     });
   });
 }

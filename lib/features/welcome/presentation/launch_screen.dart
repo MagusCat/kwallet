@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../../app/app_dependencies.dart';
 import '../../../core/models/pet_species.dart';
 import '../../../core/mvvm/view_model_state.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/theme/kwall_theme.dart';
 import '../../../core/widgets/currency_selector.dart';
 import '../../../core/widgets/finance_widgets.dart';
@@ -39,6 +40,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
   int _currentStep = 0;
   String _selectedStyle = 'classic';
   bool _initialized = false;
+  bool _notificationsEnabled = false;
 
   @override
   void initState() {
@@ -92,6 +94,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
       petName: petName,
       currency: cur,
       referenceCurrencies: refCur,
+      notificationsEnabled: _notificationsEnabled,
     )) {
       if (mounted) setState(() => _page = page);
     } else if (mounted) {
@@ -167,6 +170,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                     _buildIntroStep(currentPetSettings),
                     _buildPetStep(currentPetSettings),
                     _buildCurrencyStep(currentPetSettings),
+                    _buildNotificationsStep(currentPetSettings),
                     _buildPrivacyStep(currentPetSettings),
                   ],
                 ),
@@ -604,7 +608,138 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
         ),
       );
 
-  /// Paso 3: Explicación de almacenamiento local y nube opcional
+  /// Paso 3: Configuración de notificaciones y rutinas diarias
+  Widget _buildNotificationsStep(Map<String, String> petSettings) => SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Rutinas y Notificaciones',
+              textAlign: TextAlign.center,
+              style: KwallTheme.fontTitle.copyWith(fontSize: 24),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Comienza y culmina cada jornada con tu compañero.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: KwallTheme.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            _petHeroStage(
+              petSettings: petSettings,
+              activity: _notificationsEnabled ? PetActivity.celebrate : PetActivity.curious,
+              size: 110,
+              caption: _notificationsEnabled ? '¡Notificaciones activadas!' : 'Tu compañero estará listo',
+              overlayBadge: _notificationsEnabled
+                  ? Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: KwallTheme.incomeGreen,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.notifications_active_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(height: 16),
+            _infoCard(
+              icon: Icons.wb_sunny_outlined,
+              title: 'Inicio de día (Flow Start)',
+              description:
+                  'Motivación matutina para trazar tu presupuesto, revisar tus compromisos y arrancar tus hábitos del día.',
+            ),
+            const SizedBox(height: 10),
+            _infoCard(
+              icon: Icons.nightlight_outlined,
+              title: 'Finalización de jornada (Cierre)',
+              description:
+                  'Aviso nocturno para registrar tus movimientos, repasar tus hábitos cumplidos y cerrar el día en calma.',
+            ),
+            const SizedBox(height: 16),
+            if (!_notificationsEnabled) ...[
+              FilledButton.icon(
+                onPressed: () async {
+                  HapticFeedback.mediumImpact();
+                  final granted = await NotificationService.requestNotificationPermission();
+                  if (mounted) {
+                    setState(() {
+                      _notificationsEnabled = granted;
+                    });
+                    if (!granted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Permiso no concedido. Podrás activarlo después en Ajustes.'),
+                        ),
+                      );
+                    }
+                  }
+                },
+                icon: const Icon(Icons.notifications_active_rounded),
+                label: const Text('Activar notificaciones'),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Es opcional. Si prefieres no recibirlas, continuarán desactivadas.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 11, color: KwallTheme.textSecondary),
+              ),
+            ] else ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: KwallTheme.incomeGreen.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: KwallTheme.incomeGreen.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle_rounded, color: KwallTheme.incomeGreen, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        '¡Notificaciones concedidas! Te avisaremos al inicio y fin de tu día.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: KwallTheme.incomeGreen,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 24),
+            _stepIndicator(),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => _goToStep(2),
+                    child: const Text('Atrás'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () => _goToStep(4),
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    label: const Text('Continuar'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+
+  /// Paso 4: Explicación de almacenamiento local y nube opcional
   Widget _buildPrivacyStep(Map<String, String> petSettings) => SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Column(
@@ -660,7 +795,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _goToStep(2),
+                    onPressed: () => _goToStep(3),
                     child: const Text('Atrás'),
                   ),
                 ),
@@ -731,7 +866,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
   Widget _stepIndicator() => Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          for (var i = 0; i < 4; i++)
+          for (var i = 0; i < 5; i++)
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeOutCubic,

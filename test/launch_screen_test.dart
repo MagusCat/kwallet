@@ -84,9 +84,11 @@ void main() {
         petName: 'Manchitas',
         currency: 'USD',
         referenceCurrencies: 'EUR,NIO',
+        notificationsEnabled: true,
       );
       expect(entered, true);
       expect(repo.data['welcome_seen'], '1');
+      expect(repo.data['notifications_enabled'], 'true');
       expect(repo.data['pet_style'], 'calico');
       expect(repo.data['pet_name'], 'Manchitas');
       expect(repo.data['currency'], 'USD');
@@ -101,6 +103,7 @@ void main() {
       final entered = await vm.enter();
       expect(entered, true);
       expect(repo.data['welcome_seen'], '1');
+      expect(repo.data['notifications_enabled'], 'false');
     });
 
     test('load failure sets error, diagnosticInfo, and checks recovery copies', () async {
