@@ -22,6 +22,8 @@ class PersonalNote {
   final String body;
   final String kind;
   final List<NoteItem> items;
+  final String iconKey;
+  final int colorValue;
   final DateTime updatedAt;
   const PersonalNote({
     required this.id,
@@ -29,6 +31,8 @@ class PersonalNote {
     this.body = '',
     this.kind = 'note',
     this.items = const [],
+    this.iconKey = 'note',
+    this.colorValue = 0,
     required this.updatedAt,
   });
   Map<String, Object> toMap() => {
@@ -37,15 +41,19 @@ class PersonalNote {
     'body': body,
     'kind': kind,
     'items': jsonEncode(items.map((e) => e.toMap()).toList()),
+    'icon_key': iconKey,
+    'color_value': colorValue,
     'updated_at': updatedAt.toIso8601String(),
   };
   factory PersonalNote.fromMap(Map<String, Object?> map) => PersonalNote(
     id: map['id'] as String,
     title: map['title'] as String,
-    body: map['body'] as String,
-    kind: map['kind'] as String,
+    body: (map['body'] as String?) ?? '',
+    kind: (map['kind'] as String?) ?? 'note',
+    iconKey: (map['icon_key'] as String?) ?? 'note',
+    colorValue: (map['color_value'] as int?) ?? 0,
     updatedAt: DateTime.parse(map['updated_at'] as String),
-    items: (jsonDecode(map['items'] as String) as List).map((e) {
+    items: (jsonDecode((map['items'] as String?) ?? '[]') as List).map((e) {
       final item = e as Map<String, dynamic>;
       final due = item['due_date'] as String?;
       return NoteItem(
@@ -56,6 +64,44 @@ class PersonalNote {
     }).toList(),
   );
 }
+
+IconData getNoteIcon(String? key) => switch (key) {
+  'list' => Icons.checklist_rounded,
+  'idea' => Icons.lightbulb_outline_rounded,
+  'work' => Icons.work_outline_rounded,
+  'study' => Icons.school_outlined,
+  'personal' => Icons.person_outline_rounded,
+  'star' => Icons.star_outline_rounded,
+  'heart' => Icons.favorite_border_rounded,
+  'shopping' => Icons.shopping_cart_outlined,
+  'book' => Icons.menu_book_rounded,
+  'note' || _ => Icons.edit_note_rounded,
+};
+
+const noteIcons = [
+  ('note', Icons.edit_note_rounded, 'Nota'),
+  ('list', Icons.checklist_rounded, 'Lista'),
+  ('idea', Icons.lightbulb_outline_rounded, 'Idea'),
+  ('work', Icons.work_outline_rounded, 'Trabajo'),
+  ('study', Icons.school_outlined, 'Estudio'),
+  ('personal', Icons.person_outline_rounded, 'Personal'),
+  ('star', Icons.star_outline_rounded, 'Destacado'),
+  ('heart', Icons.favorite_border_rounded, 'Favorito'),
+  ('shopping', Icons.shopping_cart_outlined, 'Compras'),
+  ('book', Icons.menu_book_rounded, 'Lectura'),
+];
+
+const noteColors = [
+  (0, 'Predeterminado'),
+  (0xFF10B981, 'Verde'),
+  (0xFF3B82F6, 'Azul'),
+  (0xFF8B5CF6, 'Púrpura'),
+  (0xFFEC4899, 'Rosa'),
+  (0xFFF59E0B, 'Ámbar'),
+  (0xFFEF4444, 'Rojo'),
+  (0xFF14B8A6, 'Turquesa'),
+  (0xFF6366F1, 'Índigo'),
+];
 
 class HabitLog {
   final String day;

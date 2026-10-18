@@ -25,23 +25,6 @@ class PetPicker extends StatelessWidget {
         selectedStyle: settings['pet_style'] ?? 'classic',
         onSelectStyle: onChoose,
       ),
-      const SizedBox(height: 10),
-      if (settings['pet_image_data']?.isNotEmpty == true &&
-          settings['pet_style'] != 'custom')
-        TextButton.icon(
-          onPressed: busy ? null : () => onChoose('custom'),
-          icon: const Icon(Icons.pets_outlined),
-          label: const Text('Mi mascota guardada'),
-        ),
-      OutlinedButton.icon(
-        onPressed: busy ? null : onUpload,
-        icon: const Icon(Icons.add_photo_alternate_outlined),
-        label: Text(
-          settings['pet_style'] == 'custom'
-              ? 'Cambiar mi imagen'
-              : 'Usar mi mascota',
-        ),
-      ),
       if (busy)
         const Padding(
           padding: EdgeInsets.all(8),

@@ -40,8 +40,24 @@ class _PlanSheetState extends ViewModelState<PlanSheet, PlanEditorViewModel> {
   String? _account;
   String? _category;
   bool _special = false;
+  String _iconKey = 'flag';
   bool get _saving => model.busy;
   String? get _error => model.error;
+
+  static const _availableIcons = [
+    ('flag', Icons.flag_rounded, 'Bandera'),
+    ('star', Icons.star_rounded, 'Estrella'),
+    ('cake', Icons.cake_rounded, 'Cumple'),
+    ('celebration', Icons.celebration_rounded, 'Fiesta'),
+    ('flight', Icons.flight_rounded, 'Viaje'),
+    ('heart', Icons.favorite_rounded, 'Especial'),
+    ('gift', Icons.card_giftcard_rounded, 'Regalo'),
+    ('alarm', Icons.alarm_rounded, 'Alarma'),
+    ('event', Icons.event_rounded, 'Evento'),
+    ('work', Icons.work_rounded, 'Trabajo'),
+    ('home', Icons.home_rounded, 'Hogar'),
+    ('book', Icons.menu_book_rounded, 'Lectura'),
+  ];
 
   @override
   void initState() {
@@ -51,6 +67,7 @@ class _PlanSheetState extends ViewModelState<PlanSheet, PlanEditorViewModel> {
     _amount.text = plan?.amount.toString() ?? '';
     _note.text = plan?.note ?? '';
     _special = plan?.amount == 0;
+    _iconKey = plan?.iconKey ?? (plan?.amount == 0 ? 'flag' : 'event');
     _date = plan?.dueDate ?? widget.initialDate;
     _recurrence = plan?.recurrence ?? 'one_time';
     _account = widget.accounts.any((a) => a.id == plan?.accountId)
@@ -78,6 +95,7 @@ class _PlanSheetState extends ViewModelState<PlanSheet, PlanEditorViewModel> {
       date: _date,
       recurrence: _recurrence,
       note: _note.text,
+      iconKey: _iconKey,
       categoryId: _category,
       accountId: _account,
     );
@@ -107,10 +125,43 @@ class _PlanSheetState extends ViewModelState<PlanSheet, PlanEditorViewModel> {
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: Text('Día especial, sin gasto'),
+          title: const Text('Día especial, sin gasto'),
           value: _special,
-          onChanged: (value) => setState(() => _special = value),
+          onChanged: (value) => setState(() {
+            _special = value;
+            if (value && _iconKey == 'event') _iconKey = 'flag';
+          }),
         ),
+        if (_special) ...[
+          const SizedBox(height: 6),
+          Text(
+            'Icono del día especial',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: KwallTheme.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final (key, icon, label) in _availableIcons)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      avatar: Icon(icon, size: 16),
+                      label: Text(label),
+                      selected: _iconKey == key,
+                      onSelected: (_) => setState(() => _iconKey = key),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         TextField(
           controller: _title,
           decoration: InputDecoration(labelText: 'Título'),

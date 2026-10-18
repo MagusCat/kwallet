@@ -32,7 +32,7 @@ class _PetHeroCardState extends State<PetHeroCard>
   Timer? _annoyedTimer;
   Timer? _celebrateTimer;
 
-  static const double _groundY = 0.62;
+  static const double _groundY = 0.74;
   double _xPos = 0.0;
   double _yPos = _groundY; // ground level
   double _targetX = 0.0;
@@ -409,7 +409,7 @@ class _PetHeroCardState extends State<PetHeroCard>
                           ? Duration.zero
                           : const Duration(milliseconds: 320),
                       curve: Curves.easeOutCubic,
-                      alignment: Alignment(_xPos, 0.84),
+                      alignment: Alignment(_xPos, 0.86),
                       child: Container(
                         width: shadowWidth,
                         height: shadowHeight,
@@ -420,13 +420,13 @@ class _PetHeroCardState extends State<PetHeroCard>
                       ),
                     ),
 
-                    // Integrated pet dialogue bubble following the pet
+                    // Integrated pet dialogue bubble following the pet further away
                     AnimatedAlign(
                       duration: _isGrabbed
                           ? Duration.zero
                           : const Duration(milliseconds: 320),
                       curve: Curves.easeOutCubic,
-                      alignment: Alignment(_xPos, _yPos - 0.40),
+                      alignment: Alignment(_xPos, _yPos - 0.76),
                       child: IgnorePointer(
                         child: PetDialogueBubble(
                           controller: controller,

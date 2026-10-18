@@ -6,14 +6,10 @@ import '../../../../core/widgets/finance_widgets.dart';
 import '../../../journal/presentation/habit_actions.dart';
 import '../../../journal/presentation/journal_sheets.dart';
 import '../../models/account.dart';
-import '../movements_screen.dart';
 import 'home_overview.dart';
 import 'home_hub.dart';
-import 'budget_panel.dart';
-import 'movement_tile.dart';
 import 'habit_dot_tracker.dart';
 import 'home_tasks_panel.dart';
-import 'quick_expense_shortcuts.dart';
 import 'upcoming_dates_panel.dart';
 
 class HomeDashboard extends StatefulWidget {
@@ -120,42 +116,6 @@ class _HomeDashboardState extends State<HomeDashboard> {
               controller: widget.controller,
               onOpenAgenda: widget.onAgenda,
             ),
-            const SizedBox(height: 16),
-
-            BudgetPanel(controller: widget.controller, onEdit: widget.onBudget),
-            const SizedBox(height: 16),
-            QuickExpenseShortcuts(controller: widget.controller),
-            const SizedBox(height: 26),
-            Text(
-              'Movimientos',
-              style: KwallTheme.fontTitle.copyWith(fontSize: 21),
-            ),
-            if (widget.controller.transactions.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                child: Text(
-                  'Tu próxima acción empieza con +.',
-                  style: TextStyle(color: KwallTheme.textSecondary),
-                ),
-              ),
-            TextButton.icon(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      MovementsScreen(currency: widget.controller.currency),
-                ),
-              ),
-              icon: const Icon(Icons.manage_search_rounded),
-              label: const Text('Ver todo el historial'),
-            ),
-            for (final tx in widget.controller.transactions)
-              MovementTile(
-                tx: tx,
-                currency: widget.controller.currency,
-                categories: widget.controller.categories,
-                onVoid: widget.controller.voidMovement,
-              ),
           ],
         ),
       ),

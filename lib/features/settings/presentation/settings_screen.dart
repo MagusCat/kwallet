@@ -10,6 +10,7 @@ import '../../../core/widgets/pet_picker.dart';
 import 'widgets/notifications_settings_tile.dart';
 import 'widgets/streaks_settings_tile.dart';
 import 'widgets/currencies_settings_section.dart';
+import '../../bodega/presentation/categories_sheet.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String currentCurrency;
@@ -488,7 +489,7 @@ class _SettingsScreenState
                   ),
                   const Divider(height: 40),
                   Text(
-                    'Widget de pantalla de inicio',
+                    'Categorías',
                     style: KwallTheme.fontTitle.copyWith(fontSize: 21),
                   ),
                   const SizedBox(height: 8),
@@ -502,28 +503,34 @@ class _SettingsScreenState
                       ),
                     ),
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.widgets_outlined,
-                          color: KwallTheme.accent,
-                          size: 22,
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: KwallTheme.accent.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.category_rounded,
+                            color: KwallTheme.accent,
+                            size: 22,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Personalización nativa de Android',
-                                style: const TextStyle(
+                              const Text(
+                                'Gestionar categorías',
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Para configurar o cambiar el estilo de tu widget, mantén presionado el widget en tu pantalla de inicio de Android y toca el icono de editar / lápiz.',
+                                'Personaliza, crea y administra tus categorías de gastos e ingresos.',
                                 style: TextStyle(
                                   color: KwallTheme.textSecondary,
                                   fontSize: 12,
@@ -532,6 +539,15 @@ class _SettingsScreenState
                               ),
                             ],
                           ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.tonal(
+                          onPressed: () => showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            builder: (_) => const CategoriesSheet(type: 'expense'),
+                          ),
+                          child: const Text('Ver todas'),
                         ),
                       ],
                     ),

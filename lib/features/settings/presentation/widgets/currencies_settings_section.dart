@@ -41,13 +41,50 @@ class CurrenciesSettingsSection extends StatelessWidget {
   }
 
   void _promptAddCurrency(BuildContext context) {
-    var selected = CurrencySelector.catalog.keys.firstWhere((code) => code != dominantCurrencyController.text, orElse: () => 'EUR');
-    showDialog<void>(context: context, builder: (ctx) => StatefulBuilder(builder: (ctx, setState) => AlertDialog(
-      title: const Text('Añadir moneda'),
-      content: CurrencySelector(value: selected, options: CurrencySelector.catalog.keys, onChanged: (value) => setState(() => selected = value)),
-      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-        FilledButton(onPressed: () { Navigator.pop(ctx); _openRateDialog(context, selected, isNew: true); }, child: const Text('Siguiente'))],
-    )));
+    final symbolController = TextEditingController();
+    final nameController = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Añadir moneda'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: symbolController,
+              decoration: const InputDecoration(
+                labelText: 'Símbolo / Código',
+                hintText: 'Ej. €, C\$, MXN, USD',
+              ),
+              textCapitalization: TextCapitalization.characters,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Nombre de la moneda',
+                hintText: 'Ej. Euro, Córdoba, Peso',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final symbol = symbolController.text.trim();
+              if (symbol.isEmpty) return;
+              Navigator.pop(ctx);
+              _openRateDialog(context, symbol, isNew: true);
+            },
+            child: const Text('Siguiente'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -64,9 +101,12 @@ class CurrenciesSettingsSection extends StatelessWidget {
           style: KwallTheme.fontTitle.copyWith(fontSize: 21),
         ),
         const SizedBox(height: 16),
-        CurrencySelector(value: dominantCurrencyController.text,
-          options: {...CurrencySelector.catalog.keys, ...rates.keys}, label: 'Moneda principal',
-          onChanged: (value) => dominantCurrencyController.text = value),
+        CurrencySelector(
+          value: dominantCurrencyController.text,
+          options: {dominantCurrencyController.text, ...referenceCurrencies, ...rates.keys},
+          label: 'Moneda principal',
+          onChanged: (value) => dominantCurrencyController.text = value,
+        ),
         const SizedBox(height: 14),
         Text(
           'Tipos de cambio',

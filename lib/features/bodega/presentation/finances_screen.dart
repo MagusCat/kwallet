@@ -76,6 +76,11 @@ class FinancesScreen extends StatelessWidget {
                       ],
                     ),
                   ),
+                  IconButton.filledTonal(
+                    tooltip: 'Presupuesto',
+                    onPressed: onBudget,
+                    icon: const Icon(Icons.tune_rounded),
+                  ),
                 ],
               ),
               const SizedBox(height: 16),

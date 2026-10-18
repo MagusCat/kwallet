@@ -1,7 +1,9 @@
 import '../currency_snapshot.dart';
+import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../features/bodega/models/planned_expense.dart';
+import '../../../features/bodega/models/quick_expense.dart';
 import '../../../features/bodega/models/transaction_record.dart';
 import '../transaction_writer.dart';
 import '../database_context.dart';
@@ -122,6 +124,28 @@ mixin PlanningRepository on DatabaseContext {
   Future<void> deletePlannedExpense(String id) async {
     final db = await database;
     await db.delete('planned_expenses', where: 'id = ?', whereArgs: [id]);
+    notifyChanged();
+  }
+
+  Future<List<QuickExpense>> getQuickExpenses() async {
+    final db = await database;
+    final rows = await db.query('quick_expenses', orderBy: 'created_at ASC');
+    return rows.map((r) => QuickExpense.fromMap(r)).toList();
+  }
+
+  Future<void> saveQuickExpense(QuickExpense expense) async {
+    final db = await database;
+    await db.insert(
+      'quick_expenses',
+      expense.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    notifyChanged();
+  }
+
+  Future<void> deleteQuickExpense(String id) async {
+    final db = await database;
+    await db.delete('quick_expenses', where: 'id = ?', whereArgs: [id]);
     notifyChanged();
   }
 }

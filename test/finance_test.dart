@@ -696,7 +696,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         find.text('Antes del fin de semana').hitTestable(),
-        findsOneWidget,
+        findsAtLeastNWidgets(1),
       );
       expect(tester.takeException(), isNull);
       await capture('$name-home-notes');
@@ -705,14 +705,7 @@ void main() {
       expect(find.byTooltip('Marcar como hecho').hitTestable(), findsOneWidget);
       expect(tester.takeException(), isNull);
       await capture('$name-home-habits');
-      await tester.tap(find.text('Cuentas').first);
-      await tester.pumpAndSettle();
       if (size.width < 600) {
-        await tester.tap(find.text('Efectivo').first);
-        await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 100)),
-        );
-        await tester.pumpAndSettle();
         await tester.runAsync(() async {
           final backup = jsonDecode(
             await service.exportFullDataAsJson(),

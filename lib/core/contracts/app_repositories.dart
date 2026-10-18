@@ -5,6 +5,7 @@ import '../../features/bodega/models/budget_model.dart';
 import '../../features/bodega/models/category_model.dart';
 import '../../features/bodega/models/finance_overview.dart';
 import '../../features/bodega/models/planned_expense.dart';
+import '../../features/bodega/models/quick_expense.dart';
 import '../../features/bodega/models/transaction_filter.dart';
 import '../../features/bodega/models/monthly_movement_summary.dart';
 import '../../features/bodega/models/transaction_record.dart';
@@ -78,6 +79,9 @@ abstract interface class FinanceRepository implements Repository {
   Future<List<Map<String, dynamic>>> getPlannedExpensePayments({
     String? plannedExpenseId,
   });
+  Future<List<QuickExpense>> getQuickExpenses();
+  Future<void> saveQuickExpense(QuickExpense expense);
+  Future<void> deleteQuickExpense(String id);
 }
 
 abstract interface class JournalRepository implements Repository {

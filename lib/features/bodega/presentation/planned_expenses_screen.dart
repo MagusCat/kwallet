@@ -103,8 +103,6 @@ class _PlannedExpensesScreenState
     Theme.of(context);
     if (_loading) return Center(child: CircularProgressIndicator());
     final now = dateOnly(DateTime.now());
-    final balance = model.balance;
-    final committed = model.committed;
     final entries = model.entries;
     final overdue = model.overdue;
     return Scaffold(
@@ -123,11 +121,6 @@ class _PlannedExpensesScreenState
                     onPressed: _refresh,
                     child: Text('$_error Reintentar'),
                   ),
-                CommitmentAlert(
-                  balance: balance,
-                  committed: committed,
-                  currency: widget.currency,
-                ),
                 AgendaCashflowCard(model: model),
                 PlanCalendar(
                   month: _month,
@@ -262,13 +255,29 @@ class _PlannedExpensesScreenState
     );
   }
 
+  IconData _planIcon(PlannedExpense plan) {
+    return switch (plan.iconKey) {
+      'star' => Icons.star_rounded,
+      'cake' => Icons.cake_rounded,
+      'celebration' => Icons.celebration_rounded,
+      'flight' => Icons.flight_rounded,
+      'heart' => Icons.favorite_rounded,
+      'gift' => Icons.card_giftcard_rounded,
+      'alarm' => Icons.alarm_rounded,
+      'event' => Icons.event_rounded,
+      'work' => Icons.work_rounded,
+      'home' => Icons.home_rounded,
+      'book' => Icons.menu_book_rounded,
+      'flag' => Icons.flag_rounded,
+      _ => plan.amount == 0 ? Icons.flag_outlined : Icons.event_outlined,
+    };
+  }
+
   Widget _entry(PlannedExpense plan, DateTime date) {
     final current = DateUtils.isSameDay(plan.dueDate, date);
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      leading: Icon(
-        plan.amount == 0 ? Icons.flag_outlined : Icons.event_outlined,
-      ),
+      leading: Icon(_planIcon(plan)),
       title: Text(plan.title),
       subtitle: Text(
         '${DateFormat('dd/MM/yyyy').format(date)} · ${plan.recurrenceLabel}${plan.note.isEmpty ? '' : '\n${plan.note}'}',

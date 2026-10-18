@@ -10,7 +10,6 @@ import '../../../journal/presentation/journal_sheets.dart';
 import '../../../journal/presentation/habit_check_in.dart';
 import '../../../journal/presentation/note_preview.dart';
 import '../../models/account.dart';
-import 'account_card.dart';
 
 class HomeHub extends StatefulWidget {
   final HomeViewModel controller;
@@ -41,9 +40,8 @@ class _HomeHubState extends State<HomeHub> {
         runSpacing: 8,
         children: [
           for (final (index, icon, label) in [
-            (0, Icons.account_balance_wallet_outlined, 'Cuentas'),
-            (1, Icons.edit_note_rounded, 'Notas'),
-            (2, Icons.spa_outlined, 'Hábitos'),
+            (0, Icons.edit_note_rounded, 'Notas'),
+            (1, Icons.spa_outlined, 'Hábitos'),
           ])
             ChoiceChip(
               avatar: Icon(icon, size: 18),
@@ -64,72 +62,7 @@ class _HomeHubState extends State<HomeHub> {
         ),
         child: KeyedSubtree(
           key: ValueKey(_homeTab),
-          child: switch (_homeTab) {
-            1 => _homeNotes(),
-            2 => _homeHabits(),
-            _ => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Mis cuentas',
-                        style: KwallTheme.fontTitle.copyWith(fontSize: 21),
-                      ),
-                    ),
-                    if (widget.controller.filter != null)
-                      IconButton(
-                        tooltip: 'Ver todas',
-                        onPressed: () {
-                          widget.controller.selectAccount(null);
-                        },
-                        icon: const Icon(Icons.filter_alt_off_outlined),
-                      ),
-                    IconButton.filledTonal(
-                      tooltip: 'Nueva cuenta',
-                      onPressed: widget.onAddAccount,
-                      icon: const Icon(Icons.add_rounded),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (widget.controller.accounts.isEmpty)
-                  TextButton.icon(
-                    onPressed: widget.onAddAccount,
-                    icon: const Icon(Icons.add_card_outlined),
-                    label: const Text('Crea tu primera cuenta'),
-                  ),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final width =
-                        (constraints.maxWidth -
-                            (constraints.maxWidth > 600 ? 28 : 12)) /
-                        (constraints.maxWidth > 600 ? 3 : 2);
-                    return Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        for (final account in widget.controller.accounts)
-                          SizedBox(
-                            width: width,
-                            child: AccountCard(
-                              account: account,
-                              currency: widget.controller.currency,
-                              rates: widget.controller.rates,
-                              selected: widget.controller.filter == account.id,
-                              onTap: () =>
-                                  widget.controller.selectAccount(account.id),
-                              onEdit: () => widget.onEditAccount(account),
-                            ),
-                          ),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            ),
-          },
+          child: _homeTab == 1 ? _homeHabits() : _homeNotes(),
         ),
       ),
     ],

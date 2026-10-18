@@ -68,69 +68,100 @@ class _HabitCardState
     final log = widget.habit.logFor(widget.day);
     final done = log?.completed == true;
     final reduced = MediaQuery.disableAnimationsOf(context);
+    final habitColor = Color(widget.habit.colorValue);
+    final bgTint = habitColor.withValues(alpha: 0.08);
+    final borderTint = habitColor.withValues(alpha: 0.35);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: LedgerPanel(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Semantics(
-                  checked: done,
-                  label: 'Marcar ${widget.habit.title}',
-                  child: IconButton.filledTonal(
-                    tooltip: done ? 'Completado' : 'Marcar como hecho',
-                    onPressed: _busy || done ? null : _complete,
-                    icon: AnimatedSwitcher(
-                      duration: Duration(milliseconds: reduced ? 0 : 180),
-                      transitionBuilder: (child, animation) =>
-                          ScaleTransition(scale: animation, child: child),
-                      child: _busy
-                          ? const SizedBox.square(
-                              key: ValueKey('busy'),
-                              dimension: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(
-                              done
-                                  ? Icons.check_circle_rounded
-                                  : Icons.circle_outlined,
-                              key: ValueKey(done),
-                              color: KwallTheme.accent,
-                            ),
+      child: Material(
+        color: bgTint,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: borderTint, width: 1.5),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Semantics(
+                    checked: done,
+                    label: 'Marcar ${widget.habit.title}',
+                    child: IconButton.filledTonal(
+                      style: IconButton.styleFrom(
+                        backgroundColor: habitColor.withValues(
+                          alpha: done ? 0.25 : 0.12,
+                        ),
+                      ),
+                      tooltip: done ? 'Completado' : 'Marcar como hecho',
+                      onPressed: _busy || done ? null : _complete,
+                      icon: AnimatedSwitcher(
+                        duration: Duration(milliseconds: reduced ? 0 : 180),
+                        transitionBuilder: (child, animation) =>
+                            ScaleTransition(scale: animation, child: child),
+                        child: _busy
+                            ? const SizedBox.square(
+                                key: ValueKey('busy'),
+                                dimension: 22,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Icon(
+                                done
+                                    ? Icons.check_circle_rounded
+                                    : Icons.circle_outlined,
+                                key: ValueKey(done),
+                                color: habitColor,
+                              ),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.habit.title,
-                        style: KwallTheme.fontTitle.copyWith(fontSize: 17),
-                      ),
-                      if (!widget.hideStreak) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.local_fire_department_outlined,
-                              size: 16,
-                              color: KwallTheme.accent,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${widget.habit.streak(widget.day)} días',
-                              style: TextStyle(color: KwallTheme.textSecondary),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ],
+                  const SizedBox(width: 10),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: habitColor.withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      getHabitIcon(widget.habit.iconKey),
+                      color: habitColor,
+                      size: 18,
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.habit.title,
+                          style: KwallTheme.fontTitle.copyWith(fontSize: 17),
+                        ),
+                        if (!widget.hideStreak) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.local_fire_department_outlined,
+                                size: 16,
+                                color: habitColor,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${widget.habit.streak(widget.day)} días',
+                                style: TextStyle(color: KwallTheme.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 PopupMenuButton<String>(
                   tooltip: 'Opciones de ${widget.habit.title}',
                   onSelected: (value) async {
@@ -211,6 +242,7 @@ class _HabitCardState
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }

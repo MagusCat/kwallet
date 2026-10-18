@@ -93,6 +93,8 @@ mixin JournalRepository on DatabaseContext {
         body: note.body,
         kind: note.kind,
         items: items,
+        iconKey: note.iconKey,
+        colorValue: note.colorValue,
         updatedAt: DateTime.now(),
       );
       await txn.update(

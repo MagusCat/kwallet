@@ -33,6 +33,8 @@ class _NoteSheetState
   late final _title = TextEditingController(text: widget.note?.title ?? '');
   late final _body = TextEditingController(text: widget.note?.body ?? '');
   late String _kind = widget.note?.kind ?? widget.initialKind ?? 'note';
+  late String _iconKey = widget.note?.iconKey ?? 'note';
+  late int _colorValue = widget.note?.colorValue ?? 0;
   late final _items = [
     for (final item in widget.note?.items ?? <NoteItem>[])
       _EditableItem(item.text, item.done, dueDate: item.dueDate),
@@ -56,6 +58,8 @@ class _NoteSheetState
       title: _title.text,
       body: _body.text,
       kind: _kind,
+      iconKey: _iconKey,
+      colorValue: _colorValue,
       items: _items.map(
         (item) => NoteItem(
           item.text.text,
@@ -68,16 +72,104 @@ class _NoteSheetState
   }
 
   @override
-  Widget build(BuildContext context) => SheetBody(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'Un espacio para ti',
-          style: KwallTheme.fontTitle.copyWith(fontSize: 22),
-        ),
-        const SizedBox(height: 16),
+  Widget build(BuildContext context) {
+    final activeColor =
+        _colorValue != 0 ? Color(_colorValue) : KwallTheme.accent;
+
+    return SheetBody(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: activeColor.withValues(alpha: 0.18),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: activeColor, width: 2),
+                ),
+                child: Icon(
+                  getNoteIcon(_iconKey),
+                  color: activeColor,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  widget.note == null ? 'Nueva nota o lista' : 'Editar nota',
+                  style: KwallTheme.fontTitle.copyWith(fontSize: 22),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final (key, icon, label) in noteIcons) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      avatar: Icon(icon, size: 16),
+                      showCheckmark: false,
+                      label: Text(label),
+                      selected: _iconKey == key,
+                      onSelected: (_) => setState(() => _iconKey = key),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final (colorVal, _) in noteColors) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _colorValue = colorVal),
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: colorVal == 0
+                              ? KwallTheme.surfaceContainer
+                              : Color(colorVal),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: _colorValue == colorVal
+                                ? KwallTheme.accent
+                                : (colorVal == 0
+                                    ? KwallTheme.border
+                                    : Colors.transparent),
+                            width: _colorValue == colorVal ? 2.5 : 1,
+                          ),
+                        ),
+                        child: _colorValue == colorVal
+                            ? Icon(
+                                Icons.check,
+                                size: 16,
+                                color: colorVal == 0
+                                    ? KwallTheme.textPrimary
+                                    : Colors.white,
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
         SegmentedButton<String>(
             showSelectedIcon: false,
           segments: const [
@@ -185,6 +277,7 @@ class _NoteSheetState
       ],
     ),
   );
+  }
 }
 
 class HabitSheet extends StatefulWidget {

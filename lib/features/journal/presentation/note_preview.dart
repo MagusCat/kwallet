@@ -31,33 +31,62 @@ class _NotePreviewState
   }
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: LedgerPanel(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(
-              widget.note.kind == 'list'
-                  ? Icons.checklist_rounded
-                  : Icons.edit_note_rounded,
-              color: KwallTheme.accent,
-            ),
-            title: Text(
-              widget.note.title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: KwallTheme.fontTitle,
-            ),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              builder: (_) => NoteSheet(note: widget.note),
-            ),
+  Widget build(BuildContext context) {
+    final noteColor = widget.note.colorValue != 0
+        ? Color(widget.note.colorValue)
+        : KwallTheme.accent;
+    final bgTint = widget.note.colorValue != 0
+        ? noteColor.withValues(alpha: 0.08)
+        : KwallTheme.surface;
+    final borderTint = widget.note.colorValue != 0
+        ? noteColor.withValues(alpha: 0.35)
+        : KwallTheme.border.withValues(alpha: 0.65);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: bgTint,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(
+            color: borderTint,
+            width: widget.note.colorValue != 0 ? 1.5 : 1,
           ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: noteColor.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    getNoteIcon(widget.note.iconKey),
+                    color: noteColor,
+                    size: 18,
+                  ),
+                ),
+                title: Text(
+                  widget.note.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: KwallTheme.fontTitle,
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  builder: (_) => NoteSheet(note: widget.note),
+                ),
+              ),
           if (widget.note.body.isNotEmpty)
             Text(
               widget.note.body,
@@ -87,7 +116,9 @@ class _NotePreviewState
               style: TextStyle(color: KwallTheme.textSecondary, fontSize: 12),
             ),
         ],
+          ),
+        ),
       ),
-    ),
-  );
+    );
+  }
 }

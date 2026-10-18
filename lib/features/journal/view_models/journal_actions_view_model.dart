@@ -45,6 +45,8 @@ class JournalActionsViewModel extends ViewModel {
     required String body,
     required String kind,
     required Iterable<NoteItem> items,
+    String? iconKey,
+    int? colorValue,
   }) {
     if (title.trim().isEmpty) return Future.value(fail('Ponle un título.'));
     final note = PersonalNote(
@@ -58,6 +60,8 @@ class JournalActionsViewModel extends ViewModel {
                 .map((i) => NoteItem(i.text.trim(), done: i.done))
                 .toList()
           : [],
+      iconKey: iconKey ?? original?.iconKey ?? 'note',
+      colorValue: colorValue ?? original?.colorValue ?? 0,
       updatedAt: DateTime.now(),
     );
     return perform(() => repository.saveNote(note));

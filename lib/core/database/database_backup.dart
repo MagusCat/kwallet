@@ -25,8 +25,10 @@ class DatabaseBackup {
     'global_currency_rates',
     'global_currency_history',
     'front_pending_items',
+    'quick_expenses',
   ];
   static const deleteOrder = [
+    'quick_expenses',
     'front_pending_items',
     'account_currency_history',
     'global_currency_history',

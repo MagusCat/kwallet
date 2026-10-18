@@ -12,6 +12,7 @@ import '../models/budget_model.dart';
 import '../models/category_model.dart';
 import '../models/finance_overview.dart';
 import '../models/planned_expense.dart';
+import '../models/quick_expense.dart';
 import '../models/transaction_record.dart';
 
 class HomeViewModel extends ViewModel {
@@ -36,6 +37,7 @@ class HomeViewModel extends ViewModel {
   List<PlannedExpense> _plans = const [];
   List<PersonalNote> _notes = const [];
   List<Habit> _habits = const [];
+  List<QuickExpense> _quickExpenses = const [];
   Map<String, String> _settings = const {};
   Map<String, double> _rates = const {};
   Map<BudgetPeriod, double> _allocations = const {};
@@ -47,6 +49,7 @@ class HomeViewModel extends ViewModel {
   List<Account> get accounts => _accounts;
   List<TransactionRecord> get transactions => _transactions;
   Map<String, CategoryModel> get categories => _categories;
+  List<QuickExpense> get quickExpenses => _quickExpenses;
   List<PersonalNote> get notes => _notes;
   List<Habit> get habits => _habits;
   Map<String, String> get settings => _settings;
@@ -181,6 +184,12 @@ class HomeViewModel extends ViewModel {
     return ok ? record : null;
   }
 
+  Future<bool> saveQuickExpense(QuickExpense item) =>
+      perform(() => finance.saveQuickExpense(item));
+
+  Future<bool> deleteQuickExpense(String id) =>
+      perform(() => finance.deleteQuickExpense(id));
+
   Future<bool> completeHabit(Habit habit, [DateTime? day]) async {
     final ok = await perform(
       () => journal.logHabitDays(
@@ -270,6 +279,7 @@ class HomeViewModel extends ViewModel {
       final xp = await journal.getExperience();
       final notes = await journal.getNotes();
       final habits = await journal.getHabits();
+      final quickExpenses = await finance.getQuickExpenses();
       final spent = await finance.getPeriodSpending(now);
       for (final account in accounts) {
         CurrencyConversion.convert(account.balance, from: account.currency, to: settings['currency'] ?? '\$', rates: rates, dominantCurrency: settings['currency'] ?? '\$');
@@ -289,6 +299,7 @@ class HomeViewModel extends ViewModel {
       _spent = Map.unmodifiable(spent);
       _notes = List.unmodifiable(notes);
       _habits = List.unmodifiable(habits);
+      _quickExpenses = List.unmodifiable(quickExpenses);
       _xp = xp;
       _loaded = true;
       error = null;

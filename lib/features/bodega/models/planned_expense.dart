@@ -8,6 +8,7 @@ class PlannedExpense {
   final String? accountId;
   final bool isCompleted;
   final String note;
+  final String? iconKey;
   final DateTime createdAt;
   final int recurrenceDay;
 
@@ -21,6 +22,7 @@ class PlannedExpense {
     this.accountId,
     this.isCompleted = false,
     this.note = '',
+    this.iconKey,
     required this.createdAt,
     int? recurrenceDay,
   }) : recurrenceDay = recurrenceDay ?? dueDate.day;
@@ -35,6 +37,7 @@ class PlannedExpense {
     String? accountId,
     bool? isCompleted,
     String? note,
+    String? iconKey,
     DateTime? createdAt,
   }) {
     return PlannedExpense(
@@ -47,6 +50,7 @@ class PlannedExpense {
       accountId: accountId ?? this.accountId,
       isCompleted: isCompleted ?? this.isCompleted,
       note: note ?? this.note,
+      iconKey: iconKey ?? this.iconKey,
       createdAt: createdAt ?? this.createdAt,
       recurrenceDay: recurrenceDay,
     );
@@ -63,6 +67,7 @@ class PlannedExpense {
       'account_id': accountId,
       'is_completed': isCompleted ? 1 : 0,
       'note': note,
+      'icon_key': iconKey,
       'created_at': createdAt.toIso8601String(),
       'recurrence_day': recurrenceDay,
     };
@@ -80,6 +85,7 @@ class PlannedExpense {
       accountId: map['account_id'] as String?,
       isCompleted: (map['is_completed'] as int?) == 1,
       note: (map['note'] as String?) ?? '',
+      iconKey: map['icon_key'] as String?,
       createdAt:
           DateTime.tryParse(map['created_at'] as String? ?? '') ??
           DateTime.now(),

@@ -60,6 +60,7 @@ class DatabaseSchema {
         account_id TEXT,
         is_completed INTEGER NOT NULL DEFAULT 0,
         note TEXT NOT NULL DEFAULT '',
+        icon_key TEXT,
         created_at TEXT NOT NULL
       )
     ''');
@@ -182,7 +183,7 @@ class DatabaseSchema {
       'CREATE TABLE IF NOT EXISTS budget_allocations (period_key TEXT PRIMARY KEY, period TEXT NOT NULL, period_start TEXT NOT NULL, amount REAL NOT NULL CHECK(amount >= 0), updated_at TEXT NOT NULL)',
     );
     await db.execute(
-      "CREATE TABLE IF NOT EXISTS personal_notes (id TEXT PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL DEFAULT 'note', items TEXT NOT NULL DEFAULT '[]', updated_at TEXT NOT NULL)",
+      "CREATE TABLE IF NOT EXISTS personal_notes (id TEXT PRIMARY KEY, title TEXT NOT NULL, body TEXT NOT NULL DEFAULT '', kind TEXT NOT NULL DEFAULT 'note', items TEXT NOT NULL DEFAULT '[]', icon_key TEXT NOT NULL DEFAULT 'note', color_value INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL)",
     );
     await db.execute(
       "CREATE TABLE IF NOT EXISTS habits (id TEXT PRIMARY KEY, title TEXT NOT NULL, icon_key TEXT NOT NULL DEFAULT 'spa_rounded', color_value INTEGER NOT NULL DEFAULT 4283226960, time_block TEXT NOT NULL DEFAULT 'anytime', created_at TEXT NOT NULL)",
@@ -419,6 +420,22 @@ class DatabaseSchema {
       }
     }
 
+    if (tables.contains('personal_notes')) {
+      final noteCols = (await db.rawQuery('PRAGMA table_info(personal_notes)'))
+          .map((r) => r['name'])
+          .toSet();
+      if (!noteCols.contains('icon_key')) {
+        await db.execute(
+          "ALTER TABLE personal_notes ADD COLUMN icon_key TEXT NOT NULL DEFAULT 'note'",
+        );
+      }
+      if (!noteCols.contains('color_value')) {
+        await db.execute(
+          'ALTER TABLE personal_notes ADD COLUMN color_value INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+    }
+
     if (tables.contains('accounts')) {
       final accountCols = (await db.rawQuery('PRAGMA table_info(accounts)'))
           .map((r) => r['name'])
@@ -492,6 +509,37 @@ class DatabaseSchema {
 
     if (tables.contains('kitty_profile')) {
       await db.execute('DROP TABLE IF EXISTS kitty_profile');
+    }
+
+    final planCols = (await db.rawQuery("PRAGMA table_info(planned_expenses)")).map((r) => r['name']).toSet();
+    if (!planCols.contains('icon_key')) {
+      await db.execute('ALTER TABLE planned_expenses ADD COLUMN icon_key TEXT');
+    }
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS quick_expenses (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        amount REAL NOT NULL,
+        category_id TEXT NOT NULL,
+        account_id TEXT,
+        icon_key TEXT NOT NULL DEFAULT 'bolt',
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    final qeRows = await db.query('quick_expenses', limit: 1);
+    if (qeRows.isEmpty) {
+      final nowStr = DateTime.now().toIso8601String();
+      final defaults = [
+        {'id': 'qe_coffee', 'title': 'Café', 'amount': 2.0, 'category_id': 'cat_leisure', 'icon_key': 'food', 'created_at': nowStr},
+        {'id': 'qe_transport', 'title': 'Bus / Metro', 'amount': 1.5, 'category_id': 'cat_transport', 'icon_key': 'transport', 'created_at': nowStr},
+        {'id': 'qe_snack', 'title': 'Snack', 'amount': 3.0, 'category_id': 'cat_food', 'icon_key': 'food', 'created_at': nowStr},
+        {'id': 'qe_water', 'title': 'Agua', 'amount': 1.0, 'category_id': 'cat_food', 'icon_key': 'potion', 'created_at': nowStr},
+      ];
+      for (final qe in defaults) {
+        await db.insert('quick_expenses', qe, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
     }
   }
 }

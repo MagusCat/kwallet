@@ -52,7 +52,7 @@ class HomeTasksPanel extends StatelessWidget {
                     Text(
                       tasks.isEmpty
                           ? (hasLists ? '¡Todo completado!' : 'Sin tareas pendientes')
-                          : '${tasks.length} ${tasks.length == 1 ? "tarea pendiente" : "tareas pendientes"} · DB',
+                          : '${tasks.length} ${tasks.length == 1 ? "tarea pendiente" : "tareas pendientes"}',
                       style: TextStyle(
                         fontSize: 12,
                         color: KwallTheme.textSecondary,
@@ -96,7 +96,7 @@ class HomeTasksPanel extends StatelessWidget {
               ),
             )
           else ...[
-            for (final item in tasks.take(4)) ...[
+            for (final item in tasks.take(1)) ...[
               InkWell(
                 borderRadius: BorderRadius.circular(12),
                 onTap: () {
@@ -121,38 +121,45 @@ class HomeTasksPanel extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          item.item.text,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 100),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: KwallTheme.surfaceContainer.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            'Lista: ${item.note.title}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: KwallTheme.textSecondary,
-                              fontWeight: FontWeight.w500,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              item.item.text,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                            if (item.note.title.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.list_alt_rounded,
+                                    size: 13,
+                                    color: KwallTheme.textSecondary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      item.note.title,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: KwallTheme.textSecondary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ],
@@ -161,7 +168,7 @@ class HomeTasksPanel extends StatelessWidget {
               ),
               const Divider(height: 12),
             ],
-            if (tasks.length > 4)
+            if (tasks.length > 1)
               TextButton.icon(
                 onPressed: onOpenNotes,
                 icon: const Icon(Icons.arrow_forward_rounded, size: 16),

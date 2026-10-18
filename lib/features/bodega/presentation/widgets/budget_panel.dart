@@ -17,6 +17,7 @@ class BudgetPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final limit = controller.limit;
+    if (limit <= 0) return const SizedBox.shrink();
     final spent = controller.spent;
     final remaining = limit - spent;
     return LedgerPanel(

@@ -16,6 +16,7 @@ class PlanEditorViewModel extends ViewModel {
     required DateTime date,
     required String recurrence,
     required String note,
+    String? iconKey,
     String? categoryId,
     String? accountId,
   }) {
@@ -38,6 +39,7 @@ class PlanEditorViewModel extends ViewModel {
       categoryId: categoryId ?? 'cat_other',
       accountId: accountId,
       note: note.trim(),
+      iconKey: iconKey,
       createdAt: original?.createdAt ?? DateTime.now(),
     );
     return perform(

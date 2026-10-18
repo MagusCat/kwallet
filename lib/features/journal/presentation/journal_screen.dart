@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/app_dependencies.dart';
@@ -54,14 +53,6 @@ class _JournalScreenState
     builder: (_) => NoteSheet(note: note),
   );
   Future<void> _habit([Habit? habit]) => editHabit(context, habit: habit);
-
-  Future<void> _check(PersonalNote note, int index, bool done) async {
-    if (await model.checkNote(note, index, done)) {
-      HapticFeedback.selectionClick();
-    } else if (mounted) {
-      showFailure(context, model.error ?? 'No se pudo actualizar la lista.');
-    }
-  }
 
   @override
   Widget build(BuildContext _) {
@@ -134,110 +125,22 @@ class _JournalScreenState
                         padding: EdgeInsets.symmetric(vertical: 30),
                         child: Text('Una idea, una lista, lo que necesites.'),
                       ),
-                    for (final note in _notes)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: LedgerPanel(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    note.kind == 'list'
-                                        ? Icons.checklist_rounded
-                                        : Icons.edit_note_rounded,
-                                    color: KwallTheme.accent,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      note.title,
-                                      style: KwallTheme.fontTitle.copyWith(
-                                        fontSize: 18,
-                                      ),
-                                    ),
-                                  ),
-                                  PopupMenuButton<String>(
-                                    tooltip: 'Acciones de la nota',
-                                    onSelected: (value) async {
-                                      if (value == 'edit') {
-                                        _editNote(note);
-                                      } else {
-                                        final removed = await model.deleteNote(
-                                          note,
-                                        );
-                                        if (!mounted) return;
-                                        if (!removed) {
-                                          showFailure(
-                                            context,
-                                            model.error ??
-                                                'No se pudo eliminar la nota.',
-                                          );
-                                        }
-                                      }
-                                    },
-                                    itemBuilder: (_) => const [
-                                      PopupMenuItem(
-                                        value: 'edit',
-                                        child: Text('Editar'),
-                                      ),
-                                      PopupMenuItem(
-                                        value: 'delete',
-                                        child: Text('Eliminar'),
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final itemWidth = (constraints.maxWidth - 10) / 2;
+                        return Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            for (final note in _notes)
+                              SizedBox(
+                                width: itemWidth,
+                                child: _buildCompactNoteCard(note),
                               ),
-                              if (note.body.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
-                                  ),
-                                  child: Text(
-                                    note.body,
-                                    maxLines: 8,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              for (var i = 0; i < note.items.length; i++)
-                                CheckboxListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  dense: true,
-                                  controlAffinity:
-                                      ListTileControlAffinity.leading,
-                                  title: Text(
-                                    note.items[i].text,
-                                    style: TextStyle(
-                                      decoration: note.items[i].done
-                                          ? TextDecoration.lineThrough
-                                          : null,
-                                    ),
-                                  ),
-                                  value: note.items[i].done,
-                                  onChanged: model.busy
-                                      ? null
-                                      : (value) => _check(note, i, value!),
-                                ),
-                              if (note.kind == 'list' && note.items.isNotEmpty)
-                                Text(
-                                  '${note.items.where((item) => item.done).length}/${note.items.length} completados',
-                                  style: TextStyle(
-                                    color: KwallTheme.textSecondary,
-                                  ),
-                                ),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton(
-                                  onPressed: () => _editNote(note),
-                                  child: const Text('Abrir'),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                          ],
+                        );
+                      },
+                    ),
                   ] else ...[
                     _dayPicker(),
                     const SizedBox(height: 16),
@@ -353,4 +256,137 @@ class _JournalScreenState
       ),
     ],
   );
+
+  Widget _buildCompactNoteCard(PersonalNote note) {
+    final noteColor =
+        note.colorValue != 0 ? Color(note.colorValue) : KwallTheme.accent;
+    final bgTint = note.colorValue != 0
+        ? noteColor.withValues(alpha: 0.08)
+        : KwallTheme.surface;
+    final borderTint = note.colorValue != 0
+        ? noteColor.withValues(alpha: 0.35)
+        : KwallTheme.border.withValues(alpha: 0.65);
+
+    return Material(
+      color: bgTint,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: borderTint,
+          width: note.colorValue != 0 ? 1.5 : 1,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => _editNote(note),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: noteColor.withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      getNoteIcon(note.iconKey),
+                      color: noteColor,
+                      size: 16,
+                    ),
+                  ),
+                  const Spacer(),
+                  PopupMenuButton<String>(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    iconSize: 18,
+                    tooltip: 'Acciones',
+                    onSelected: (value) async {
+                      if (value == 'edit') {
+                        _editNote(note);
+                      } else {
+                        final removed = await model.deleteNote(note);
+                        if (!mounted) return;
+                        if (!removed) {
+                          showFailure(
+                            context,
+                            model.error ?? 'No se pudo eliminar la nota.',
+                          );
+                        }
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(value: 'edit', child: Text('Editar')),
+                      PopupMenuItem(value: 'delete', child: Text('Eliminar')),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                note.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              if (note.body.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  note.body,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: KwallTheme.textSecondary,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+              if (note.kind == 'list' && note.items.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline_rounded,
+                      size: 13,
+                      color: noteColor,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        '${note.items.where((i) => i.done).length}/${note.items.length} hechas',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: KwallTheme.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 6),
+              Text(
+                DateFormat('d MMM', 'es').format(note.updatedAt),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: KwallTheme.textSecondary.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

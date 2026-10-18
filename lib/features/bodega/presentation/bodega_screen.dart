@@ -16,9 +16,9 @@ import '../models/account.dart';
 import 'add_account_dialog.dart';
 import 'add_transaction_sheet.dart';
 import 'budget_sheet.dart';
-import 'categories_sheet.dart';
 import 'finances_screen.dart';
 import 'planned_expenses_screen.dart';
+import 'quick_expenses_sheet.dart';
 import 'widgets/home_dashboard.dart';
 
 class BodegaScreen extends StatefulWidget {
@@ -147,7 +147,15 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
       (Icons.north_east_rounded, 'Gasto', () => _transaction('expense')),
       (Icons.south_west_rounded, 'Ingreso', () => _transaction('income')),
       (Icons.swap_horiz_rounded, 'Transferir', () => _transaction('transfer')),
-      (Icons.account_balance_outlined, 'Banco', () => _account(type: 'bank')),
+      (
+        Icons.flash_on_rounded,
+        'Gasto rápido',
+        () => showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          builder: (_) => QuickExpensesSheet(controller: _home),
+        ),
+      ),
       (
         Icons.edit_note_rounded,
         'Nota',
@@ -158,17 +166,6 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
         ),
       ),
       (Icons.event_outlined, 'Fecha', () => _navigate(2)),
-      (
-        Icons.category_outlined,
-        'Categorías',
-        () => showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          builder: (_) => const CategoriesSheet(type: 'expense'),
-        ),
-      ),
-      (Icons.local_fire_department_outlined, 'Hábitos', () => _openJournal(1)),
-      (Icons.palette_outlined, 'Apariencia', () => _navigate(4)),
     ];
     showModalBottomSheet(
       context: context,
