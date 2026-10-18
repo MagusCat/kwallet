@@ -80,6 +80,11 @@ class DatabaseSchema {
 
     // Default currency
     await db.insert('app_settings', {'key': 'currency', 'value': '\$'});
+    await db.insert('user_currencies', {
+      'code': '\$',
+      'name': '',
+      'created_at': now.toIso8601String(),
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
 
     // Save database schema version
     await db.insert('app_settings', {
@@ -549,6 +554,50 @@ class DatabaseSchema {
       ];
       for (final qe in defaults) {
         await db.insert('quick_expenses', qe, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+    }
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS user_currencies (
+        code TEXT PRIMARY KEY,
+        name TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    final ucRows = await db.query('user_currencies', limit: 1);
+    if (ucRows.isEmpty) {
+      final nowStr = DateTime.now().toIso8601String();
+      final mainCurRows = await db.query('app_settings', where: "key = 'currency'");
+      final mainCur = (mainCurRows.firstOrNull?['value'] as String?)?.trim() ?? '\$';
+      await db.insert('user_currencies', {
+        'code': mainCur.isEmpty ? '\$' : mainCur,
+        'name': '',
+        'created_at': nowStr,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
+
+      final rateRows = await db.query('global_currency_rates');
+      for (final r in rateRows) {
+        final c = (r['currency'] as String?)?.trim();
+        if (c != null && c.isNotEmpty) {
+          await db.insert('user_currencies', {
+            'code': c,
+            'name': '',
+            'created_at': nowStr,
+          }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
+      }
+
+      final accRows = await db.query('accounts');
+      for (final a in accRows) {
+        final c = (a['currency'] as String?)?.trim();
+        if (c != null && c.isNotEmpty) {
+          await db.insert('user_currencies', {
+            'code': c,
+            'name': '',
+            'created_at': nowStr,
+          }, conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
       }
     }
   }

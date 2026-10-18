@@ -89,8 +89,9 @@ class _SettingsScreenState
   }
 
   Future<void> _removeCurrency(String currency) async {
-    final ok = await model.removeCurrencyRate(currency);
-    if (ok && mounted) {
+    await model.removeCurrencyRate(currency);
+    await model.deleteUserCurrency(currency).catchError((_) => false);
+    if (mounted) {
       setState(() {
         _referenceCurrencies.remove(currency);
       });
@@ -421,6 +422,16 @@ class _SettingsScreenState
                     dominantCurrencyController: _currency,
                     referenceCurrencies: _referenceCurrencies,
                     rates: model.rates,
+                    currencyNames: model.currencyNames,
+                    onAddCurrency: (symbol, name) async {
+                      await model.addUserCurrency(symbol, name);
+                      if (!_referenceCurrencies.contains(symbol)) {
+                        setState(() {
+                          _referenceCurrencies.add(symbol);
+                        });
+                        await _save();
+                      }
+                    },
                     onSaveRate: _saveCurrencyRate,
                     onRemoveCurrency: _removeCurrency,
                     onFetchHistory: model.getRateHistory,

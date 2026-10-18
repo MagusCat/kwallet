@@ -26,8 +26,10 @@ class DatabaseBackup {
     'global_currency_history',
     'front_pending_items',
     'quick_expenses',
+    'user_currencies',
   ];
   static const deleteOrder = [
+    'user_currencies',
     'quick_expenses',
     'front_pending_items',
     'account_currency_history',
@@ -111,7 +113,7 @@ class DatabaseBackup {
         throw FormatException('Falta la tabla $required.');
       }
     }
-    if (schemaVersion >= 6 && tables.any((table) => data[table] is! List)) {
+    if (schemaVersion >= 6 && tables.where((t) => t != 'user_currencies').any((table) => data[table] is! List)) {
       throw const FormatException('El respaldo está incompleto.');
     }
     final result = <String, List<Map<String, Object?>>>{};
@@ -126,7 +128,9 @@ class DatabaseBackup {
       final ids = <Object?>{};
       for (final row in result[table]!) {
         final key =
-            row[table == 'global_currency_rates' ? 'currency' : table == 'app_settings'
+            row[table == 'global_currency_rates' ? 'currency' :
+                table == 'user_currencies' ? 'code' :
+                table == 'app_settings'
                 ? 'key'
                 : table == 'budget_allocations'
                 ? 'period_key'
@@ -141,6 +145,23 @@ class DatabaseBackup {
             throw FormatException('Monto inválido en $table.');
           }
         }
+      }
+    }
+    if (result['user_currencies']!.isEmpty) {
+      final now = DateTime.now().toIso8601String();
+      final seen = <String>{};
+      for (final a in result['accounts']!) {
+        final c = (a['currency'] as String?)?.trim();
+        if (c != null && c.isNotEmpty && seen.add(c)) {
+          result['user_currencies']!.add({'code': c, 'name': '', 'created_at': now});
+        }
+      }
+      final mainCur = (result['app_settings']!.firstWhere(
+        (r) => r['key'] == 'currency',
+        orElse: () => {'value': '\$'},
+      )['value'] as String?)?.trim() ?? '\$';
+      if (seen.add(mainCur)) {
+        result['user_currencies']!.add({'code': mainCur, 'name': '', 'created_at': now});
       }
     }
     result['app_settings']!.removeWhere((row) => (row['key'] as String).startsWith('github_'));

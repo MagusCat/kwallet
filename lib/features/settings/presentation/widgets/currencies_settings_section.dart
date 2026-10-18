@@ -8,6 +8,8 @@ class CurrenciesSettingsSection extends StatelessWidget {
   final TextEditingController dominantCurrencyController;
   final List<String> referenceCurrencies;
   final Map<String, double> rates;
+  final Map<String, String>? currencyNames;
+  final Future<void> Function(String symbol, String name)? onAddCurrency;
   final Future<void> Function(String currency, double rate, String notes) onSaveRate;
   final Future<void> Function(String currency) onRemoveCurrency;
   final Future<List<Map<String, dynamic>>> Function(String currency) onFetchHistory;
@@ -17,6 +19,8 @@ class CurrenciesSettingsSection extends StatelessWidget {
     required this.dominantCurrencyController,
     required this.referenceCurrencies,
     required this.rates,
+    this.currencyNames,
+    this.onAddCurrency,
     required this.onSaveRate,
     required this.onRemoveCurrency,
     required this.onFetchHistory,
@@ -53,7 +57,7 @@ class CurrenciesSettingsSection extends StatelessWidget {
             TextField(
               controller: symbolController,
               decoration: const InputDecoration(
-                labelText: 'Símbolo / Código',
+                labelText: 'Símbolo / Código *',
                 hintText: 'Ej. €, C\$, MXN, USD',
               ),
               textCapitalization: TextCapitalization.characters,
@@ -62,9 +66,10 @@ class CurrenciesSettingsSection extends StatelessWidget {
             TextField(
               controller: nameController,
               decoration: const InputDecoration(
-                labelText: 'Nombre de la moneda',
+                labelText: 'Nombre de la moneda (opcional)',
                 hintText: 'Ej. Euro, Córdoba, Peso',
               ),
+              textCapitalization: TextCapitalization.sentences,
             ),
           ],
         ),
@@ -74,11 +79,17 @@ class CurrenciesSettingsSection extends StatelessWidget {
             child: const Text('Cancelar'),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               final symbol = symbolController.text.trim();
+              final name = nameController.text.trim();
               if (symbol.isEmpty) return;
               Navigator.pop(ctx);
-              _openRateDialog(context, symbol, isNew: true);
+              if (onAddCurrency != null) {
+                await onAddCurrency!(symbol, name);
+              }
+              if (context.mounted) {
+                _openRateDialog(context, symbol, isNew: true);
+              }
             },
             child: const Text('Siguiente'),
           ),
@@ -103,7 +114,13 @@ class CurrenciesSettingsSection extends StatelessWidget {
         const SizedBox(height: 16),
         CurrencySelector(
           value: dominantCurrencyController.text,
-          options: {dominantCurrencyController.text, ...referenceCurrencies, ...rates.keys},
+          options: {
+            dominantCurrencyController.text,
+            ...referenceCurrencies,
+            ...rates.keys,
+            if (currencyNames != null) ...currencyNames!.keys,
+          },
+          currencyNames: currencyNames,
           label: 'Moneda principal',
           onChanged: (value) => dominantCurrencyController.text = value,
         ),
@@ -119,14 +136,20 @@ class CurrenciesSettingsSection extends StatelessWidget {
             runSpacing: 8,
             children: [
               for (final c in referenceCurrencies)
-                ActionChip(
+                InputChip(
                   avatar: const Icon(Icons.currency_exchange_rounded, size: 16),
                   label: Text(
                     rates.containsKey(c)
-                        ? '$c (1 = ${rates[c]!.toStringAsFixed(rates[c]! % 1 == 0 ? 0 : 2)} $dominant)'
-                        : c,
+                        ? (currencyNames != null && currencyNames![c]?.isNotEmpty == true
+                            ? '$c · ${currencyNames![c]} (1 = ${rates[c]!.toStringAsFixed(rates[c]! % 1 == 0 ? 0 : 2)} $dominant)'
+                            : '$c (1 = ${rates[c]!.toStringAsFixed(rates[c]! % 1 == 0 ? 0 : 2)} $dominant)')
+                        : (currencyNames != null && currencyNames![c]?.isNotEmpty == true
+                            ? '$c · ${currencyNames![c]}'
+                            : c),
                   ),
                   onPressed: () => _openRateDialog(context, c),
+                  onDeleted: () => onRemoveCurrency(c),
+                  deleteIconColor: KwallTheme.textSecondary,
                   backgroundColor: KwallTheme.surfaceContainer,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),

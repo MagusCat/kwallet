@@ -128,4 +128,50 @@ mixin PreferencesRepository on DatabaseContext {
     final db = await database;
     return CurrencyRatesRepository(db).getHistory(currency: currency);
   }
+
+  Future<Map<String, String>> getUserCurrencies() async {
+    final db = await database;
+    final rows = await db.query('user_currencies', orderBy: 'created_at ASC');
+    if (rows.isEmpty) {
+      final def = await getCurrency();
+      return {def: ''};
+    }
+    return {
+      for (final row in rows) row['code'] as String: (row['name'] as String?) ?? '',
+    };
+  }
+
+  Future<void> saveUserCurrency(String code, [String name = '']) async {
+    final trimmed = code.trim();
+    if (trimmed.isEmpty) return;
+    final db = await database;
+    await db.insert(
+      'user_currencies',
+      {
+        'code': trimmed,
+        'name': name.trim(),
+        'created_at': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    notifyChanged();
+  }
+
+  Future<void> deleteUserCurrency(String code) async {
+    final trimmed = code.trim();
+    final db = await database;
+    final accounts = await db.query('accounts');
+    if (accounts.any((a) => (a['currency'] as String?)?.trim() == trimmed)) {
+      throw StateError('La moneda está en uso por una cuenta');
+    }
+    final mainCur = await getCurrency();
+    if (mainCur.trim() == trimmed) {
+      throw StateError('No puedes eliminar la moneda principal');
+    }
+    await db.delete('user_currencies', where: 'code = ?', whereArgs: [trimmed]);
+    try {
+      await removeCurrencyRate(trimmed);
+    } catch (_) {}
+    notifyChanged();
+  }
 }

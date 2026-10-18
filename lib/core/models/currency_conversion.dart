@@ -1,8 +1,9 @@
 /// Rates express units of the dominant currency per unit of the quoted currency.
 class CurrencyConversion {
   static String code(String value) {
-    final key = value.trim().toUpperCase();
-    return const {'\$': 'USD', 'C\$': 'NIO', '€': 'EUR', '£': 'GBP'}[key] ?? key;
+    final key = value.trim();
+    final upper = key.toUpperCase();
+    return const {'\$': 'USD', 'C\$': 'NIO', '€': 'EUR', '£': 'GBP'}[upper] ?? key;
   }
 
   static double convert(double amount, {
@@ -11,10 +12,13 @@ class CurrencyConversion {
   }) {
     if (!amount.isFinite) throw ArgumentError('Monto inválido');
     final origin = code(from), destination = code(to), base = code(dominantCurrency);
-    if (origin == destination || amount == 0) return amount;
+    if (origin.toUpperCase() == destination.toUpperCase() || amount == 0) return amount;
     double rate(String currency) {
-      if (currency == base) return 1;
-      final value = rates.entries.where((e) => code(e.key) == currency).firstOrNull?.value;
+      if (currency.toUpperCase() == base.toUpperCase()) return 1;
+      final value = rates.entries
+          .where((e) => code(e.key).toUpperCase() == currency.toUpperCase())
+          .firstOrNull
+          ?.value;
       if (value == null || !value.isFinite || value <= 0) {
         throw StateError('Configura la tasa de $currency en Ajustes');
       }

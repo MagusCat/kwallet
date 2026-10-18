@@ -19,6 +19,8 @@ void main() {
     sqfliteFfiInit();
     final service = DatabaseService.atPath(inMemoryDatabasePath, factory: databaseFactoryFfiNoIsolate);
     await tester.runAsync(() async {
+      await service.saveUserCurrency('USD', 'Dólar estadounidense');
+      await service.saveUserCurrency('NIO', 'Córdoba');
       await service.setCurrencyRate(currency: 'NIO', rate: 0.025);
       if (const bool.fromEnvironment('KWALL_CAPTURE')) {
         final config = File('.dart_tool/package_config.json').absolute;
@@ -70,5 +72,70 @@ void main() {
     }
     KwallTheme.configure({'theme_mode': 'light'}, Brightness.light);
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('CurrencySelector shows only provided options and formats optional name', (tester) async {
+    String? selected;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: CurrencySelector(
+            value: 'EUR',
+            options: const ['EUR', 'MXN', 'BTC'],
+            currencyNames: const {
+              'EUR': 'Euro',
+              // 'MXN' has no name
+              'BTC': 'Bitcoin',
+            },
+            onChanged: (val) => selected = val,
+          ),
+        ),
+      ),
+    );
+
+    // Initial value is EUR · Euro
+    expect(find.text('EUR · Euro'), findsOneWidget);
+
+    // Open dropdown
+    await tester.tap(find.byType(CurrencySelector));
+    await tester.pumpAndSettle();
+
+    // Options exist
+    expect(find.text('EUR · Euro'), findsWidgets);
+    expect(find.text('MXN'), findsOneWidget); // name was omitted, shows only symbol
+    expect(find.text('BTC · Bitcoin'), findsOneWidget);
+
+    // Hardcoded catalog currencies (e.g. JPY, CHF, etc.) are NOT present
+    expect(find.text('JPY'), findsNothing);
+    expect(find.text('CHF'), findsNothing);
+
+    // Select MXN
+    await tester.tap(find.text('MXN').last);
+    await tester.pumpAndSettle();
+    expect(selected, 'MXN');
+  });
+
+  test('Database persists user currencies with symbol and optional name', () async {
+    sqfliteFfiInit();
+    final service = DatabaseService.atPath(inMemoryDatabasePath, factory: databaseFactoryFfiNoIsolate);
+    addTearDown(() async => (await service.database).close());
+
+    // Initial user currencies have default currency '$'
+    final initial = await service.getUserCurrencies();
+    expect(initial.containsKey('\$'), isTrue);
+
+    // Save custom currencies: one with name, one without
+    await service.saveUserCurrency('EUR', 'Euro');
+    await service.saveUserCurrency('L'); // Lempira, name omitted
+
+    final updated = await service.getUserCurrencies();
+    expect(updated['EUR'], 'Euro');
+    expect(updated['L'], '');
+
+    // Delete custom currency
+    await service.deleteUserCurrency('L');
+    final afterDelete = await service.getUserCurrencies();
+    expect(afterDelete.containsKey('L'), isFalse);
+    expect(afterDelete.containsKey('EUR'), isTrue);
   });
 }

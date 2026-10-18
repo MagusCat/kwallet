@@ -135,6 +135,9 @@ abstract interface class SettingsRepository implements Repository {
   });
   Future<void> removeCurrencyRate(String currency);
   Future<List<Map<String, dynamic>>> getCurrencyRateHistory({String? currency});
+  Future<Map<String, String>> getUserCurrencies();
+  Future<void> saveUserCurrency(String code, [String name = '']);
+  Future<void> deleteUserCurrency(String code);
   Future<bool> hasRecoveryCopies();
   Future<bool> restoreLatestRecoveryCopy();
   Future<void> repairOrResetDatabase();

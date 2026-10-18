@@ -53,6 +53,16 @@ class CurrencyRatesRepository {
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
 
+    await txn.insert(
+      'user_currencies',
+      {
+        'code': trimmed,
+        'name': '',
+        'created_at': now,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+
     await txn.insert('global_currency_history', {
       'id': _uuid.v4(),
       'currency': trimmed,

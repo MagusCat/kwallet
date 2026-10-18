@@ -6,6 +6,7 @@ class LaunchViewModel extends ViewModel {
   final SettingsRepository repository;
   final DeviceFiles? files;
   Map<String, String> settings = const {};
+  Map<String, String> userCurrencies = const {};
   bool ready = false;
   bool returning = false;
   bool hasRecovery = false;
@@ -20,8 +21,10 @@ class LaunchViewModel extends ViewModel {
     changed();
     try {
       final data = await repository.getSettings();
+      final userCurs = await repository.getUserCurrencies();
       if (!isCurrent(request)) return;
       settings = Map.unmodifiable(data);
+      userCurrencies = Map.unmodifiable(userCurs);
       ready = true;
       returning = data['welcome_seen'] == '1';
       changed();
@@ -70,7 +73,9 @@ class LaunchViewModel extends ViewModel {
     String? petStyle,
     String? petName,
     String? currency,
+    String? currencyName,
     String? referenceCurrencies,
+    Map<String, String>? userCurrencies,
     bool notificationsEnabled = false,
   }) => perform(() async {
         final updates = <String, String>{
@@ -90,5 +95,13 @@ class LaunchViewModel extends ViewModel {
           updates['reference_currencies'] = referenceCurrencies.trim();
         }
         await repository.saveSettings(updates);
+
+        if (userCurrencies != null && userCurrencies.isNotEmpty) {
+          for (final entry in userCurrencies.entries) {
+            await repository.saveUserCurrency(entry.key, entry.value);
+          }
+        } else if (currency != null && currency.trim().isNotEmpty) {
+          await repository.saveUserCurrency(currency.trim(), currencyName ?? '');
+        }
       });
 }

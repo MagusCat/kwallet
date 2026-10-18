@@ -11,6 +11,7 @@ class SettingsViewModel extends ViewModel {
   final GitHubCloudService cloud;
   Map<String, String> settings = const {};
   Map<String, double> rates = const {};
+  Map<String, String> currencyNames = const {};
   List<RecoveryCopy> recoveries = const [];
   bool loading = true;
   bool _backupOperation = false;
@@ -33,9 +34,11 @@ class SettingsViewModel extends ViewModel {
     try {
       final data = await repository.getSettings();
       final ratesData = await repository.getCurrencyRates();
+      final userCurrencies = await repository.getUserCurrencies();
       if (!isCurrent(request)) return;
       settings = Map.unmodifiable(data);
       rates = Map.unmodifiable(ratesData);
+      currencyNames = Map.unmodifiable(userCurrencies);
       loading = false;
       error = null;
       changed();
@@ -108,6 +111,7 @@ class SettingsViewModel extends ViewModel {
     );
     if (ok) {
       rates = Map.unmodifiable(await repository.getCurrencyRates());
+      currencyNames = Map.unmodifiable(await repository.getUserCurrencies());
       changed();
     }
     return ok;
@@ -119,6 +123,34 @@ class SettingsViewModel extends ViewModel {
       failure: 'No se pudo eliminar la moneda.',
     );
     if (ok) {
+      rates = Map.unmodifiable(await repository.getCurrencyRates());
+      currencyNames = Map.unmodifiable(await repository.getUserCurrencies());
+      changed();
+    }
+    return ok;
+  }
+
+  Future<bool> addUserCurrency(String symbol, [String name = '']) async {
+    final cleanSymbol = symbol.trim();
+    if (cleanSymbol.isEmpty) return false;
+    final ok = await perform(
+      () => repository.saveUserCurrency(cleanSymbol, name.trim()),
+      failure: 'No se pudo guardar la moneda.',
+    );
+    if (ok) {
+      currencyNames = Map.unmodifiable(await repository.getUserCurrencies());
+      changed();
+    }
+    return ok;
+  }
+
+  Future<bool> deleteUserCurrency(String symbol) async {
+    final ok = await perform(
+      () => repository.deleteUserCurrency(symbol),
+      failure: 'No se pudo eliminar la moneda.',
+    );
+    if (ok) {
+      currencyNames = Map.unmodifiable(await repository.getUserCurrencies());
       rates = Map.unmodifiable(await repository.getCurrencyRates());
       changed();
     }

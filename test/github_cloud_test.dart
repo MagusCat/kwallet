@@ -163,6 +163,15 @@ class FakeSettingsRepo implements SettingsRepository {
   Future<List<Map<String, dynamic>>> getCurrencyRateHistory({String? currency}) async => [];
 
   @override
+  Future<Map<String, String>> getUserCurrencies() async => {'\$': ''};
+
+  @override
+  Future<void> saveUserCurrency(String code, [String name = '']) async {}
+
+  @override
+  Future<void> deleteUserCurrency(String code) async {}
+
+  @override
   Future<bool> hasRecoveryCopies() async => false;
 
   @override

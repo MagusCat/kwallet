@@ -54,8 +54,23 @@ class FakeSettingsRepository implements SettingsRepository {
   @override
   Future<void> removeCurrencyRate(String currency) async {}
 
+  final Map<String, String> userCurrencies = {};
+
   @override
   Future<List<Map<String, dynamic>>> getCurrencyRateHistory({String? currency}) async => [];
+
+  @override
+  Future<Map<String, String>> getUserCurrencies() async => Map.from(userCurrencies);
+
+  @override
+  Future<void> saveUserCurrency(String code, [String name = '']) async {
+    userCurrencies[code] = name;
+  }
+
+  @override
+  Future<void> deleteUserCurrency(String code) async {
+    userCurrencies.remove(code);
+  }
 
   @override
   Future<bool> hasRecoveryCopies() async => false;
@@ -83,7 +98,9 @@ void main() {
         petStyle: 'calico',
         petName: 'Manchitas',
         currency: 'USD',
+        currencyName: 'Dólar',
         referenceCurrencies: 'EUR,NIO',
+        userCurrencies: {'USD': 'Dólar', 'EUR': 'Euro', 'NIO': 'Córdoba'},
         notificationsEnabled: true,
       );
       expect(entered, true);
@@ -93,6 +110,9 @@ void main() {
       expect(repo.data['pet_name'], 'Manchitas');
       expect(repo.data['currency'], 'USD');
       expect(repo.data['reference_currencies'], 'EUR,NIO');
+      expect(repo.userCurrencies['USD'], 'Dólar');
+      expect(repo.userCurrencies['EUR'], 'Euro');
+      expect(repo.userCurrencies['NIO'], 'Córdoba');
     });
 
     test('enter defaults gracefully when parameters are omitted', () async {

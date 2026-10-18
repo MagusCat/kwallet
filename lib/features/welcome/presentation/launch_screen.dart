@@ -7,7 +7,6 @@ import '../../../core/models/pet_species.dart';
 import '../../../core/mvvm/view_model_state.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/kwall_theme.dart';
-import '../../../core/widgets/currency_selector.dart';
 import '../../../core/widgets/finance_widgets.dart';
 import '../../../core/widgets/kitty_companion.dart';
 import '../../../core/widgets/pet_loading_screen.dart';
@@ -35,8 +34,11 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
   late final PageController _pageController;
   late final TextEditingController _petName;
   late final TextEditingController _currency;
-  late final TextEditingController _newRefCurrency;
-  late final List<String> _referenceCurrencies;
+  late final TextEditingController _currencyName;
+  late final TextEditingController _newRefSymbol;
+  late final TextEditingController _newRefName;
+  late List<String> _referenceCurrencies;
+  final Map<String, String> _customCurrencyNames = {};
   int _currentStep = 0;
   String _selectedStyle = 'classic';
   bool _initialized = false;
@@ -48,19 +50,25 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
     _pageController = PageController();
     _petName = TextEditingController(text: 'Mishi');
     _currency = TextEditingController(text: '\$');
-    _newRefCurrency = TextEditingController();
-    _referenceCurrencies = ['USD', 'EUR'];
+    _currencyName = TextEditingController();
+    _newRefSymbol = TextEditingController();
+    _newRefName = TextEditingController();
+    _referenceCurrencies = [];
   }
 
   @override
   void onViewModelChanged() {
     if (!_initialized && model.ready) {
+      if (model.userCurrencies.isNotEmpty) {
+        _customCurrencyNames.addAll(model.userCurrencies);
+      }
       _selectedStyle = model.settings['pet_style'] ?? 'classic';
       final initialName = model.settings['pet_name'] ?? 'Mishi';
       _petName.text = initialName;
       final initialCur = model.settings['currency'];
       if (initialCur != null && initialCur.isNotEmpty) {
         _currency.text = initialCur;
+        _currencyName.text = model.userCurrencies[initialCur] ?? '';
       }
       final rawRefs = model.settings['reference_currencies'] ?? '';
       if (rawRefs.isNotEmpty) {
@@ -79,7 +87,9 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
     _pageController.dispose();
     _petName.dispose();
     _currency.dispose();
-    _newRefCurrency.dispose();
+    _currencyName.dispose();
+    _newRefSymbol.dispose();
+    _newRefName.dispose();
     super.dispose();
   }
 
@@ -88,12 +98,20 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
     final petName =
         _petName.text.trim().isEmpty ? 'Mishi' : _petName.text.trim();
     final cur = _currency.text.trim().isEmpty ? '\$' : _currency.text.trim();
+    final curName = _currencyName.text.trim();
     final refCur = _referenceCurrencies.join(',');
+    final allUserCurrencies = <String, String>{
+      cur: curName,
+      for (final ref in _referenceCurrencies)
+        ref: _customCurrencyNames[ref] ?? '',
+    };
     if (await model.enter(
       petStyle: _selectedStyle,
       petName: petName,
       currency: cur,
+      currencyName: curName,
       referenceCurrencies: refCur,
+      userCurrencies: allUserCurrencies,
       notificationsEnabled: _notificationsEnabled,
     )) {
       if (mounted) setState(() => _page = page);
@@ -292,25 +310,28 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                     color: KwallTheme.border.withValues(alpha: 0.35),
                   ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.shield_outlined,
-                      size: 13,
-                      color: KwallTheme.accent,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'BÓVEDA FINANCIERA · 100% LOCAL',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.6,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.shield_outlined,
+                        size: 13,
                         color: KwallTheme.accent,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Text(
+                        'BÓVEDA FINANCIERA · 100% LOCAL',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
+                          color: KwallTheme.accent,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -524,19 +545,56 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               petSettings: petSettings,
               activity: PetActivity.walk,
               size: 104,
-              caption: 'Moneda activa: ${_currency.text}',
-            ),
-            const SizedBox(height: 16),
-            CurrencySelector(
-              value: _currency.text,
-              options: CurrencySelector.catalog.keys,
-              label: 'Moneda principal',
-              onChanged: (value) => setState(() => _currency.text = value),
+              caption: 'Moneda activa: ${_currency.text.trim().isEmpty ? '\$' : _currency.text.trim()}',
             ),
             const SizedBox(height: 16),
             Text(
+              'Moneda principal',
+              style: KwallTheme.fontTitle.copyWith(fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: TextField(
+                    controller: _currency,
+                    decoration: const InputDecoration(
+                      labelText: 'Símbolo *',
+                      hintText: 'Ej. \$, USD, €',
+                      prefixIcon: Icon(Icons.payments_outlined),
+                    ),
+                    textCapitalization: TextCapitalization.characters,
+                    onChanged: (_) => setState(() {}),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 3,
+                  child: TextField(
+                    controller: _currencyName,
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre (opcional)',
+                      hintText: 'Ej. Dólar, Córdoba',
+                    ),
+                    textCapitalization: TextCapitalization.sentences,
+                    onChanged: (val) {
+                      _customCurrencyNames[_currency.text.trim()] = val.trim();
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
               'Monedas de referencia',
               style: KwallTheme.fontTitle.copyWith(fontSize: 14),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Opcional. Otras monedas que también utilices.',
+              style: TextStyle(color: KwallTheme.textSecondary, fontSize: 12),
             ),
             const SizedBox(height: 8),
             if (_referenceCurrencies.isNotEmpty)
@@ -546,9 +604,15 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                 children: [
                   for (final c in _referenceCurrencies)
                     Chip(
-                      label: Text(c),
-                      onDeleted: () =>
-                          setState(() => _referenceCurrencies.remove(c)),
+                      label: Text(
+                        _customCurrencyNames[c]?.isNotEmpty == true
+                            ? '$c · ${_customCurrencyNames[c]}'
+                            : c,
+                      ),
+                      onDeleted: () => setState(() {
+                        _referenceCurrencies.remove(c);
+                        _customCurrencyNames.remove(c);
+                      }),
                     ),
                 ],
               ),
@@ -556,26 +620,42 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
             Row(
               children: [
                 Expanded(
-                  child: CurrencySelector(
-                    value: _newRefCurrency.text.isEmpty
-                        ? 'EUR'
-                        : _newRefCurrency.text,
-                    options: CurrencySelector.catalog.keys,
-                    onChanged: (value) =>
-                        setState(() => _newRefCurrency.text = value),
+                  flex: 2,
+                  child: TextField(
+                    controller: _newRefSymbol,
+                    decoration: const InputDecoration(
+                      labelText: 'Símbolo',
+                      hintText: 'Ej. EUR, C\$',
+                    ),
+                    textCapitalization: TextCapitalization.characters,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 3,
+                  child: TextField(
+                    controller: _newRefName,
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre (opcional)',
+                      hintText: 'Ej. Euro, Peso',
+                    ),
+                    textCapitalization: TextCapitalization.sentences,
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton.filledTonal(
                   tooltip: 'Añadir moneda',
                   onPressed: () {
-                    final val = _newRefCurrency.text.trim().isEmpty
-                        ? 'EUR'
-                        : _newRefCurrency.text.trim().toUpperCase();
-                    if (val.isNotEmpty && !_referenceCurrencies.contains(val)) {
+                    final sym = _newRefSymbol.text.trim();
+                    final name = _newRefName.text.trim();
+                    if (sym.isNotEmpty && !_referenceCurrencies.contains(sym)) {
                       setState(() {
-                        _referenceCurrencies.add(val);
-                        _newRefCurrency.clear();
+                        _referenceCurrencies.add(sym);
+                        if (name.isNotEmpty) {
+                          _customCurrencyNames[sym] = name;
+                        }
+                        _newRefSymbol.clear();
+                        _newRefName.clear();
                       });
                     }
                   },
