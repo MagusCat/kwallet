@@ -8,6 +8,7 @@ import '../../../core/theme/kwall_theme.dart';
 import '../../../core/widgets/kitty_companion.dart';
 import '../../../core/widgets/finance_widgets.dart';
 import '../../../core/widgets/pet_loading_screen.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../core/widgets/juice_widgets.dart';
 import '../../journal/presentation/journal_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
@@ -50,6 +51,7 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkWidgetLaunch();
+      _checkDailyRoutineFlow();
     });
   }
 
@@ -65,7 +67,17 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
     if (state == AppLifecycleState.resumed) {
       _home.load();
       _checkWidgetLaunch();
+      _checkDailyRoutineFlow();
     }
+  }
+
+  Future<void> _checkDailyRoutineFlow() async {
+    if (!mounted) return;
+    await NotificationService.checkAndTriggerDailyFlow(
+      petName: _home.settings['pet_name'] ?? 'Mishi',
+      settings: _home.settings,
+      onSaveSetting: _home.saveSetting,
+    );
   }
 
   Future<void> _checkWidgetLaunch() async {

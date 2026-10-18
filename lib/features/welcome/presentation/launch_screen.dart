@@ -1,16 +1,18 @@
-import '../../../core/widgets/currency_selector.dart';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../app/app_dependencies.dart';
-import '../../../core/mvvm/view_model_state.dart';
-import '../view_models/launch_view_model.dart';
-import '../../../core/theme/kwall_theme.dart';
 import '../../../core/models/pet_species.dart';
+import '../../../core/mvvm/view_model_state.dart';
+import '../../../core/theme/kwall_theme.dart';
+import '../../../core/widgets/currency_selector.dart';
 import '../../../core/widgets/finance_widgets.dart';
 import '../../../core/widgets/kitty_companion.dart';
 import '../../../core/widgets/pet_loading_screen.dart';
 import '../../../core/widgets/pet_selection_panel.dart';
 import '../../bodega/presentation/bodega_screen.dart';
+import '../view_models/launch_view_model.dart';
 
 class LaunchScreen extends StatefulWidget {
   const LaunchScreen({super.key});
@@ -80,6 +82,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
   }
 
   Future<void> _enter(int page) async {
+    HapticFeedback.mediumImpact();
     final petName =
         _petName.text.trim().isEmpty ? 'Mishi' : _petName.text.trim();
     final cur = _currency.text.trim().isEmpty ? '\$' : _currency.text.trim();
@@ -97,56 +100,175 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
   }
 
   void _goToStep(int step) {
+    HapticFeedback.lightImpact();
     _pageController.animateToPage(
       step,
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeInOut,
+      duration: const Duration(milliseconds: 360),
+      curve: Curves.easeOutCubic,
     );
+  }
+
+  void _suggestRandomName() {
+    HapticFeedback.selectionClick();
+    final speciesNames = [
+      'Mishi', 'Kuro', 'Garfield', 'Copito', 'Simba',
+      'Bandit', 'Rocket', 'Mapachín', 'Pillo',
+      'Mimi', 'Quesito', 'Splinter', 'Pixie', 'Rattata'
+    ];
+    final randomName = speciesNames[math.Random().nextInt(speciesNames.length)];
+    setState(() {
+      _petName.text = randomName;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final Widget currentView;
+
     if (_page != null || model.returning) {
-      return BodegaScreen(initialPage: _page ?? 0);
-    }
-    if (!_ready || _failed) {
-      return PetLoadingScreen(
-        settings: _settings,
-        failed: _failed,
-        errorMessage: model.error,
-        hasRecovery: model.hasRecovery,
-        onRestoreRecovery: () => model.restoreRecovery(),
-        onRepairDatabase: () => model.repairDatabase(),
-        onImportBackup: () => model.importBackup(),
-        diagnosticInfo: model.diagnosticInfo,
+      currentView = KeyedSubtree(
+        key: const ValueKey('launch_bodega'),
+        child: BodegaScreen(initialPage: _page ?? 0),
       );
-    }
+    } else if (!_ready || _failed) {
+      currentView = KeyedSubtree(
+        key: const ValueKey('launch_loading'),
+        child: PetLoadingScreen(
+          settings: _settings,
+          failed: _failed,
+          errorMessage: model.error,
+          hasRecovery: model.hasRecovery,
+          onRestoreRecovery: () => model.restoreRecovery(),
+          onRepairDatabase: () => model.repairDatabase(),
+          onImportBackup: () => model.importBackup(),
+          diagnosticInfo: model.diagnosticInfo,
+        ),
+      );
+    } else {
+      final currentPetSettings = {
+        ..._settings,
+        'pet_style': _selectedStyle,
+        'pet_name': _petName.text,
+        'currency': _currency.text,
+      };
 
-    final currentPetSettings = {
-      ..._settings,
-      'pet_style': _selectedStyle,
-      'pet_name': _petName.text,
-      'currency': _currency.text,
-    };
-
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: ContentWidth(
-            width: 480,
-            child: PageView(
-              controller: _pageController,
-              onPageChanged: (page) => setState(() => _currentStep = page),
-              children: [
-                _buildIntroStep(currentPetSettings),
-                _buildPetStep(currentPetSettings),
-                _buildCurrencyStep(currentPetSettings),
-                _buildPrivacyStep(currentPetSettings),
-              ],
+      currentView = KeyedSubtree(
+        key: const ValueKey('launch_wizard'),
+        child: Scaffold(
+          body: SafeArea(
+            child: Center(
+              child: ContentWidth(
+                width: 480,
+                child: PageView(
+                  controller: _pageController,
+                  physics: const BouncingScrollPhysics(),
+                  onPageChanged: (page) => setState(() => _currentStep = page),
+                  children: [
+                    _buildIntroStep(currentPetSettings),
+                    _buildPetStep(currentPetSettings),
+                    _buildCurrencyStep(currentPetSettings),
+                    _buildPrivacyStep(currentPetSettings),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
+      );
+    }
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 380),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.98, end: 1.0).animate(animation),
+          child: child,
+        ),
       ),
+      child: currentView,
+    );
+  }
+
+  /// Escenario dinámico para la mascota con suelo/sombra para dar tridimensionalidad
+  Widget _petHeroStage({
+    required Map<String, String> petSettings,
+    required PetActivity activity,
+    double size = 130,
+    Widget? overlayBadge,
+    String? caption,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: size + 36,
+          height: size + 20,
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              // Sombra / pedestal suave bajo la mascota
+              Positioned(
+                bottom: 4,
+                child: Container(
+                  width: size * 0.76,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.all(
+                      Radius.elliptical(size * 0.76, 18),
+                    ),
+                    gradient: RadialGradient(
+                      colors: [
+                        KwallTheme.accent.withValues(alpha: 0.25),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Mascota interactiva
+              Positioned(
+                bottom: 10,
+                child: KittyCompanionWidget(
+                  settings: petSettings,
+                  size: size,
+                  activity: activity,
+                ),
+              ),
+              if (overlayBadge != null)
+                Positioned(
+                  right: 4,
+                  top: 4,
+                  child: overlayBadge,
+                ),
+            ],
+          ),
+        ),
+        if (caption != null && caption.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: KwallTheme.accentLight.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: KwallTheme.accent.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Text(
+              caption,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: KwallTheme.accent,
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 
@@ -156,35 +278,77 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: KwallTheme.surfaceContainer.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: KwallTheme.border.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.shield_outlined,
+                      size: 13,
+                      color: KwallTheme.accent,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'BÓVEDA FINANCIERA · 100% LOCAL',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.6,
+                        color: KwallTheme.accent,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
               'kwall',
               textAlign: TextAlign.center,
-              style: KwallTheme.fontTitle.copyWith(fontSize: 24),
+              style: KwallTheme.fontTitle.copyWith(fontSize: 28),
             ),
-            const SizedBox(height: 20),
-            KittyCompanionWidget(
-              settings: petSettings,
-              size: 160,
+            const SizedBox(height: 12),
+            _petHeroStage(
+              petSettings: petSettings,
               activity: PetActivity.curious,
+              size: 140,
+              caption: '¡Hola! Soy tu compañero',
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             Text(
               'Tu dinero.\nTu ritmo.',
               textAlign: TextAlign.center,
-              style: KwallTheme.fontDisplay.copyWith(fontSize: 36),
+              style: KwallTheme.fontDisplay.copyWith(fontSize: 34, height: 1.15),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Gestiona tus cuentas, consolida notas y cultiva tus hábitos diarios junto a tu mascota virtual.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: KwallTheme.textSecondary,
+                height: 1.35,
+              ),
             ),
             const SizedBox(height: 20),
-            Wrap(
-              alignment: WrapAlignment.spaceEvenly,
-              spacing: 16,
-              runSpacing: 12,
+            Row(
               children: [
-                _feature(Icons.account_balance_wallet_outlined, 'Cuentas'),
-                _feature(Icons.edit_note_rounded, 'Notas'),
-                _feature(Icons.spa_outlined, 'Hábitos'),
+                _featureChip(Icons.account_balance_wallet_outlined, 'Cuentas'),
+                const SizedBox(width: 8),
+                _featureChip(Icons.edit_note_rounded, 'Notas'),
+                const SizedBox(width: 8),
+                _featureChip(Icons.spa_outlined, 'Hábitos'),
               ],
             ),
-            const SizedBox(height: 16),
             const SizedBox(height: 24),
             _stepIndicator(),
             const SizedBox(height: 20),
@@ -199,9 +363,12 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               children: [
                 TextButton(
                   onPressed: _entering ? null : () => _enter(0),
-                  child: const Text('Empezar'),
+                  child: const Text('Empezar directo'),
                 ),
-                const Text('·'),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 12),
+                  child: Text('·', style: TextStyle(color: Colors.grey)),
+                ),
                 TextButton(
                   onPressed: _entering ? null : () => _enter(3),
                   child: const Text('Tengo un respaldo'),
@@ -212,7 +379,40 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
         ),
       );
 
-  /// Paso 1: Personalizar estilo de la mascota y su nombre, junto con el compromiso
+  Widget _featureChip(IconData icon, String label) => Expanded(
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          decoration: BoxDecoration(
+            color: KwallTheme.surfaceContainer.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: KwallTheme.border.withValues(alpha: 0.4),
+            ),
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: KwallTheme.accent.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: KwallTheme.accent, size: 18),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+  /// Paso 1: Personalizar estilo de la mascota y su nombre
   Widget _buildPetStep(Map<String, String> petSettings) => SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Column(
@@ -225,26 +425,29 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Estará contigo celebrando tus hábitos y cuidando tu progreso.',
+              'Estará contigo celebrando tus hábitos y cuidando tu constancia.',
               textAlign: TextAlign.center,
               style: TextStyle(color: KwallTheme.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 16),
-            Center(
-              child: KittyCompanionWidget(
-                settings: petSettings,
-                size: 110,
-                activity: PetActivity.celebrate,
-              ),
+            _petHeroStage(
+              petSettings: petSettings,
+              activity: PetActivity.celebrate,
+              size: 116,
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _petName,
               maxLength: 20,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Nombre de tu mascota',
-                hintText: 'Ej. Mishi, Garfield, Copito…',
-                prefixIcon: Icon(Icons.pets_rounded),
+                hintText: 'Ej. Mishi, Rocket, Copito…',
+                prefixIcon: const Icon(Icons.pets_rounded),
+                suffixIcon: IconButton(
+                  tooltip: 'Sugerir nombre aleatorio',
+                  icon: const Icon(Icons.casino_outlined, size: 20),
+                  onPressed: _suggestRandomName,
+                ),
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -268,7 +471,7 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               icon: Icons.favorite_border_rounded,
               title: 'Compromiso con tu compañero',
               description:
-                  'Tu mascota virtual se alimenta de tu constancia. Cada hábito completado te otorga +10 XP para subirla de nivel y desbloquear nuevas reacciones. Si abandonas tus registros, se quedará dormida o desganada.',
+                  'Tu mascota virtual se alimenta de tu constancia. Cada hábito completado le otorga +10 XP para subir de nivel y desbloquear nuevas reacciones dinámicas.',
             ),
             const SizedBox(height: 24),
             _stepIndicator(),
@@ -306,9 +509,26 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               textAlign: TextAlign.center,
               style: KwallTheme.fontTitle.copyWith(fontSize: 24),
             ),
+            const SizedBox(height: 6),
+            Text(
+              'Define tu moneda principal y monedas de referencia.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: KwallTheme.textSecondary, fontSize: 13),
+            ),
             const SizedBox(height: 16),
-            CurrencySelector(value: _currency.text, options: CurrencySelector.catalog.keys,
-              label: 'Moneda principal', onChanged: (value) => setState(() => _currency.text = value)),
+            _petHeroStage(
+              petSettings: petSettings,
+              activity: PetActivity.walk,
+              size: 104,
+              caption: 'Moneda activa: ${_currency.text}',
+            ),
+            const SizedBox(height: 16),
+            CurrencySelector(
+              value: _currency.text,
+              options: CurrencySelector.catalog.keys,
+              label: 'Moneda principal',
+              onChanged: (value) => setState(() => _currency.text = value),
+            ),
             const SizedBox(height: 16),
             Text(
               'Monedas de referencia',
@@ -323,7 +543,8 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                   for (final c in _referenceCurrencies)
                     Chip(
                       label: Text(c),
-                      onDeleted: () => setState(() => _referenceCurrencies.remove(c)),
+                      onDeleted: () =>
+                          setState(() => _referenceCurrencies.remove(c)),
                     ),
                 ],
               ),
@@ -331,14 +552,22 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
             Row(
               children: [
                 Expanded(
-                  child: CurrencySelector(value: _newRefCurrency.text.isEmpty ? 'EUR' : _newRefCurrency.text,
-                    options: CurrencySelector.catalog.keys, onChanged: (value) => setState(() => _newRefCurrency.text = value)),
+                  child: CurrencySelector(
+                    value: _newRefCurrency.text.isEmpty
+                        ? 'EUR'
+                        : _newRefCurrency.text,
+                    options: CurrencySelector.catalog.keys,
+                    onChanged: (value) =>
+                        setState(() => _newRefCurrency.text = value),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 IconButton.filledTonal(
                   tooltip: 'Añadir moneda',
                   onPressed: () {
-                    final val = _newRefCurrency.text.trim().isEmpty ? 'EUR' : _newRefCurrency.text.trim().toUpperCase();
+                    final val = _newRefCurrency.text.trim().isEmpty
+                        ? 'EUR'
+                        : _newRefCurrency.text.trim().toUpperCase();
                     if (val.isNotEmpty && !_referenceCurrencies.contains(val)) {
                       setState(() {
                         _referenceCurrencies.add(val);
@@ -393,11 +622,21 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
               style: TextStyle(color: KwallTheme.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 16),
-            Center(
-              child: KittyCompanionWidget(
-                settings: petSettings,
-                size: 100,
-                activity: PetActivity.sleep,
+            _petHeroStage(
+              petSettings: petSettings,
+              activity: PetActivity.celebrate,
+              size: 110,
+              overlayBadge: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: KwallTheme.accentLight,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.verified_user_rounded,
+                  color: KwallTheme.accent,
+                  size: 20,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -429,8 +668,8 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: _entering ? null : () => _enter(0),
-                    icon: const Icon(Icons.check_rounded),
-                    label: Text(_entering ? 'Guardando…' : '¡Empezar!'),
+                    icon: const Icon(Icons.rocket_launch_rounded),
+                    label: Text(_entering ? 'Guardando…' : '¡Comenzar!'),
                   ),
                 ),
               ],
@@ -494,9 +733,10 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
         children: [
           for (var i = 0; i < 4; i++)
             AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
               margin: const EdgeInsets.symmetric(horizontal: 4),
-              width: _currentStep == i ? 22 : 8,
+              width: _currentStep == i ? 28 : 8,
               height: 7,
               decoration: BoxDecoration(
                 color: _currentStep == i
@@ -505,14 +745,6 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
-        ],
-      );
-
-  Widget _feature(IconData icon, String label) => Column(
-        children: [
-          Icon(icon, color: KwallTheme.accent),
-          const SizedBox(height: 8),
-          Text(label),
         ],
       );
 }

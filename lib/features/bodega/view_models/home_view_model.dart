@@ -315,4 +315,10 @@ class HomeViewModel extends ViewModel {
       }
     }
   }
+
+  Future<void> saveSetting(String key, String value) async {
+    _settings = Map.unmodifiable({..._settings, key: value});
+    await preferences.saveSettings({key: value});
+    changed();
+  }
 }

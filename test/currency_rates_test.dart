@@ -152,6 +152,56 @@ void main() {
         settings: {'notifications_enabled': 'true', 'notify_pet': 'false'},
       );
       expect(resPet, isFalse);
+
+      final resDayStart = await NotificationService.showDayStartNotification(
+        petName: 'Mishi',
+        settings: {'notifications_enabled': 'true', 'notify_day_start': 'false'},
+      );
+      expect(resDayStart, isFalse);
+
+      final resDayEnd = await NotificationService.showDayEndNotification(
+        petName: 'Mishi',
+        settings: {'notifications_enabled': 'true', 'notify_day_end': 'false'},
+      );
+      expect(resDayEnd, isFalse);
+    });
+
+    test('checkAndTriggerDailyFlow triggers day start in morning and day end in evening', () async {
+      final savedSettings = <String, String>{};
+      Future<void> save(String k, String v) async {
+        savedSettings[k] = v;
+      }
+
+      // Morning test (9:00 AM)
+      final morning = DateTime(2026, 10, 18, 9, 0);
+      await NotificationService.checkAndTriggerDailyFlow(
+        petName: 'Mishi',
+        settings: {
+          'notifications_enabled': 'true',
+          'notify_day_start': 'true',
+          'day_start_time': '08:00',
+          'day_end_time': '21:00',
+        },
+        onSaveSetting: save,
+        now: morning,
+      );
+      // In host test environment (non-Android), method returns false gracefully but saves key
+      expect(savedSettings['last_day_start_notified'], '2026-10-18');
+
+      // Evening test (22:00)
+      final evening = DateTime(2026, 10, 18, 22, 0);
+      await NotificationService.checkAndTriggerDailyFlow(
+        petName: 'Mishi',
+        settings: {
+          'notifications_enabled': 'true',
+          'notify_day_end': 'true',
+          'day_start_time': '08:00',
+          'day_end_time': '21:00',
+        },
+        onSaveSetting: save,
+        now: evening,
+      );
+      expect(savedSettings['last_day_end_notified'], '2026-10-18');
     });
   });
 }
