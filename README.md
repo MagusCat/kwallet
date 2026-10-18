@@ -24,33 +24,23 @@ Your everyday data lives on your device. You can use the app without connecting 
 
 ## Features
 
-| | What you can do |
-| :-- | :-- |
-| **Money** | Manage multiple accounts, record income, expenses, and transfers, and organize transactions with categories. |
-| **Budgets** | Plan daily, weekly, or monthly spending, with protected balances and planned commitments. |
-| **Currencies** | Choose account currencies and maintain shared manual conversion rates with rate history. |
-| **Planning** | Keep recurring payments and dated commitments on a calendar, then review upcoming cash flow. |
-| **Habits** | Check in, review streaks and past days, group habits by time of day, and record how a day felt. |
-| **Notes** | Keep free-form notes and checklists, with target dates for things that need a reminder. |
-| **Companions** | Earn XP and grow a cat, rat, raccoon, opossum, rock, or plant through baby, adult, and master stages. |
-| **Personalization** | Choose forest, plum, rose, or honey palettes and light, dark, or system appearance. |
-| **Android extras** | Add a native cat home-screen widget and manage notification preferences. |
-| **Backups** | Export and restore JSON files, use local recovery copies, or connect optional GitHub Gist backup. |
+|                     | What you can do                                                                                              |
+| :------------------ | :----------------------------------------------------------------------------------------------------------- |
+| **Money**           | Manage multiple accounts, record income, expenses, and transfers, and organize transactions with categories. |
+| **Budgets**         | Plan daily, weekly, or monthly spending, with protected balances and planned commitments.                    |
+| **Currencies**      | Choose account currencies and maintain shared manual conversion rates with rate history.                     |
+| **Planning**        | Keep recurring payments and dated commitments on a calendar, then review upcoming cash flow.                 |
+| **Habits**          | Check in, review streaks and past days, group habits by time of day, and record how a day felt.              |
+| **Notes**           | Keep free-form notes and checklists, with target dates for things that need a reminder.                      |
+| **Companions**      | Earn XP and grow a cat, rat, raccoon, opossum, rock, or plant through baby, adult, and master stages.        |
+| **Personalization** | Choose forest, plum, rose, or honey palettes and light, dark, or system appearance.                          |
+| **Android extras**  | Add a native cat home-screen widget and manage notification preferences.                                     |
+| **Backups**         | Export and restore JSON files, use local recovery copies, or connect optional GitHub Gist backup.            |
 
 <div align="center">
   <img src="docs/media/adult-cat.gif" alt="The original adult cat idles, walks, gets curious, and celebrates." width="160" />
   <br />
-  <sub>The original adult cat, animated from the app's actual sprite sheet.</sub>
 </div>
-
-<details>
-<summary><strong>A companion that grows with you</strong></summary>
-
-Choose a companion during onboarding or change it in Settings. Built-in species have separate baby and adult artwork, plus color variants where available. Pets become adults at 200 XP and masters at 600 XP. Completing actions earns progress and triggers little reactions; you can also tap your companion to interact.
-
-The Android home-screen widget uses its own cat artwork. The six-species picker belongs to the Flutter app.
-
-</details>
 
 ## How to use
 
@@ -63,9 +53,7 @@ The Android home-screen widget uses its own cat artwork. The six-species picker 
 
 <details>
 <summary><strong>Add the Android widget</strong></summary>
-
-Long-press an empty area of your Android home screen, open the widget picker, and select the KWallet cat widget. Configure it through the native widget setup screen. Notification delivery depends on your app preferences and Android notification permission.
-
+Long-press an empty area of your Android home screen, open the widget picker, and select the KWallet cat widget.
 </details>
 
 ## Run locally
@@ -110,15 +98,15 @@ The APK is written to `build/app/outputs/flutter-apk/app-release.apk`. Configure
 
 ## Technology
 
-| Layer | Technology | Role |
-| :-- | :-- | :-- |
-| Interface | Flutter, Material 3 | Shared mobile and desktop UI, themes, and responsive layouts. |
-| Application | Dart, view models, repository contracts | Feature state and data operations kept separate from presentation. |
-| Persistence | `sqflite`, `sqflite_common_ffi` | Local SQLite storage, migrations, transactions, and desktop database access. |
-| Files and backup | `path_provider`, `path`, `file_picker`, `crypto` | Device files, portable JSON exports, and SHA-256 integrity checks. |
-| Presentation | `flutter_animate`, `google_fonts`, `intl` | Motion, typography support, and value formatting. |
-| Native integration | Android Kotlin and Flutter method channels | Home-screen widgets, notifications, and credential access. |
-| Optional cloud | Dart `HttpClient`, GitHub Gists | User-triggered backup and restore with your GitHub account. |
+| Layer              | Technology                                       | Role                                                                         |
+| :----------------- | :----------------------------------------------- | :--------------------------------------------------------------------------- |
+| Interface          | Flutter, Material 3                              | Shared mobile and desktop UI, themes, and responsive layouts.                |
+| Application        | Dart, view models, repository contracts          | Feature state and data operations kept separate from presentation.           |
+| Persistence        | `sqflite`, `sqflite_common_ffi`                  | Local SQLite storage, migrations, transactions, and desktop database access. |
+| Files and backup   | `path_provider`, `path`, `file_picker`, `crypto` | Device files, portable JSON exports, and SHA-256 integrity checks.           |
+| Presentation       | `flutter_animate`, `google_fonts`, `intl`        | Motion, typography support, and value formatting.                            |
+| Native integration | Android Kotlin and Flutter method channels       | Home-screen widgets, notifications, and credential access.                   |
+| Optional cloud     | Dart `HttpClient`, GitHub Gists                  | User-triggered backup and restore with your GitHub account.                  |
 
 Dependency versions are defined in [`pubspec.yaml`](pubspec.yaml) and resolved in [`pubspec.lock`](pubspec.lock).
 
@@ -145,18 +133,3 @@ linux/             Linux desktop runner
 test/              Flutter unit and widget tests
 tool/              Artwork import and preview/export tools
 ```
-
-Internal plans, AI prompts, source references, and review documents live in the local `docs-ia/` directory, which is excluded from Git. Public documentation assets stay in `docs/media/`; runtime sprites stay in `assets/pets/`.
-
-<details>
-<summary><strong>Regenerate the README artwork</strong></summary>
-
-With Node.js and ImageMagick installed:
-
-```sh
-node tool/export_readme_media.mjs
-```
-
-The exporter reads `assets/pets/cat.png`, uses the app's 32 × 32 cells and animation timings, and scales pixels without smoothing. It produces the animated banner, a still banner, and the adult-cat GIF in `docs/media/`. These are illustrations from the real game artwork, not app screenshots.
-
-</details>
