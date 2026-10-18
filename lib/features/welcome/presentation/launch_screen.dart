@@ -79,8 +79,6 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
     super.dispose();
   }
 
-  Future<void> _open() => model.load();
-
   Future<void> _enter(int page) async {
     final petName =
         _petName.text.trim().isEmpty ? 'Mishi' : _petName.text.trim();
@@ -115,10 +113,11 @@ class _LaunchScreenState extends ViewModelState<LaunchScreen, LaunchViewModel> {
       return PetLoadingScreen(
         settings: _settings,
         failed: _failed,
-        onRetry: _open,
+        errorMessage: model.error,
         hasRecovery: model.hasRecovery,
         onRestoreRecovery: () => model.restoreRecovery(),
         onRepairDatabase: () => model.repairDatabase(),
+        onImportBackup: () => model.importBackup(),
         diagnosticInfo: model.diagnosticInfo,
       );
     }

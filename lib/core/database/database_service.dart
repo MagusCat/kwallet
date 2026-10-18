@@ -126,8 +126,29 @@ class DatabaseService extends DatabaseContext
         );
         try {
           final version = await previous.getVersion();
-          if (version > DatabaseBackup.version) {
-            throw StateError('Actualiza kwall para abrir esta base de datos.');
+          int? appSettingsVersion;
+          try {
+            final res = await previous.query(
+              'app_settings',
+              where: 'key = ?',
+              whereArgs: ['db_version'],
+            );
+            if (res.isNotEmpty) {
+              appSettingsVersion = int.tryParse(
+                res.first['value']?.toString() ?? '',
+              );
+            }
+          } catch (_) {}
+
+          final detectedVersion =
+              appSettingsVersion != null && appSettingsVersion > version
+                  ? appSettingsVersion
+                  : version;
+
+          if (detectedVersion > DatabaseBackup.version) {
+            throw StateError(
+              'Esta base de datos (v$detectedVersion) no es compatible con tu versión actual de kwall (v${DatabaseBackup.version}). No se puede restaurar automáticamente.',
+            );
           }
           if (version < DatabaseBackup.version) {
             final backup = await previous.transaction(

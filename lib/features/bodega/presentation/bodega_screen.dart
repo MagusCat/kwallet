@@ -220,7 +220,7 @@ class _BodegaScreenState extends ViewModelState<BodegaScreen, HomeViewModel>
       return PetLoadingScreen(
         settings: _home.settings,
         failed: _home.error != null,
-        onRetry: _home.load,
+        errorMessage: _home.error,
       );
     }
     final pages = [

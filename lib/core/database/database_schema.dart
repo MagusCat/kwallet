@@ -81,6 +81,12 @@ class DatabaseSchema {
     // Default currency
     await db.insert('app_settings', {'key': 'currency', 'value': '\$'});
 
+    // Save database schema version
+    await db.insert('app_settings', {
+      'key': 'db_version',
+      'value': '$version',
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+
     // Seed default clean categories (No emojis, sleek Material Expressive icons)
     final defaultCategories = [
       CategoryModel(
@@ -367,6 +373,10 @@ class DatabaseSchema {
     }
     if (oldVersion < 5) await migrateV5(db);
     if (oldVersion < 6) await migrateV6(db);
+    await db.insert('app_settings', {
+      'key': 'db_version',
+      'value': '$newVersion',
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   // Versioned migration shared by fresh databases and upgrades. Never run DDL in onOpen.

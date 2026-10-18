@@ -95,6 +95,11 @@ mixin BackupRepository on DatabaseContext {
         }
       }
       for (final row in localConnection) { await txn.insert('app_settings', row); }
+      await txn.insert(
+        'app_settings',
+        {'key': 'db_version', 'value': '${DatabaseBackup.version}'},
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
       for (final row in data['accounts']!.where(
         (row) => !row.containsKey('opening_balance'),
       )) {

@@ -33,7 +33,13 @@ class LaunchViewModel extends ViewModel {
         } catch (_) {
           hasRecovery = false;
         }
-        fail('No pudimos abrir tus datos.');
+        final isCompatibilityError =
+            diagnosticInfo?.contains('no es compatible') == true;
+        fail(
+          isCompatibilityError
+              ? 'Esta base de datos no es compatible y no se puede restaurar automáticamente.'
+              : 'No pudimos abrir tus datos.',
+        );
       }
     }
   }
@@ -46,6 +52,17 @@ class LaunchViewModel extends ViewModel {
 
   Future<bool> repairDatabase() => perform(() async {
         await repository.repairOrResetDatabase();
+        await load();
+      });
+
+  Future<bool> createNewVault() => repairDatabase();
+
+  Future<bool> importBackup() => perform(() async {
+        final picker = files ?? NativeDeviceFiles();
+        final content = await picker.pickBackup();
+        if (content == null || content.trim().isEmpty) return;
+        await repository.repairOrResetDatabase();
+        await repository.importFullDataFromJson(content);
         await load();
       });
 

@@ -96,59 +96,98 @@ void main() {
     });
   });
 
+  group('DatabaseService Version Incompatibility Tests', () {
+    late Directory tempDir;
+    late String dbPath;
+
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('kwall_db_ver_test_');
+      dbPath = '${tempDir.path}/incompatible.db';
+    });
+
+    tearDown(() async {
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
+
+    test('detects higher db_version in app_settings and throws clear incompatibility error', () async {
+      final db = await databaseFactoryFfi.openDatabase(dbPath);
+      await db.execute('CREATE TABLE app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+      await db.insert('app_settings', {'key': 'db_version', 'value': '99'});
+      await db.setVersion(DatabaseBackup.version);
+      await db.close();
+
+      final service = DatabaseService.atPath(dbPath, factory: databaseFactoryFfi);
+      expect(
+        () => service.database,
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            contains('no es compatible con tu versión actual de kwall'),
+          ),
+        ),
+      );
+    });
+  });
+
   group('PetLoadingScreen Failure & Diagnostic UI Tests', () {
-    testWidgets('renders recovery and repair buttons when failed with recovery available', (tester) async {
-      var retryCalled = false;
+    testWidgets('renders sad pet, warning, and options to create vault or import backup', (tester) async {
       var restoreCalled = false;
-      var repairCalled = false;
+      var newVaultCalled = false;
+      var importCalled = false;
 
       await tester.pumpWidget(
         MaterialApp(
           home: PetLoadingScreen(
             failed: true,
             hasRecovery: true,
-            diagnosticInfo: 'DatabaseException: Mock database lock',
-            onRetry: () => retryCalled = true,
+            diagnosticInfo: 'DatabaseException: Incompatible schema version',
             onRestoreRecovery: () => restoreCalled = true,
-            onRepairDatabase: () => repairCalled = true,
+            onRepairDatabase: () => newVaultCalled = true,
+            onImportBackup: () => importCalled = true,
           ),
         ),
       );
 
-      expect(find.text('No pudimos abrir tus datos'), findsOneWidget);
-      expect(find.text('Reintentar conexión'), findsOneWidget);
-      expect(find.text('Restaurar copia previa'), findsOneWidget);
-      expect(find.text('Reparar base de datos'), findsOneWidget);
+      expect(find.text('Base de datos no compatible'), findsOneWidget);
+      expect(find.textContaining('no es compatible con tu versión actual de kwall'), findsOneWidget);
+      expect(find.byIcon(Icons.sentiment_dissatisfied_rounded), findsOneWidget);
+      expect(find.text('Reintentar conexión'), findsNothing);
+      expect(find.text('Crear nueva vault'), findsOneWidget);
+      expect(find.text('Importar otra copia'), findsOneWidget);
+      expect(find.text('Restaurar copia local previa'), findsOneWidget);
       expect(find.text('Ver detalle técnico'), findsOneWidget);
 
-      // Tap Retry
-      await tester.tap(find.text('Reintentar conexión'));
-      expect(retryCalled, isTrue);
+      // Tap Importar otra copia
+      await tester.tap(find.text('Importar otra copia'));
+      expect(importCalled, isTrue);
 
       // Tap Ver detalle técnico
       await tester.tap(find.text('Ver detalle técnico'));
       await tester.pumpAndSettle();
       expect(find.text('Detalle técnico del error'), findsOneWidget);
-      expect(find.textContaining('Mock database lock'), findsOneWidget);
+      expect(find.textContaining('Incompatible schema version'), findsOneWidget);
 
       await tester.tap(find.text('Cerrar'));
       await tester.pumpAndSettle();
 
-      // Tap Restaurar copia previa -> opens confirmation dialog
-      await tester.tap(find.text('Restaurar copia previa'));
+      // Tap Restaurar copia local previa -> opens confirmation dialog
+      await tester.tap(find.text('Restaurar copia local previa'));
       await tester.pumpAndSettle();
       expect(find.textContaining('Se creará un respaldo del archivo actual'), findsOneWidget);
       await tester.tap(find.widgetWithText(FilledButton, 'Restaurar'));
       await tester.pumpAndSettle();
       expect(restoreCalled, isTrue);
 
-      // Tap Reparar base de datos -> opens confirmation dialog
-      await tester.tap(find.text('Reparar base de datos'));
+      // Tap Crear nueva vault -> opens confirmation dialog
+      await tester.tap(find.text('Crear nueva vault'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Se guardará tu base actual dañada'), findsOneWidget);
-      await tester.tap(find.widgetWithText(FilledButton, 'Reparar'));
+      expect(find.textContaining('Se guardará tu base de datos actual incompatible'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Crear nueva vault').last);
       await tester.pumpAndSettle();
-      expect(repairCalled, isTrue);
+      expect(newVaultCalled, isTrue);
     });
   });
 }

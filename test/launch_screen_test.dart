@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kwall/core/contracts/app_repositories.dart';
 import 'package:kwall/core/models/recovery_copy.dart';
+import 'package:kwall/core/services/device_files.dart';
 import 'package:kwall/features/welcome/view_models/launch_view_model.dart';
 
 class FakeSettingsRepository implements SettingsRepository {
@@ -138,7 +139,69 @@ void main() {
       expect(vm.ready, isTrue);
       expect(repo.repairCalled, isTrue);
     });
+
+    test('load failure sets specific warning when database version is incompatible', () async {
+      final repo = IncompatibleSettingsRepository();
+      final vm = LaunchViewModel(repo);
+
+      await vm.load();
+      expect(vm.ready, isFalse);
+      expect(
+        vm.error,
+        'Esta base de datos no es compatible y no se puede restaurar automáticamente.',
+      );
+      expect(vm.diagnosticInfo, contains('no es compatible con tu versión actual de kwall'));
+    });
+
+    test('createNewVault calls repository.repairOrResetDatabase and reloads', () async {
+      final repo = RecoverableSettingsRepository();
+      final vm = LaunchViewModel(repo);
+
+      await vm.load();
+      expect(vm.ready, isFalse);
+
+      final created = await vm.createNewVault();
+      expect(created, isTrue);
+      expect(vm.ready, isTrue);
+      expect(repo.repairCalled, isTrue);
+    });
+
+    test('importBackup picks backup file, resets vault, imports data and reloads', () async {
+      final repo = RecoverableSettingsRepository();
+      final fakeFiles = FakeDeviceFiles(backupContent: '{"app":"kwall"}');
+      final vm = LaunchViewModel(repo, files: fakeFiles);
+
+      await vm.load();
+      expect(vm.ready, isFalse);
+
+      final imported = await vm.importBackup();
+      expect(imported, isTrue);
+      expect(vm.ready, isTrue);
+      expect(repo.repairCalled, isTrue);
+      expect(repo.importedContent, '{"app":"kwall"}');
+    });
   });
+}
+
+class IncompatibleSettingsRepository extends FakeSettingsRepository {
+  @override
+  Future<Map<String, String>> getSettings() async {
+    throw StateError('Esta base de datos (v99) no es compatible con tu versión actual de kwall (v6). No se puede restaurar automáticamente.');
+  }
+}
+
+class FakeDeviceFiles implements DeviceFiles {
+  final String? backupContent;
+  FakeDeviceFiles({this.backupContent});
+
+  @override
+  Future<String?> pickBackup() async => backupContent;
+
+  @override
+  Future<String?> pickPetImage() async => null;
+
+  @override
+  Future<bool> saveBackup(String content, String name) async => true;
 }
 
 class FailingSettingsRepository extends FakeSettingsRepository {
@@ -155,6 +218,12 @@ class RecoverableSettingsRepository extends FakeSettingsRepository {
   bool failNext = true;
   bool restoredCalled = false;
   bool repairCalled = false;
+  String? importedContent;
+
+  @override
+  Future<void> importFullDataFromJson(String content) async {
+    importedContent = content;
+  }
 
   @override
   Future<Map<String, String>> getSettings() async {

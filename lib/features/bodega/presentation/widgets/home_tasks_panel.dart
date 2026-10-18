@@ -96,7 +96,7 @@ class HomeTasksPanel extends StatelessWidget {
               ),
             )
           else ...[
-            for (final item in tasks.take(1)) ...[
+            for (final item in tasks.take(5)) ...[
               InkWell(
                 borderRadius: BorderRadius.circular(12),
                 onTap: () {
@@ -168,7 +168,7 @@ class HomeTasksPanel extends StatelessWidget {
               ),
               const Divider(height: 12),
             ],
-            if (tasks.length > 1)
+            if (tasks.length > 5)
               TextButton.icon(
                 onPressed: onOpenNotes,
                 icon: const Icon(Icons.arrow_forward_rounded, size: 16),
