@@ -13,15 +13,10 @@ mixin BudgetRepository on DatabaseContext {
     double? weekly,
     double? daily,
   }) async {
-    final budget = await getCurrentBudget();
-    final db = await database;
-    await db.update(
-      'budgets',
-      {'monthly_limit': monthly, 'weekly_limit': weekly, 'daily_limit': daily},
-      where: 'id = ?',
-      whereArgs: [budget.id],
-    );
-    notifyChanged();
+    final now = DateTime.now();
+    await allocateBudget(BudgetPeriod.monthly, now, monthly);
+    if (weekly != null) await allocateBudget(BudgetPeriod.weekly, now, weekly);
+    if (daily != null) await allocateBudget(BudgetPeriod.daily, now, daily);
   }
 
   Future<double> getSpentBetween(DateTime start, DateTime end) async {
@@ -41,63 +36,44 @@ mixin BudgetRepository on DatabaseContext {
   Future<BudgetModel> getCurrentBudget() async {
     final db = await database;
     final now = DateTime.now();
-    final maps = await db.query(
-      'budgets',
-      where: 'month = ? AND year = ?',
-      whereArgs: [now.month, now.year],
-      limit: 1,
+    final monthlyStart = dayKey(periodRange(BudgetPeriod.monthly, now).start);
+    final weeklyStart = dayKey(periodRange(BudgetPeriod.weekly, now).start);
+    final dailyStart = dayKey(periodRange(BudgetPeriod.daily, now).start);
+
+    final rows = await db.query(
+      'budget_allocations',
+      where: 'period_key IN (?, ?, ?)',
+      whereArgs: [
+        'monthly:$monthlyStart',
+        'weekly:$weeklyStart',
+        'daily:$dailyStart',
+      ],
     );
 
-    if (maps.isNotEmpty) {
-      return BudgetModel.fromMap(maps.first);
+    double monthly = 0;
+    double? weekly;
+    double? daily;
+    for (final r in rows) {
+      final period = r['period'] as String;
+      final amt = (r['amount'] as num).toDouble();
+      if (period == 'monthly') monthly = amt;
+      if (period == 'weekly') weekly = amt;
+      if (period == 'daily') daily = amt;
     }
 
-    final previous = await db.query(
-      'budgets',
-      orderBy: 'year DESC, month DESC',
-      limit: 1,
-    );
-    final prior = previous.isEmpty ? null : BudgetModel.fromMap(previous.first);
-    final newBudget = BudgetModel(
-      id: const Uuid().v4(),
+    return BudgetModel(
+      id: monthlyStart,
       month: now.month,
       year: now.year,
-      monthlyLimit: prior?.monthlyLimit ?? 0,
-      weeklyLimit: prior?.weeklyLimit,
-      dailyLimit: prior?.dailyLimit,
+      monthlyLimit: monthly,
+      weeklyLimit: weekly,
+      dailyLimit: daily,
       createdAt: now,
     );
-    await db.insert('budgets', newBudget.toMap());
-    return newBudget;
   }
 
-  Future<void> setMonthlyBudget(double limit) async {
-    final db = await database;
-    final now = DateTime.now();
-    final existing = await db.query(
-      'budgets',
-      where: 'month = ? AND year = ?',
-      whereArgs: [now.month, now.year],
-    );
-
-    if (existing.isNotEmpty) {
-      await db.update(
-        'budgets',
-        {'monthly_limit': limit},
-        where: 'month = ? AND year = ?',
-        whereArgs: [now.month, now.year],
-      );
-    } else {
-      await db.insert('budgets', {
-        'id': const Uuid().v4(),
-        'month': now.month,
-        'year': now.year,
-        'monthly_limit': limit,
-        'created_at': now.toIso8601String(),
-      });
-    }
-    notifyChanged();
-  }
+  Future<void> setMonthlyBudget(double limit) =>
+      allocateBudget(BudgetPeriod.monthly, DateTime.now(), limit);
 
   Future<double> getMonthlySpentTotal(int month, int year) async {
     final db = await database;
@@ -128,6 +104,7 @@ mixin BudgetRepository on DatabaseContext {
     double? amount, {
     String? mode,
     double? share,
+    String notes = '',
   }) async {
     if (amount != null && (!amount.isFinite || amount < 0)) {
       throw ArgumentError('Monto inválido');
@@ -141,25 +118,63 @@ mixin BudgetRepository on DatabaseContext {
     final db = await database;
     final start = dayKey(periodRange(period, date).start);
     final key = '${period.name}:$start';
+    final now = DateTime.now();
+
     await db.transaction((txn) async {
+      final existing = await txn.query(
+        'budget_allocations',
+        where: 'period_key = ?',
+        whereArgs: [key],
+      );
+      final prevAmount = existing.isNotEmpty
+          ? (existing.first['amount'] as num).toDouble()
+          : null;
+
       if (amount == null) {
         await txn.delete(
           'budget_allocations',
           where: 'period_key = ?',
           whereArgs: [key],
         );
+        if (prevAmount != null) {
+          await txn.insert('budget_allocation_history', {
+            'id': const Uuid().v4(),
+            'period_key': key,
+            'period': period.name,
+            'period_start': start,
+            'previous_amount': prevAmount,
+            'new_amount': 0.0,
+            'change_type': 'cleared',
+            'notes': notes,
+            'created_at': now.toIso8601String(),
+          });
+        }
       } else {
         await txn.insert('budget_allocations', {
           'period_key': key,
           'period': period.name,
           'period_start': start,
           'amount': amount,
-          'updated_at': DateTime.now().toIso8601String(),
+          'updated_at': now.toIso8601String(),
         }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+        final changeType = prevAmount == null ? 'created' : 'updated';
+        await txn.insert('budget_allocation_history', {
+          'id': const Uuid().v4(),
+          'period_key': key,
+          'period': period.name,
+          'period_start': start,
+          'previous_amount': prevAmount,
+          'new_amount': amount,
+          'change_type': changeType,
+          'notes': notes,
+          'created_at': now.toIso8601String(),
+        });
       }
+
       final settings = <String, String>{
         'budget_mode': ?mode,
-        if (share != null) 'budget_share': share.toString(),
+        'budget_share': ?share?.toString(),
       };
       for (final entry in settings.entries) {
         await txn.insert('app_settings', {
@@ -169,5 +184,27 @@ mixin BudgetRepository on DatabaseContext {
       }
     });
     notifyChanged();
+  }
+
+  Future<List<Map<String, dynamic>>> getBudgetAllocationHistory({
+    String? periodKey,
+    BudgetPeriod? period,
+  }) async {
+    final db = await database;
+    String? where;
+    List<Object?>? args;
+    if (periodKey != null) {
+      where = 'period_key = ?';
+      args = [periodKey];
+    } else if (period != null) {
+      where = 'period = ?';
+      args = [period.name];
+    }
+    return db.query(
+      'budget_allocation_history',
+      where: where,
+      whereArgs: args,
+      orderBy: 'created_at DESC',
+    );
   }
 }

@@ -26,17 +26,20 @@ mixin PlanningRepository on DatabaseContext {
         throw StateError('Este vencimiento ya fue registrado');
       }
       final now = DateTime.now();
+      String? txId;
+      double paidAmount = plan.amount;
       if (plan.amount > 0) {
         final sourceRows = plan.accountId == null ? <Map<String, Object?>>[] : await txn.query('accounts', where: 'id = ?', whereArgs: [plan.accountId]);
         final targetRows = await txn.query('accounts', where: 'id = ?', whereArgs: [accountId]);
         if (targetRows.isEmpty) throw StateError('Selecciona una cuenta');
         final snapshot = await CurrencySnapshot.read(txn);
         final sourceCurrency = sourceRows.firstOrNull?['currency'] as String? ?? snapshot.base;
-        final paidAmount = snapshot.convert(plan.amount, sourceCurrency, targetRows.single['currency'] as String);
+        paidAmount = snapshot.convert(plan.amount, sourceCurrency, targetRows.single['currency'] as String);
+        txId = const Uuid().v4();
         await TransactionWriter.insert(
           txn,
           TransactionRecord(
-            id: const Uuid().v4(),
+            id: txId,
             accountId: accountId,
             categoryId: plan.categoryId,
             amount: paidAmount,
@@ -47,6 +50,18 @@ mixin PlanningRepository on DatabaseContext {
           ),
         );
       }
+
+      await txn.insert('planned_expense_payments', {
+        'id': const Uuid().v4(),
+        'planned_expense_id': id,
+        'transaction_id': txId,
+        'due_date': plan.dueDate.toIso8601String(),
+        'paid_at': now.toIso8601String(),
+        'amount': paidAmount,
+        'account_id': accountId,
+        'created_at': now.toIso8601String(),
+      });
+
       final next = plan.nextDate(plan.dueDate);
       final updated = plan.copyWith(
         dueDate: next,
@@ -60,6 +75,18 @@ mixin PlanningRepository on DatabaseContext {
       );
     });
     notifyChanged();
+  }
+
+  Future<List<Map<String, dynamic>>> getPlannedExpensePayments({
+    String? plannedExpenseId,
+  }) async {
+    final db = await database;
+    return db.query(
+      'planned_expense_payments',
+      where: plannedExpenseId != null ? 'planned_expense_id = ?' : null,
+      whereArgs: plannedExpenseId != null ? [plannedExpenseId] : null,
+      orderBy: 'paid_at DESC',
+    );
   }
 
   Future<List<PlannedExpense>> getPlannedExpenses({

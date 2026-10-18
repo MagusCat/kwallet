@@ -173,7 +173,7 @@ void main() {
     final upgraded = DatabaseService.atPath(path, factory: databaseFactoryFfiNoIsolate);
     final opened = await upgraded.database;
     addTearDown(opened.close);
-    expect(await opened.getVersion(), 5);
+    expect(await opened.getVersion(), 6);
     expect((await upgraded.getAccounts()).single.balance, 25);
     expect(await upgraded.getRecoveryFiles(), hasLength(1));
     for (final table in ['transactions', 'transaction_archive', 'global_currency_history', 'account_currency_history']) {
@@ -198,7 +198,7 @@ void main() {
     final migrated = DatabaseService.atPath(path, factory: databaseFactoryFfiNoIsolate);
     final opened = await migrated.database;
     addTearDown(opened.close);
-    expect(await opened.getVersion(), 5);
+    expect(await opened.getVersion(), 6);
     expect((await migrated.getAccounts()).single.openingBalance, 123);
     expect(await migrated.getRecoveryFiles(), hasLength(1));
     await migrated.verifyDataIntegrity();

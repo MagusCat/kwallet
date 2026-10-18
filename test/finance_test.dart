@@ -141,7 +141,7 @@ void main() {
     expect((await service.getSettings())['mirror_currency'], 'USD');
   });
 
-  test('Versions 2 and 3 survive the version 5 migration', () async {
+  test('Versions 2 and 3 survive the version 6 migration', () async {
     final directory = await Directory.systemTemp.createTemp('kwall-migration-');
     addTearDown(() => directory.delete(recursive: true));
     for (final legacyVersion in [2, 3]) {
@@ -151,6 +151,17 @@ void main() {
         factory: databaseFactoryFfiNoIsolate,
       );
       final legacy = await legacyService.database;
+      await legacy.execute('''
+        CREATE TABLE IF NOT EXISTS budgets (
+          id TEXT PRIMARY KEY,
+          month INTEGER NOT NULL,
+          year INTEGER NOT NULL,
+          monthly_limit REAL NOT NULL,
+          weekly_limit REAL,
+          daily_limit REAL,
+          created_at TEXT NOT NULL
+        )
+      ''');
       await legacy.insert('budgets', {
         'id': 'legacy',
         'month': 10,
@@ -201,10 +212,10 @@ void main() {
       addTearDown(db.close);
       expect(
         (await db.query(
-          'budgets',
-          where: 'id = ?',
-          whereArgs: ['legacy'],
-        )).single['monthly_limit'],
+          'budget_allocations',
+          where: 'period_key = ?',
+          whereArgs: ['monthly:2025-10-01'],
+        )).single['amount'],
         900,
       );
       expect((await service.getAccounts()).single.openingBalance, 123);
@@ -212,10 +223,14 @@ void main() {
       expect(await service.getRecoveryFiles(), hasLength(1));
       await service.verifyDataIntegrity();
       expect((await service.getPlannedExpenses()).single.recurrenceDay, 31);
+      final tables = (await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type = 'table'",
+      )).map((row) => row['name'] as String).toList();
+      expect(tables, isNot(contains('budgets')));
+      expect(tables, isNot(contains('kitty_profile')));
       expect(
-        (await db.rawQuery('PRAGMA table_info(budgets)'))
-            .map((row) => row['name']),
-        containsAll(['daily_limit', 'weekly_limit']),
+        tables,
+        containsAll(['budget_allocation_history', 'planned_expense_payments']),
       );
     }
   });
@@ -369,6 +384,81 @@ void main() {
       'Nota de una versión anterior',
     );
     await service.verifyDataIntegrity();
+  });
+
+  test('Budget allocation history tracks all modifications and planned expense payments record cuotas', () async {
+    final service = DatabaseService.atPath(
+      inMemoryDatabasePath,
+      factory: databaseFactoryFfiNoIsolate,
+    );
+    final db = await service.database;
+    await service.setCurrencyRate(currency: 'NIO', rate: 1);
+    addTearDown(db.close);
+
+    final day = DateTime(2026, 10, 17);
+    await service.allocateBudget(BudgetPeriod.weekly, day, 100);
+    var history = await service.getBudgetAllocationHistory();
+    expect(history, hasLength(1));
+    expect(history.first['change_type'], 'created');
+    expect(history.first['previous_amount'], isNull);
+    expect(history.first['new_amount'], 100.0);
+
+    await service.allocateBudget(BudgetPeriod.weekly, day, 150);
+    history = await service.getBudgetAllocationHistory();
+    expect(history, hasLength(2));
+    expect(history.first['change_type'], 'updated');
+    expect(history.first['previous_amount'], 100.0);
+    expect(history.first['new_amount'], 150.0);
+
+    await service.allocateBudget(BudgetPeriod.weekly, day, null);
+    history = await service.getBudgetAllocationHistory();
+    expect(history, hasLength(3));
+    expect(history.first['change_type'], 'cleared');
+    expect(history.first['previous_amount'], 150.0);
+    expect(history.first['new_amount'], 0.0);
+
+    final specificHistory = await service.getBudgetAllocationHistory(
+      periodKey: history.first['period_key'] as String,
+    );
+    expect(specificHistory, hasLength(3));
+
+    await service.createAccount(
+      Account(
+        id: 'acc1',
+        name: 'Cuenta Principal',
+        type: 'bank',
+        balance: 1000,
+        createdAt: DateTime.now(),
+      ),
+    );
+    final expense = PlannedExpense(
+      id: 'pe1',
+      title: 'Internet',
+      amount: 45,
+      dueDate: DateTime(2026, 10, 20),
+      recurrence: 'monthly',
+      categoryId: 'cat_home',
+      accountId: 'acc1',
+      createdAt: DateTime.now(),
+    );
+    await service.addPlannedExpense(expense);
+
+    await service.payPlannedExpense('pe1', 'acc1', expectedDueDate: DateTime(2026, 10, 20));
+
+    final payments = await service.getPlannedExpensePayments(plannedExpenseId: 'pe1');
+    expect(payments, hasLength(1));
+    expect(payments.first['planned_expense_id'], 'pe1');
+    expect(payments.first['amount'], 45.0);
+    expect(payments.first['account_id'], 'acc1');
+    expect(payments.first['transaction_id'], isNotNull);
+
+    final updatedPlans = await service.getPlannedExpenses();
+    final updatedPlan = updatedPlans.firstWhere((p) => p.id == 'pe1');
+    expect(updatedPlan.dueDate.month, 11);
+    expect(updatedPlan.isCompleted, false);
+
+    final acc = (await service.getAccounts()).firstWhere((a) => a.id == 'acc1');
+    expect(acc.balance, 955.0);
   });
 
   test(

@@ -1,5 +1,4 @@
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../features/bodega/models/category_model.dart';
 import '../../features/journal/models/journal_models.dart';
@@ -50,32 +49,6 @@ class DatabaseSchema {
     ''');
 
     await db.execute('''
-      CREATE TABLE budgets (
-        id TEXT PRIMARY KEY,
-        month INTEGER NOT NULL,
-        year INTEGER NOT NULL,
-        monthly_limit REAL NOT NULL,
-        weekly_limit REAL,
-        daily_limit REAL,
-        created_at TEXT NOT NULL
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE kitty_profile (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        level INTEGER NOT NULL,
-        exp INTEGER NOT NULL,
-        mood TEXT NOT NULL,
-        happiness INTEGER NOT NULL,
-        coat_color TEXT NOT NULL DEFAULT 'orange',
-        personality TEXT NOT NULL DEFAULT 'curious',
-        last_interacted TEXT NOT NULL
-      )
-    ''');
-
-    await db.execute('''
       CREATE TABLE planned_expenses (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
@@ -100,6 +73,7 @@ class DatabaseSchema {
 
     await _createV4Tables(db);
     await migrateV5(db);
+    await migrateV6(db);
 
     final now = DateTime.now();
 
@@ -192,26 +166,14 @@ class DatabaseSchema {
       await db.insert('categories', cat.toMap());
     }
 
-    // Seed monthly budget
-    await db.insert('budgets', {
-      'id': const Uuid().v4(),
-      'month': now.month,
-      'year': now.year,
-      'monthly_limit': 0.0,
-      'created_at': now.toIso8601String(),
-    });
-
-    // Seed Kitty profile
-    await db.insert('kitty_profile', {
-      'id': 'main_kitty',
-      'name': 'Mishi',
-      'level': 1,
-      'exp': 45,
-      'mood': 'happy',
-      'happiness': 85,
-      'coat_color': 'orange',
-      'personality': 'curious',
-      'last_interacted': now.toIso8601String(),
+    // Seed default monthly budget allocation
+    final monthStart = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
+    await db.insert('budget_allocations', {
+      'period_key': 'monthly:$monthStart',
+      'period': 'monthly',
+      'period_start': monthStart,
+      'amount': 0.0,
+      'updated_at': now.toIso8601String(),
     });
   }
 
@@ -403,6 +365,7 @@ class DatabaseSchema {
       }
     }
     if (oldVersion < 5) await migrateV5(db);
+    if (oldVersion < 6) await migrateV6(db);
   }
 
   // Versioned migration shared by fresh databases and upgrades. Never run DDL in onOpen.
@@ -468,5 +431,67 @@ class DatabaseSchema {
     }
 
     await _createV4Tables(db);
+  }
+
+  static Future<void> migrateV6(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS budget_allocation_history (
+        id TEXT PRIMARY KEY,
+        period_key TEXT NOT NULL,
+        period TEXT NOT NULL,
+        period_start TEXT NOT NULL,
+        previous_amount REAL,
+        new_amount REAL NOT NULL,
+        change_type TEXT NOT NULL,
+        notes TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_budget_alloc_hist ON budget_allocation_history(period_key, created_at DESC)',
+    );
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS planned_expense_payments (
+        id TEXT PRIMARY KEY,
+        planned_expense_id TEXT NOT NULL REFERENCES planned_expenses(id) ON DELETE CASCADE,
+        transaction_id TEXT,
+        due_date TEXT NOT NULL,
+        paid_at TEXT NOT NULL,
+        amount REAL NOT NULL,
+        account_id TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    ''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_plan_payments_plan ON planned_expense_payments(planned_expense_id, paid_at DESC)',
+    );
+
+    final tables = (await db.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table'",
+    )).map((r) => r['name']).toSet();
+
+    if (tables.contains('budgets')) {
+      final oldBudgets = await db.query('budgets');
+      for (final b in oldBudgets) {
+        final m = (b['month'] as int).toString().padLeft(2, '0');
+        final y = b['year'];
+        final start = '$y-$m-01';
+        final key = 'monthly:$start';
+        final monthlyLimit = (b['monthly_limit'] as num?)?.toDouble() ?? 0.0;
+        await db.insert('budget_allocations', {
+          'period_key': key,
+          'period': 'monthly',
+          'period_start': start,
+          'amount': monthlyLimit,
+          'updated_at': b['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+        }, conflictAlgorithm: ConflictAlgorithm.ignore);
+      }
+      await db.execute('DROP TABLE IF EXISTS budgets');
+    }
+
+    if (tables.contains('kitty_profile')) {
+      await db.execute('DROP TABLE IF EXISTS kitty_profile');
+    }
   }
 }

@@ -71,6 +71,13 @@ abstract interface class FinanceRepository implements Repository {
     required String changeType,
     String notes = '',
   });
+  Future<List<Map<String, dynamic>>> getBudgetAllocationHistory({
+    String? periodKey,
+    BudgetPeriod? period,
+  });
+  Future<List<Map<String, dynamic>>> getPlannedExpensePayments({
+    String? plannedExpenseId,
+  });
 }
 
 abstract interface class JournalRepository implements Repository {

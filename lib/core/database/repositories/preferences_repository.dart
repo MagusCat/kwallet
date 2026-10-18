@@ -85,7 +85,6 @@ mixin PreferencesRepository on DatabaseContext {
             await txn.insert('global_currency_history', {'id': const Uuid().v4(), 'currency': CurrencyConversion.code(entry.key), 'base_currency': next, 'previous_rate': entry.value, 'new_rate': entry.value * factor, 'notes': 'Cambio de moneda principal', 'created_at': DateTime.now().toIso8601String()});
             await txn.insert('global_currency_rates', {'currency': CurrencyConversion.code(entry.key), 'rate': entry.value * factor, 'updated_at': DateTime.now().toIso8601String()}, conflictAlgorithm: ConflictAlgorithm.replace);
           }
-          await txn.rawUpdate('UPDATE budgets SET monthly_limit = monthly_limit * ?, weekly_limit = weekly_limit * ?, daily_limit = daily_limit * ?', [factor, factor, factor]);
           await txn.rawUpdate('UPDATE budget_allocations SET amount = amount * ?', [factor]);
           await txn.rawUpdate('UPDATE planned_expenses SET amount = amount * ? WHERE account_id IS NULL', [factor]);
         }
@@ -97,87 +96,6 @@ mixin PreferencesRepository on DatabaseContext {
         }, conflictAlgorithm: ConflictAlgorithm.replace);
       }
     });
-    notifyChanged();
-  }
-
-  Future<Map<String, dynamic>> getKittyProfile() async {
-    final db = await database;
-    final maps = await db.query(
-      'kitty_profile',
-      where: 'id = ?',
-      whereArgs: ['main_kitty'],
-    );
-    if (maps.isNotEmpty) {
-      return Map<String, dynamic>.from(maps.first);
-    }
-    return {
-      'id': 'main_kitty',
-      'name': 'Mishi',
-      'level': 1,
-      'exp': 45,
-      'mood': 'happy',
-      'happiness': 85,
-      'coat_color': 'orange',
-      'personality': 'curious',
-    };
-  }
-
-  Future<void> updateKittyConfig({
-    String? name,
-    String? coatColor,
-    String? personality,
-  }) async {
-    final db = await database;
-    final updates = <String, dynamic>{};
-    if (name != null) updates['name'] = name;
-    if (coatColor != null) updates['coat_color'] = coatColor;
-    if (personality != null) updates['personality'] = personality;
-
-    if (updates.isNotEmpty) {
-      await db.update(
-        'kitty_profile',
-        updates,
-        where: 'id = ?',
-        whereArgs: ['main_kitty'],
-      );
-      notifyChanged();
-    }
-  }
-
-  Future<void> updateKittyMood(
-    String mood, {
-    int? happinessDelta,
-    int? expDelta,
-  }) async {
-    final db = await database;
-    final profile = await getKittyProfile();
-    int currentHappiness = (profile['happiness'] as int?) ?? 85;
-    int currentExp = (profile['exp'] as int?) ?? 45;
-    int currentLevel = (profile['level'] as int?) ?? 1;
-
-    if (happinessDelta != null) {
-      currentHappiness = (currentHappiness + happinessDelta).clamp(0, 100);
-    }
-    if (expDelta != null) {
-      currentExp += expDelta;
-      if (currentExp >= 100) {
-        currentLevel += currentExp ~/ 100;
-        currentExp = currentExp % 100;
-      }
-    }
-
-    await db.update(
-      'kitty_profile',
-      {
-        'mood': mood,
-        'happiness': currentHappiness,
-        'exp': currentExp,
-        'level': currentLevel,
-        'last_interacted': DateTime.now().toIso8601String(),
-      },
-      where: 'id = ?',
-      whereArgs: ['main_kitty'],
-    );
     notifyChanged();
   }
 

@@ -6,17 +6,17 @@ import 'package:crypto/crypto.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class DatabaseBackup {
-  static const version = 5;
+  static const version = 6;
   static const tables = [
     'accounts',
     'categories',
     'transactions',
     'transaction_archive',
-    'budgets',
-    'kitty_profile',
-    'planned_expenses',
-    'app_settings',
     'budget_allocations',
+    'budget_allocation_history',
+    'planned_expenses',
+    'planned_expense_payments',
+    'app_settings',
     'personal_notes',
     'habits',
     'habit_logs',
@@ -27,7 +27,12 @@ class DatabaseBackup {
     'front_pending_items',
   ];
   static const deleteOrder = [
-    'front_pending_items', 'account_currency_history', 'global_currency_history', 'global_currency_rates',
+    'front_pending_items',
+    'account_currency_history',
+    'global_currency_history',
+    'global_currency_rates',
+    'planned_expense_payments',
+    'budget_allocation_history',
     'habit_logs',
     'reward_events',
     'transactions',
@@ -38,8 +43,6 @@ class DatabaseBackup {
     'habits',
     'accounts',
     'categories',
-    'budgets',
-    'kitty_profile',
     'app_settings',
   ];
 
@@ -101,13 +104,12 @@ class DatabaseBackup {
       'accounts',
       'categories',
       'transactions',
-      'budgets',
     ]) {
       if (data[required] is! List) {
         throw FormatException('Falta la tabla $required.');
       }
     }
-    if (schemaVersion >= 5 && tables.any((table) => data[table] is! List)) {
+    if (schemaVersion >= 6 && tables.any((table) => data[table] is! List)) {
       throw const FormatException('El respaldo está incompleto.');
     }
     final result = <String, List<Map<String, Object?>>>{};
@@ -244,14 +246,24 @@ class DatabaseBackup {
         }
       }
     }
-    for (final row in result['budgets']!) {
-      if (row['month'] is! int ||
-          (row['month'] as int) < 1 ||
-          (row['month'] as int) > 12 ||
-          row['year'] is! int ||
-          row['monthly_limit'] is! num ||
-          (row['monthly_limit'] as num) < 0) {
-        throw const FormatException('Presupuesto inválido.');
+    if (data.containsKey('budgets') && data['budgets'] is List) {
+      final oldBudgets = data['budgets'] as List;
+      for (final b in oldBudgets) {
+        if (b is Map && b['month'] is int && b['year'] is int && b['monthly_limit'] is num) {
+          final m = (b['month'] as int).toString().padLeft(2, '0');
+          final y = b['year'];
+          final start = '$y-$m-01';
+          final key = 'monthly:$start';
+          if (!result['budget_allocations']!.any((r) => r['period_key'] == key)) {
+            result['budget_allocations']!.add({
+              'period_key': key,
+              'period': 'monthly',
+              'period_start': start,
+              'amount': (b['monthly_limit'] as num).toDouble(),
+              'updated_at': b['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+            });
+          }
+        }
       }
     }
     for (final row in result['budget_allocations']!) {

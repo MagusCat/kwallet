@@ -23,6 +23,7 @@ class PlanningViewModel extends ViewModel {
   bool loading = true;
   bool rangeMode = false;
   DateTime? rangeAnchor;
+  List<Map<String, dynamic>> paymentHistory = const [];
 
   PlanningViewModel(this.repository, this.preferences, [this.journal]) {
     for (final source in {
@@ -49,6 +50,8 @@ class PlanningViewModel extends ViewModel {
             dateOnly(p.dueDate).isBefore(dateOnly(DateTime.now())),
       )
       .toList();
+  List<PlannedExpense> get completedPlans =>
+      plans.where((p) => p.isCompleted).toList();
   List<({PlannedExpense plan, DateTime date})> get entries => [
     for (final plan in plans)
       for (final date in plan.datesBetween(range.start, range.end))
@@ -110,6 +113,7 @@ class PlanningViewModel extends ViewModel {
       final nextAccounts = await repository.getAccounts();
       final nextCategories = await repository.getCategories(type: 'expense');
       final nextNotes = journal != null ? await journal!.getNotes() : const <PersonalNote>[];
+      final nextPayments = await repository.getPlannedExpensePayments();
       final settings = await preferences.getSettings();
       final nextRates = await preferences.getCurrencyRates();
       for (final account in nextAccounts) {
@@ -119,6 +123,7 @@ class PlanningViewModel extends ViewModel {
       currency = settings['currency'] ?? '\$';
       rates = Map.unmodifiable(nextRates);
       plans = List.unmodifiable(nextPlans);
+      paymentHistory = List.unmodifiable(nextPayments);
       accounts = List.unmodifiable(nextAccounts);
       categories = List.unmodifiable(nextCategories);
       notes = List.unmodifiable(nextNotes);

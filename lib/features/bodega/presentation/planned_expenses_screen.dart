@@ -14,6 +14,7 @@ import 'planned_expense_sheet.dart';
 import 'widgets/agenda_cashflow_card.dart';
 import 'widgets/agenda_due_notes_panel.dart';
 import 'widgets/plan_calendar.dart';
+import 'widgets/plan_history_section.dart';
 
 class PlannedExpensesScreen extends StatefulWidget {
   final String currency;
@@ -111,13 +112,10 @@ class _PlannedExpensesScreenState
       body: ContentWidth(
         child: ListView.builder(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 110),
-          itemCount: entries.length + 1,
+          itemCount: entries.length + 2,
           itemBuilder: (context, index) {
-            if (index > 0) {
-              final entry = entries[index - 1];
-              return _entry(entry.plan, entry.date);
-            }
-            return Column(
+            if (index == 0) {
+              return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (_error != null)
@@ -249,7 +247,16 @@ class _PlannedExpensesScreenState
                   ),
               ],
             );
-          },
+          }
+          if (index <= entries.length) {
+            final entry = entries[index - 1];
+            return _entry(entry.plan, entry.date);
+          }
+          return PlanHistorySection(
+            model: model,
+            currency: widget.currency,
+          );
+        },
         ),
       ),
     );
