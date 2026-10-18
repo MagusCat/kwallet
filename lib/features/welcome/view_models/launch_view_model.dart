@@ -96,19 +96,46 @@ class LaunchViewModel extends ViewModel {
         }
         await repository.saveSettings(updates);
 
-        if (userCurrencies != null && userCurrencies.isNotEmpty) {
-          for (final entry in userCurrencies.entries) {
-            await repository.saveUserCurrency(entry.key, entry.value);
-          }
-        } else if (currency != null && currency.trim().isNotEmpty) {
-          await repository.saveUserCurrency(currency.trim(), currencyName ?? '');
+        final userDefinedCodes = <String>{};
+        if (currency != null && currency.trim().isNotEmpty) {
+          userDefinedCodes.add(currency.trim());
+        }
+        if (referenceCurrencies != null && referenceCurrencies.trim().isNotEmpty) {
+          userDefinedCodes.addAll(
+            referenceCurrencies.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty),
+          );
+        }
+        if (userCurrencies != null) {
+          userDefinedCodes.addAll(
+            userCurrencies.keys.map((s) => s.trim()).where((s) => s.isNotEmpty),
+          );
         }
 
+        // The user defines all currencies; no others exist.
+        // Clean up any initial default/pre-seeded currencies not chosen by the user.
+        final existingCurrencies = await repository.getUserCurrencies();
+        for (final existingCode in existingCurrencies.keys) {
+          if (!userDefinedCodes.contains(existingCode)) {
+            await repository.deleteUserCurrency(existingCode);
+          }
+        }
+
+        if (userCurrencies != null && userCurrencies.isNotEmpty) {
+          for (final entry in userCurrencies.entries) {
+            final code = entry.key.trim();
+            if (code.isNotEmpty) {
+              await repository.saveUserCurrency(code, entry.value.trim());
+            }
+          }
+        }
+        if (currency != null && currency.trim().isNotEmpty) {
+          await repository.saveUserCurrency(currency.trim(), currencyName?.trim() ?? '');
+        }
         if (referenceCurrencies != null && referenceCurrencies.trim().isNotEmpty) {
           for (final c in referenceCurrencies.split(',')) {
             final code = c.trim();
             if (code.isNotEmpty) {
-              await repository.saveUserCurrency(code, userCurrencies?[code] ?? '');
+              await repository.saveUserCurrency(code, userCurrencies?[code]?.trim() ?? '');
             }
           }
         }

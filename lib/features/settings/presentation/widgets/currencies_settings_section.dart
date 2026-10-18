@@ -115,11 +115,10 @@ class CurrenciesSettingsSection extends StatelessWidget {
         CurrencySelector(
           value: dominantCurrencyController.text,
           options: {
-            dominantCurrencyController.text,
-            ...referenceCurrencies,
-            ...rates.keys,
-            if (currencyNames != null) ...currencyNames!.keys,
-          },
+            if (dominantCurrencyController.text.trim().isNotEmpty) dominantCurrencyController.text.trim(),
+            ...referenceCurrencies.where((s) => s.trim().isNotEmpty),
+            if (currencyNames != null) ...currencyNames!.keys.where((s) => s.trim().isNotEmpty),
+          }.toSet(),
           currencyNames: currencyNames,
           label: 'Moneda principal',
           onChanged: (value) => dominantCurrencyController.text = value,

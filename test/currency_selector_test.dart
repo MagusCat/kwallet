@@ -175,11 +175,14 @@ void main() {
     expect(currencies['USD'], 'Dólar');
     expect(currencies['EUR'], 'Euro');
     expect(currencies['CAD'], 'Dólar Canadiense');
+    // Ensure no other currencies exist besides what the user defined
+    expect(currencies.containsKey('\$'), isFalse);
+    expect(currencies.length, 3);
 
-    // AccountEditorViewModel loads all these currencies into currencyOptions
+    // AccountEditorViewModel loads all these currencies and ONLY these into currencyOptions
     final editorModel = AccountEditorViewModel(service, service);
     await editorModel.loadCurrencies();
-    expect(editorModel.currencyOptions, containsAll(['USD', 'EUR', 'CAD']));
+    expect(editorModel.currencyOptions, equals(['CAD', 'EUR', 'USD']));
     expect(editorModel.currencyNames['EUR'], 'Euro');
   });
 }

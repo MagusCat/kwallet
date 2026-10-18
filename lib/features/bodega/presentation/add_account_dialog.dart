@@ -42,6 +42,16 @@ class _AddAccountDialogState
   String? get _error => model.error;
 
   @override
+  void onViewModelChanged() {
+    super.onViewModelChanged();
+    if (widget.account == null &&
+        model.currencyOptions.isNotEmpty &&
+        !model.currencyOptions.contains(_baseCurrency.text)) {
+      _baseCurrency.text = model.currencyOptions.first;
+    }
+  }
+
+  @override
   void dispose() {
     _name.dispose();
     _balance.dispose();
@@ -109,7 +119,11 @@ class _AddAccountDialogState
             const SizedBox(height: 12),
             CurrencySelector(
               value: _baseCurrency.text,
-              options: {widget.currency, ...model.currencyOptions},
+              options: model.currencyOptions.isNotEmpty
+                  ? (model.currencyOptions.contains(_baseCurrency.text)
+                      ? model.currencyOptions.toSet()
+                      : {model.currencyOptions.first, ...model.currencyOptions})
+                  : {_baseCurrency.text.trim().isNotEmpty ? _baseCurrency.text.trim() : widget.currency},
               currencyNames: model.currencyNames,
               onChanged: _saving ? null : (value) => setState(() => _baseCurrency.text = value),
             ),

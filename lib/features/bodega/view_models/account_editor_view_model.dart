@@ -18,19 +18,17 @@ class AccountEditorViewModel extends ViewModel {
     try {
       final userCurrencies = await preferences!.getUserCurrencies();
       final settings = await preferences!.getSettings();
-      final rates = await preferences!.getCurrencyRates();
       if (disposed) return;
       currencyNames = Map.unmodifiable(userCurrencies);
-      final mainCur = (settings['currency'] ?? '\$').trim();
+      final mainCur = (settings['currency'] ?? '').trim();
       final refCurrencies = (settings['reference_currencies'] ?? '')
           .split(',')
           .map((s) => s.trim())
           .where((s) => s.isNotEmpty);
       currencyOptions = {
-        mainCur,
+        if (mainCur.isNotEmpty) mainCur,
         ...refCurrencies,
         ...userCurrencies.keys,
-        ...rates.keys,
       }.where((s) => s.trim().isNotEmpty).toList()..sort();
       changed();
     } catch (_) { fail('No se pudieron cargar las monedas'); }
